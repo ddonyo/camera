@@ -1,0 +1,17 @@
+{
+    "name": "mjpeg-viewer",
+    "version": "1.0.0",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "dev": "node server.js",
+        "prod": "cross-env NODE_ENV=production node server.js",
+        "server": "node server.js"
+    },
+    "dependencies": {
+        "cross-env": "^7.0.3",
+        "electron": "^36.2.0",
+        "express": "^5.1.0",
+        "koffi": "^2.11.0"
+    }
+}

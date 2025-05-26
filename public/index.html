@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>LG SoC MJPEG Viewer</title>
+    <!-- Tailwind CSS CDN을 통한 스타일링 프레임워크 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 커스텀 CSS 로드 -->
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+
+<body class="font-bold text-gray-300 font-mono bg-[#121212] p-6 min-h-screen flex flex-col items-center">
+    <!-- 페이지 제목 헤더 -->
+    <header class="text-3xl font-bold text-gray-400 mb-2">SoC MJPEG Viewer</header>
+
+    <!-- 메인 콘텐츠 영역 -->
+    <main class="w-full max-w-5xl bg-[#1e1e1e] border border-[#333] rounded-xl shadow-xl p-6 space-y-2">
+
+        <!-- MJPEG 이미지를 표시할 캔버스 (1280x720 해상도) -->
+        <canvas id="viewer" width="1280" height="720"
+            class="w-full viewer-canvas"></canvas>
+
+        <!-- 재생 진행률을 표시하는 프로그레스 바 -->
+        <div id="progressBar" class="w-full h-2 bg-[#333] rounded progress-bar overflow-hidden">
+            <div id="progress" class="h-full bg-blue-500"></div>
+        </div>
+
+        <!-- 제어 버튼들과 설정 영역 -->
+        <section class="grid grid-cols-3 items-center text-sm gap-2">
+            <!-- 왼쪽 정렬: Live/Rec 버튼 -->
+            <div class="flex gap-2 justify-start">
+                <!-- 라이브 모드 토글 버튼 -->
+                <button id="liveBtn" class="base-btn tgl">🔴Live</button>
+                <!-- 녹화 모드 토글 버튼 -->
+                <button id="recordBtn" class="base-btn tgl">⏺️Rec</button>
+            </div>
+
+            <!-- 중앙 정렬: 재생 컨트롤 버튼들 -->
+            <div class="flex gap-2 justify-center">
+                <!-- 처음으로 되감기 버튼 -->
+                <button id="rewindBtn" disabled class="base-btn btn">⏮️</button>
+                <!-- 이전 프레임 버튼 -->
+                <button id="prevFrameBtn" disabled class="base-btn btn">⏪</button>
+                <!-- 역재생 버튼 -->
+                <button id="reverseBtn" disabled class="base-btn tgl">◀️</button>
+                <!-- 일시정지 버튼 -->
+                <button id="pauseBtn" disabled class="base-btn tgl">⏸️</button>
+                <!-- 재생 버튼 -->
+                <button id="playBtn" disabled class="base-btn tgl">▶️</button>
+                <!-- 다음 프레임 버튼 -->
+                <button id="nextFrameBtn" disabled class="base-btn btn">⏩</button>
+                <!-- 마지막으로 빨리감기 버튼 -->
+                <button id="fastForwardBtn" disabled class="base-btn btn">⏭️</button>
+            </div>
+
+            <!-- 오른쪽 정렬: Repeat 버튼 -->
+            <div class="flex gap-2 justify-end">
+                <!-- FPS(초당 프레임 수) 설정 라벨 및 입력 필드 -->
+                <label class="flex items-center gap-2 text-sm">
+                    <span class="disabled">FPS:</span>
+                    <input type="number" id="fpsInput" value="30" min="1" max="60" disabled
+                        class="w-15 bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-sm text-center disabled">
+                </label>
+                <!-- 반복 재생 토글 버튼 -->
+                <button id="repeatBtn" disabled class="base-btn tgl">🔁Repeat</button>
+            </div>
+        </section>
+
+        <!-- 현재 상태와 파일 정보를 표시하는 영역 -->
+        <div id="status" class="text-xs p-3 whitespace-pre-wrap flex justify-between items-start">
+            <pre id="statusText" class="whitespace-pre-wrap status-text normal">File Path:<br>File Name:<br>Frame:</pre>
+        </div>
+    </main>
+
+    <!-- 페이지 하단 저작권 정보 -->
+    <footer class="mt-2 text-center text-s text-gray-400">
+        Copyright &copy; 2025 LG Electronics Inc. All rights reserved.<br />
+        support : mbtask-all@lge.com<br />
+    </footer>
+
+    <!-- 모듈화된 JavaScript 로드 -->
+    <script type="module">
+        import { MJPEGViewer } from './js/mjpeg-viewer.js';
+
+        // MJPEG 뷰어 인스턴스 생성하여 애플리케이션 시작
+        window.mjpegViewer = new MJPEGViewer();
+
+        // 페이지 언로드 시 리소스 정리
+        window.addEventListener('beforeunload', () => {
+            if (window.mjpegViewer) {
+                window.mjpegViewer.destroy();
+            }
+        });
+    </script>
+</body>
+
+</html>
