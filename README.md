@@ -93,9 +93,26 @@ npm install
 ```
 
 ### 3. Native Code Library Check
-- Windows 시스템의 경우 `native/win/libcamctrl.dll` 파일이 존재하는지 확인하세요.
-- Linux 시스템의 경우 `native/linux/libcamctrl.so` 파일이 존재하는지 확인하세요.
 
+Windows 시스템의 경우 `native/win/libcamctrl.dll` 파일이 존재하는지 확인하세요.
+```bash
+# Windows DLL build
+cl /LD libcamctrl.c /Fe:libcamctrl.dll
+
+### dependency
+# Microsoft Visual Studio
+# or
+# Visual C++ Build Tools + Windows SDK
+```
+
+Linux 시스템의 경우 `native/linux/libcamctrl.so` 파일이 존재하는지 확인하세요.
+```bash
+# Linux so build
+gcc -shared -fPIC -o libcamctrl.so libcamctrl.c
+
+### dependency
+# GCC (GNU Compiler Collection)
+```
 ## 🚀 실행 방법
 
 ### Electron Application 실행 (권장)
@@ -165,7 +182,7 @@ mjpeg/
 │   │   ├── libcamctrl.h      # 헤더 파일
 │   │   ├── libcamctrl.c      # 소스 코드
 │   │   └── dllmain.c         # DLL 진입점
-│   └── linux/                #
+│   └── linux/
 │       ├── libcamctrl.so     # Linux용 라이브러리 (.so)
 │       ├── libcamctrl.h      # 헤더 파일
 │       └── libcamctrl.c      # 소스 코드
