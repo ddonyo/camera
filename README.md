@@ -1,28 +1,18 @@
 # LG Electronics SoC MJPEG Viewer
 
-## 📋 목차
-- [개요](#개요)
-- [주요 기능](#주요-기능)
-- [기술 스택](#기술-스택)
-- [시스템 요구사항](#시스템-요구사항)
-- [설치 방법](#설치-방법)
-- [실행 방법](#실행-방법)
-- [프로젝트 구조](#프로젝트-구조)
-- [상태 관리](#상태-관리)
-- [주요 컴포넌트](#주요-컴포넌트)
-- [문제 해결](#문제-해결)
+## 🎯 **Overview**
 
-## 🎯 개요
+이 Application은 연속된 JPEG Stream을 실시간으로 보고, 녹화하며, 녹화된 영상을 다양한 방식으로 재생할 수 있는 기능을 제공합니다.
 
-이 애플리케이션은 연속된 JPEG 스트림을 실시간으로 보고, 녹화하며, 녹화된 영상을 다양한 방식으로 재생할 수 있는 기능을 제공합니다.
+Electron 기반의 Application으로, Native Camera Control Library를 통해 Streaming을 지원합니다.
 
-Electron 기반의 Application으로, Native Camera Control Library를 통해 스트리밍을 지원합니다.
+**Dev. JIRA URL :** http://jira.lge.com/issue/browse/SICDTV-15711
 
-### Clone Repository
+### **Clone Repository**
 ```bash
 git clone ssh://git@source.lge.com:2222/media_bsp/apps/camera.git
 ```
-### Add your files
+### **Add your files**
 ```bash
 cd existing_repo
 git remote add origin http://source.lge.com/gitlab/media_bsp/apps/camera.git
@@ -30,27 +20,8 @@ git branch -M main
 git push -uf origin main
 ```
 
-## ✨ 주요 기능
+## 🛠 **Technical Stack**
 
-### Live Mode
-- 실시간 MJPEG 스트림 뷰어
-- 네이티브 라이브러리를 통한 카메라 직접 제어
-- 자동 FPS 감지 및 적용
-
-### Record Mode
-- 라이브 스트림을 개별 프레임으로 저장
-- 녹화 중 실시간 프리뷰
-- 녹화 완료 시 자동으로 재생 모드 전환
-
-### Playback Mode
-- 정방향/역방향 재생
-- 프레임 단위 이동 (다음/이전 프레임)
-- 빨리감기/되감기
-- 반복 재생
-- 프로그레스 바를 통한 시크 기능
-- 사용자 정의 FPS 설정 (1-60 FPS)
-
-## 🛠 기술 스택
 ![HTML5](https://img.shields.io/badge/html5-%23E34F26.svg?style=for-the-badge&logo=html5&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
@@ -58,41 +29,41 @@ git push -uf origin main
 ![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
 ![Electron.js](https://img.shields.io/badge/Electron-191970?style=for-the-badge&logo=Electron&logoColor=white)
 
-### Frontend
+### **Frontend**
 - **HTML5 Canvas**: 비디오 프레임 렌더링
 - **Vanilla JavaScript (ES6+)**: 모듈 시스템 사용
 - **Tailwind CSS**: User Interface / User Experience 스타일링
 
-### Backend
+### **Backend**
 - **Node.js**: v18.0.0 이상
 - **Express**: v5.1.0 - 웹 서버 프레임워크
 - **Electron**: v36.2.0 - 데스크톱 애플리케이션 프레임워크
 
-### Native Code Integration
+### **Native Code Integration**
 - **Koffi**: v2.11.0 - Node.js FFI (Foreign Function Interface)
 - **C/C++ DLL**: Windows(.dll)/Linux(.so) 카메라 제어 라이브러리
 
-## 💻 시스템 요구사항
+## 💻 **System Requirements**
 
-### Software
+### **Software**
 - Node.js v18.0.0 이상
 - npm v8.0.0 이상
 
-## 📦 설치 방법
+## 📦 **Installation Instructions**
 
-### 1. Clone Repository
+### **1. Clone Repository**
 ```bash
 git clone ssh://git@source.lge.com:2222/media_bsp/apps/camera.git
 ```
 
-### 2. Install Dependencies
+### **2. Install Dependencies**
 
 ```bash
 cd camera
 npm install
 ```
 
-### 3. Native Code Library Check
+### **3. Native Code Library Check**
 
 Windows 시스템의 경우 `native/win/libcamctrl.dll` 파일이 존재하는지 확인하세요.
 ```bash
@@ -113,14 +84,21 @@ gcc -shared -fPIC -o libcamctrl.so libcamctrl.c
 ### dependency
 # GCC (GNU Compiler Collection)
 ```
-## 🚀 실행 방법
+## 🚀 **How to Run
 
-### Electron Application 실행 (권장)
+Electron Application 사용시 Server는 실행시킬 필요 없습니다.
+
+Server는 웹 개발자 도구를 사용한 개발 편의와 외부접속으로 인한 UI/UX Test 및 Feedback을 위함이며,
+
+Native Code 동작을 포함한 실제 Device의 동작은 Electron으로만 가능합니다.
+
+### **Electron Application 실행**
 ```bash
 npm start
 ```
 
-### Server 실행 (웹 브라우저 / 외부접속)
+### **Server 실행 (웹 브라우저 / 외부접속)**
+
 ```bash
 npm run dev
 # or
@@ -129,7 +107,11 @@ npm run prod
 
 브라우저에서 `http://localhost:3000` 접속
 
-## ⚙️ 서버 설정
+참고로 Live Coding 서버 개발 페이지는 다음과 같습니다. `http://10.178.44.110:3000/`
+
+
+
+## ⚙️ **Server Configuration**
 
 ### 포트 번호 변경
 
@@ -149,8 +131,6 @@ PORT=8080 npm run dev
 #### 개발 모드 (기본값)
 ```bash
 npm run dev
-# or
-NODE_ENV=development npm run server
 ```
 - 캐시 비활성화
 - 상세한 로깅
@@ -159,49 +139,47 @@ NODE_ENV=development npm run server
 #### 프로덕션 모드
 ```bash
 npm run prod
-# or
-NODE_ENV=production npm run server
 ```
 - 캐시 활성화
 - 최적화된 성능
 - 압축된 정적 파일 제공
 
-## 📁 프로젝트 구조
+## 📁 **Project Structure**
 
 ```
-mjpeg/
-├── main.js                   # Electron 메인 프로세스
-├── preload.js                # Electron 프리로드 스크립트
-├── server.js                 # Express 웹 서버
-├── package.json              # 프로젝트 설정 및 의존성
-├── package-lock.json         # 의존성 버전 잠금
-│
-├── native/                   # 네이티브 라이브러리
-│   ├── win/
-│   │   ├── libcamctrl.dll    # Windows용 라이브러리 (.dll)
-│   │   ├── libcamctrl.h      # 헤더 파일
-│   │   ├── libcamctrl.c      # 소스 코드
-│   │   └── dllmain.c         # DLL 진입점
-│   └── linux/
-│       ├── libcamctrl.so     # Linux용 라이브러리 (.so)
-│       ├── libcamctrl.h      # 헤더 파일
-│       └── libcamctrl.c      # 소스 코드
-│
-└── public/                   # 웹 애플리케이션 파일
-    ├── index.html            # 메인 HTML
-    ├── styles/
-    │   └── main.css          # 스타일시트
-    ├── js/                   # JavaScript 모듈
-    │   ├── mjpeg-viewer.js   # 메인 뷰어 클래스
-    │   ├── frame-manager.js  # 프레임 관리
-    │   ├── ui-controller.js  # UI 제어
-    │   ├── config.js         # 설정 및 상수
-    │   └── utils.js          # 유틸리티 함수
-    ├── live/                 # 라이브 프레임 저장 위치
-    └── record/               # 녹화 프레임 저장 위치
+    camera/
+    ├── main.js                   # Electron 메인 프로세스
+    ├── preload.js                # Electron 프리로드 스크립트
+    ├── server.js                 # Express 웹 서버
+    ├── package.json              # 프로젝트 설정 및 의존성
+    ├── package-lock.json         # 의존성 버전 잠금
+    │
+    ├── native/                   # 네이티브 라이브러리
+    │   ├── win/
+    │   │   ├── libcamctrl.dll    # Windows용 라이브러리 (.dll)
+    │   │   ├── libcamctrl.h      # 헤더 파일
+    │   │   ├── libcamctrl.c      # 소스 코드
+    │   │   └── dllmain.c         # DLL 진입점
+    │   └── linux/
+    │       ├── libcamctrl.so     # Linux용 라이브러리 (.so)
+    │       ├── libcamctrl.h      # 헤더 파일
+    │       └── libcamctrl.c      # 소스 코드
+    │
+    └── public/                   # 웹 애플리케이션 파일
+        ├── index.html            # 메인 HTML
+        ├── styles/
+        │   └── main.css          # 스타일시트
+        ├── js/                   # JavaScript 모듈
+        │   ├── mjpeg-viewer.js   # 메인 뷰어 클래스
+        │   ├── frame-manager.js  # 프레임 관리
+        │   ├── ui-controller.js  # UI 제어
+        │   ├── config.js         # 설정 및 상수
+        │   └── utils.js          # 유틸리티 함수
+        ├── live/                 # 라이브 프레임 저장 위치
+        └── record/               # 녹화 프레임 저장 위치
 ```
 
-### 주요 파일 설명
+### **주요 파일 설명**
 
 #### `main.js`
 - Electron 메인 프로세스
@@ -238,32 +216,53 @@ mjpeg/
 - 상태 정의
 - 에러/정보 메시지
 
-## 🔄 상태 관리
+## ✨ **Key Features**
+
+### **Live Mode**
+- 실시간 MJPEG 스트림 뷰어
+- Native Code를 통한 카메라 직접 제어
+- Native Code로 부터의 FPS 적용
+
+### **Record Mode**
+- 라이브 스트림을 개별 프레임으로 저장
+- 녹화 중 실시간 프리뷰
+- 녹화 완료 시 자동으로 재생 모드 전환
+
+### **Playback Mode**
+- 정방향/역방향 재생
+- 프레임 단위 이동 (다음/이전 프레임)
+- 빨리감기/되감기
+- 반복 재생
+- 프로그레스 바를 통한 시크 기능
+- 사용자 정의 FPS 설정 (1-60 FPS)
+
+
+## 🔄 **State Management**
 
 애플리케이션은 4가지 주요 상태를 가집니다:
 
-### 1. IDLE (정지 상태)
+### **1. IDLE (정지 상태)**
 - 초기 상태
 - 아무 작업도 수행하지 않음
 - 모든 컨트롤 활성화
 
-### 2. LIVE (라이브 모드)
+### **2. LIVE (라이브 모드)**
 - 실시간 카메라 스트림 표시
 - `run_live()` 네이티브 함수 호출
 - 프레임이 `public/live/frame.jpg`에 지속적으로 업데이트됨
 
-### 3. RECORD (녹화 모드)
+### **3. RECORD (녹화 모드)**
 - 라이브 스트림을 개별 프레임으로 저장
 - `run_rec()` 네이티브 함수 호출
 - 프레임이 `public/record/frame{index}.jpg` 형식으로 저장됨
 - 녹화 중지 시 자동으로 PLAYBACK 모드로 전환
 
-### 4. PLAYBACK (재생 모드)
+### **4. PLAYBACK (재생 모드)**
 - 녹화된 프레임 재생
 - 다양한 재생 제어 기능 제공
 - 메모리에 모든 프레임 로드
 
-## 🔀 상태 전환 흐름
+## 🔀 **State Transition Flow**
 
 ```
 IDLE ──┬─> LIVE ───────> IDLE
@@ -273,7 +272,7 @@ IDLE ──┬─> LIVE ───────> IDLE
                    └──────────────┘
 ```
 
-### 상태 전환 트리거
+### **State Transition Trigger**
 
 1. **IDLE → LIVE**
    - Live 버튼 클릭
@@ -298,46 +297,46 @@ IDLE ──┬─> LIVE ───────> IDLE
    - 기존 녹화 삭제 후 새로 시작
 
 
-## 🎮 주요 컴포넌트
+## 🎮 **Key Components**
 
-### MJPEGViewer
+### **MJPEGViewer**
 - 메인 컨트롤러 클래스
 - 상태 관리 및 전환 로직
 - 이벤트 핸들링
 - 재생 루프 제어
 
-### FrameManager
+### **FrameManager**
 - 프레임 데이터 관리
 - 이미지 로딩 및 캐싱
 - 프레임 인덱스 제어
 - 프리로딩 최적화
 
-### UIController
+### **UIController**
 - DOM 요소 관리
 - 캔버스 렌더링
 - 버튼 상태 업데이트
 - 메시지 표시
 - FPS 제어
 
-### TimerUtils
+### **TimerUtils**
 - 정확한 타이밍 제어
 - FPS 기반 프레임 대기
 - Performance API 활용
 
-## 🔧 문제 해결
+## 🔧 **Trouble-shooting**
 
-### 네이티브 라이브러리 로딩 실패
+### **Native Library Loading Fail**
 - Windows Defender 또는 백신 프로그램에서 DLL 차단 확인
 - Visual C++ Redistributable 설치 확인
 - linux의 경우 permission 확인
 
-### 프레임 로딩 오류
+### **Frame Loading Fail**
 - `public/live` 및 `public/record` 디렉토리 존재 확인
 - 디렉토리 쓰기 권한 확인
 - 디스크 공간 확인
 
-## 📝 라이선스
+## 📝 **License**
 
-이 프로젝트는 POC 단계입니다.
+이 프로젝트는 현재 POC 단계로 배포되지 않습니다.
 
-jaehong.oh@lge.com
+**jaehong.oh@lge.com**
