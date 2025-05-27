@@ -248,19 +248,39 @@ npm run prod
 
 ### **2. LIVE (라이브 모드)**
 - 실시간 카메라 스트림 표시
-- `run_live()` 네이티브 함수 호출
-- 프레임이 `public/live/frame.jpg`에 지속적으로 업데이트됨
+- 상세 동작 프로세스:
+  1. `startLive()` 호출
+  2. Renderer에서 `start-live` 인보크
+  3. IPC Handler에서 Native Library의 `run_live()` 호출
+  4. Native Library의 `run_live()`에서 반환된 값으로 FPS 값 설정
+  5. Canvas에 FPS값에 따라 `live/` 디렉토리에서 `frame.jpg` 이미지를 지속적으로 프레임 렌더링
+  6. 모드 전환 시 `stopCamera()` 함수 호출
+  7. Renderer에서 `stop-camera` 인보크
+  8. IPC Handler에서 Native Library의 `run_stop()` 호출
 
 ### **3. RECORD (녹화 모드)**
 - 라이브 스트림을 개별 프레임으로 저장
-- `run_rec()` 네이티브 함수 호출
-- 프레임이 `public/record/frame{index}.jpg` 형식으로 저장됨
-- 녹화 중지 시 자동으로 PLAYBACK 모드로 전환
+- 상세 동작 프로세스:
+  1. `startRecord()` 호출
+  2. Renderer에서 `start-record` 인보크
+  3. IPC Handler에서 Native Library의 `run_rec()` 호출
+  4. Native Library의 `run_rec()`에서 반환된 값으로 FPS 값 설정
+  6. 다음 프레임을 확인
+  7. Canvas에 FPS값에 따라 `record/` 디렉토리에서 `frame{번호}.jpg` 이미지를 프레임 랜더링
+  6. 모드 전환 시 `stopCamera()` 함수 호출
+  7. Renderer에서 `stop-camera` 인보크
+  8. IPC Handler에서 Native Library의 `run_stop()` 호출
 
 ### **4. PLAYBACK (재생 모드)**
-- 녹화된 프레임 재생
-- 다양한 재생 제어 기능 제공
-- 메모리에 모든 프레임 로드
+- 녹화된 프레임 시퀀스 재생
+- 상세 동작 프로세스:
+  1. 재생 시작 전 Native Library `run_stop()` 호출로 카메라 정지
+  2. `record/` 디렉토리에서 `frame{번호}.jpg` 파일들을 스캔하여 리스팅
+  3. 프레임 파일들을 번호순으로 정렬하여 시퀀스 생성
+  4. UI의 FPS 입력값에 따라 재생 타이밍 계산 (예: 30 FPS = 33.33ms 간격)
+  5. requestAnimationFrame을 사용하여 설정된 FPS로 프레임 순차 재생
+  6. 재생 방향(정방향/역방향)에 따라 프레임 인덱스 조정
+  7. 프로그레스 바 위치 실시간 업데이트
 
 ## 🔀 **State Transition Flow**
 
@@ -300,28 +320,28 @@ IDLE ──┬─> LIVE ───────> IDLE
 ## 🎮 **Key Components**
 
 ### **MJPEGViewer**
-- 메인 컨트롤러 클래스
-- 상태 관리 및 전환 로직
-- 이벤트 핸들링
-- 재생 루프 제어
+- Main Controller Class
+- State Management and Transition Logic
+- Event Handling
+- Playback Loop Control
 
 ### **FrameManager**
-- 프레임 데이터 관리
-- 이미지 로딩 및 캐싱
-- 프레임 인덱스 제어
-- 프리로딩 최적화
+- Frame Data Management
+- Image Loading and Caching
+- Frame Index Control
+- Preloading Optimization
 
 ### **UIController**
-- DOM 요소 관리
-- 캔버스 렌더링
-- 버튼 상태 업데이트
-- 메시지 표시
-- FPS 제어
+- DOM Element Management
+- Canvas Rendering
+- Button State Update
+- Message Display
+- FPS Control
 
 ### **TimerUtils**
-- 정확한 타이밍 제어
-- FPS 기반 프레임 대기
-- Performance API 활용
+- Accurate Timing Control
+- FPS-based Frame Waiting
+- Utilizing Performance API
 
 ## 🔧 **Trouble-shooting**
 
