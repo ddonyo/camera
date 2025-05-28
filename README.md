@@ -1,6 +1,6 @@
 # LG Electronics SoC MJPEG Viewer
 
-## 🎯 **Overview**
+## 🌐 **Overview**
 
 이 Application은 연속된 JPEG Stream을 실시간으로 보고, 녹화하며, 녹화된 영상을 다양한 방식으로 재생할 수 있는 기능을 제공합니다.
 
@@ -64,7 +64,6 @@ npm install
 ```
 
 ### **3. Native Code Library Check**
-
 Windows 시스템의 경우 `native/win/libcamctrl.dll` 파일이 존재하는지 확인하세요.
 ```bash
 # Windows DLL build
@@ -84,7 +83,8 @@ gcc -shared -fPIC -o libcamctrl.so libcamctrl.c
 ### dependency
 # GCC (GNU Compiler Collection)
 ```
-## 🚀 **How to Run
+
+## 🚀 **How to Run**
 
 Electron Application 사용시 Server는 실행시킬 필요 없습니다.
 
@@ -92,59 +92,121 @@ Server는 웹 개발자 도구를 사용한 개발 편의와 외부접속으로 
 
 Native Code 동작을 포함한 실제 Device의 동작은 Electron으로만 가능합니다.
 
-### **Electron Application 실행**
+### **Electron Application Start (Local Machine)**
 ```bash
 npm start
 ```
 
-### **Server 실행 (웹 브라우저 / 외부접속)**
-
-```bash
-npm run dev
-# or
-npm run prod
-```
-
+### **Server Start (Web Browser)**
 브라우저에서 `http://localhost:3000` 접속
 
 참고로 Live Coding 서버 개발 페이지는 다음과 같습니다. `http://10.178.44.110:3000/`
 
+```bash
+npm run dev
+# Disable cache
+# Detailed logging
+# Hot reload support
 
+# or
 
-## ⚙️ **Server Configuration**
+npm run prod
+# Enable cache
+# Optimized performance
+# Serve compressed static files
+```
 
-### 포트 번호 변경
-
-기본적으로 서버는 3000번 포트에서 실행됩니다. 포트를 변경하려면 다음 방법들을 사용할 수 있습니다:
-
-#### 환경 변수 사용
+### **Server Start w/ port change**
 ```bash
 # Windows (CMD)
 set PORT=8080 && npm run dev
+# or
+set PORT=8080 && npm run prod
 
 # Linux
 PORT=8080 npm run dev
+# or
+PORT=8080 npm run prod
 ```
 
-### 개발/프로덕션 모드 설정
+## ⭐ **Key Features**
 
-#### 개발 모드 (기본값)
-```bash
-npm run dev
+### **Live Mode**
+- 실시간 MJPEG 스트림 뷰어
+- Native Code를 통한 카메라 직접 제어
+- Native Code로 부터의 FPS 적용
+
+### **Record Mode**
+- 라이브 스트림을 개별 프레임으로 저장
+- 녹화 중 실시간 프리뷰
+- 녹화 완료 시 자동으로 재생 모드 전환
+
+### **Playback Mode**
+- 정방향/역방향 재생
+- 프레임 단위 이동 (다음/이전 프레임)
+- 빨리감기/되감기
+- 반복 재생
+- 프로그레스 바를 통한 시크 기능
+- 사용자 정의 FPS 설정 (1-60 FPS)
+
+## 🏗️ **System Architecture**
+
+```mermaid
+graph LR
+    AAA[Network]
+    AA[Local Machine]
+    subgraph " "
+        subgraph "Express Server"
+            C[server.js<br/>서버]
+        end
+        subgraph "Electron Main Process"
+            A[main.js<br/>메인 프로세스]
+        end
+    end
+    subgraph "Frontend"
+        B[preload.js<br/>프리로드 스크립트]
+        G[index.html<br/>메인 HTML]
+        H[mjpeg-viewer.js<br/>메인 뷰어 클래스]
+        I[config.js<br/>설정 및 상수]
+        J[frame-manager.js<br/>프레임 관리]
+        K[ui-controller.js<br/>UI 컨트롤]
+        L[utils.js<br/>유틸리티 함수들]
+        M[CSS Files<br/>스타일시트]
+    end
+
+    subgraph "Native Libraries"
+        D[libcamctrl.dll<br/>Windows 카메라 제어]
+        DD[libcamctrl.so<br/>Linux 카메라 제어]
+    end
+
+    N[(Image Files<br/>프레임 이미지들)]
+
+    AA --> A
+    AAA --> C
+    A --> B
+    B --> G
+    C --> G
+    G --> H
+    H --> I
+    H --> J
+    H --> K
+    H --> L
+    J --> I
+    J --> L
+    K --> I
+    K --> L
+    G --> M
+    D --> N
+    DD --> N
+
+    A -.->|IPC| H
+    B -.->|Context Bridge| H
+    A -.->|Koffi FFI| D
+    A -.->|Koffi FFI| DD
+    H -.->|Static Files| N
 ```
-- 캐시 비활성화
-- 상세한 로깅
-- 핫 리로드 지원
 
-#### 프로덕션 모드
-```bash
-npm run prod
-```
-- 캐시 활성화
-- 최적화된 성능
-- 압축된 정적 파일 제공
-
-## 📁 **Project Structure**
+## 🗂️ **Project Structure**
 
 ```
     camera/
@@ -177,6 +239,56 @@ npm run prod
         │   └── utils.js          # 유틸리티 함수
         ├── live/                 # 라이브 프레임 저장 위치
         └── record/               # 녹화 프레임 저장 위치
+```
+```mermaid
+mindmap
+  root((MJPEG Viewer))
+    (Entry Points)
+      package.json
+        Electron 앱 설정
+        의존성 관리
+      main.js
+        Electron 메인 프로세스
+        네이티브 라이브러리 로딩
+        IPC 핸들러
+      server.js
+        Express 웹 서버
+        정적 파일 서빙
+    (Frontend)
+      index.html
+        메인 HTML 구조
+        UI 레이아웃
+      mjpeg-viewer.js
+        메인 애플리케이션 로직
+        상태 관리
+        이벤트 처리
+      frame-manager.js
+        프레임 로딩
+        재생 제어
+        인덱스 관리
+      ui-controller.js
+        UI 상태 업데이트
+        버튼 활성화/비활성화
+        메시지 표시
+      config.js
+        상수 정의
+        설정값 관리
+      utils.js
+        공통 유틸리티 함수
+        DOM/Canvas/Math 헬퍼
+    (Native)
+      libcamctrl.dll
+        Windows 카메라 제어
+      libcamctrl.so
+        Linux 카메라 제어
+      libcamctrl.h
+        C 헤더 파일
+      libcamctrl.c
+        C 구현 파일
+    (Bridge)
+      preload.js
+        Electron Context Bridge
+        IPC 통신 인터페이스
 ```
 
 ### **주요 파일 설명**
@@ -216,26 +328,30 @@ npm run prod
 - 상태 정의
 - 에러/정보 메시지
 
-## ✨ **Key Features**
+## ➡️ **Data Flow Diagram**
 
-### **Live Mode**
-- 실시간 MJPEG 스트림 뷰어
-- Native Code를 통한 카메라 직접 제어
-- Native Code로 부터의 FPS 적용
+```mermaid
+flowchart LR
+    B[UI Controller] --> C[MJPEG Viewer]
+    C --> D{Mode}
 
-### **Record Mode**
-- 라이브 스트림을 개별 프레임으로 저장
-- 녹화 중 실시간 프리뷰
-- 녹화 완료 시 자동으로 재생 모드 전환
+    D -->|Live| E[[Native Code]]
+    D -->|Record| F[[Native Code]]
+    D -->|Playback| G[Frame Manager]
 
-### **Playback Mode**
-- 정방향/역방향 재생
-- 프레임 단위 이동 (다음/이전 프레임)
-- 빨리감기/되감기
-- 반복 재생
-- 프로그레스 바를 통한 시크 기능
-- 사용자 정의 FPS 설정 (1-60 FPS)
+    E --> H[(Live Frame)]
+    F --> I[(Record Frame)]
+    G --> J[(Recorded Frames)]
 
+    H --> K[Canvas Rendering]
+    I --> K
+    J --> K
+
+    K --> L[UI Update]
+    L --> M[Progress Bar]
+    L --> N[Status Display]
+    L --> O[Button State]
+```
 
 ## 🔄 **State Management**
 
@@ -284,12 +400,15 @@ npm run prod
 
 ## 🔀 **State Transition Flow**
 
-```
-IDLE ──┬─> LIVE ───────> IDLE
-       │
-       └─> RECORD ─┬──> PLAYBACK ─┬─> IDLE
-                   │              │
-                   └──────────────┘
+```mermaid
+flowchart LR
+    A[IDLE] --> B[LIVE]
+    B --> A
+    A --> C[RECORD]
+    C --> D[PLAYBACK]
+    D --> C
+    D --> B
+    D --> A
 ```
 
 ### **State Transition Trigger**
@@ -316,8 +435,11 @@ IDLE ──┬─> LIVE ───────> IDLE
    - `run_record()` 호출로 카메라 시작
    - 기존 녹화 삭제 후 새로 시작
 
+6. **PLAYBACK → LIVE**
+   - Live 버튼 클릭
+   - `run_live()` 호출로 카메라 시작
 
-## 🎮 **Key Components**
+## 🔑 **Key Components**
 
 ### **MJPEGViewer**
 - Main Controller Class
@@ -343,7 +465,7 @@ IDLE ──┬─> LIVE ───────> IDLE
 - FPS-based Frame Waiting
 - Utilizing Performance API
 
-## 🔧 **Trouble-shooting**
+## 🆘 **Trouble-shooting**
 
 ### **Native Library Loading Fail**
 - Windows Defender 또는 백신 프로그램에서 DLL 차단 확인
@@ -355,7 +477,7 @@ IDLE ──┬─> LIVE ───────> IDLE
 - 디렉토리 쓰기 권한 확인
 - 디스크 공간 확인
 
-## 📝 **License**
+## 📜 **License**
 
 이 프로젝트는 현재 POC 단계로 배포되지 않습니다.
 
