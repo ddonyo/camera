@@ -27,31 +27,51 @@
         </div>
 
         <!-- 제어 버튼들과 설정 영역 -->
-        <section class="grid grid-cols-3 items-center text-sm gap-2">
+        <section class="grid grid-cols-3 items-center text-sm gap-0">
             <!-- 왼쪽 정렬: Live/Rec 버튼 -->
             <div class="flex gap-2 justify-start">
                 <!-- 라이브 모드 토글 버튼 -->
-                <button id="liveBtn" class="base-btn tgl">🔴Live</button>
+                <button id="liveBtn" class="base-btn tgl w-24 flex items-center justify-center">
+                    <img src="./resources/live.png" alt="Live" class="w-8 h-8 mr-0">
+                    <span>Live</span>
+                </button>
                 <!-- 녹화 모드 토글 버튼 -->
-                <button id="recordBtn" class="base-btn tgl">⏺️Rec</button>
+                <button id="recordBtn" class="base-btn tgl w-24 flex items-center justify-center">
+                    <img src="./resources/record.png" alt="Record" class="w-8 h-8 mr-0">
+                    <span>Rec</span>
+                </button>
             </div>
 
             <!-- 중앙 정렬: 재생 컨트롤 버튼들 -->
-            <div class="flex gap-2 justify-center">
+            <div class="flex gap-0 justify-center">
                 <!-- 처음으로 되감기 버튼 -->
-                <button id="rewindBtn" disabled class="base-btn btn">⏮️</button>
+                <button id="rewindBtn" disabled class="base-btn btn flex items-center justify-center">
+                    <img src="./resources/rewind.png" alt="Rewind" class="w-8 h-8">
+                </button>
                 <!-- 이전 프레임 버튼 -->
-                <button id="prevFrameBtn" disabled class="base-btn btn">⏪</button>
+                <button id="prevFrameBtn" disabled class="base-btn btn">
+                    <img src="./resources/prev.png" alt="Previous Frame" class="w-8 h-8">
+                </button>
                 <!-- 역재생 버튼 -->
-                <button id="reverseBtn" disabled class="base-btn tgl">◀️</button>
+                <button id="reverseBtn" disabled class="base-btn tgl ">
+                    <img src="./resources/reverse.png" alt="Reverse" class="w-8 h-8">
+                </button>
                 <!-- 일시정지 버튼 -->
-                <button id="pauseBtn" disabled class="base-btn tgl">⏸️</button>
+                <button id="pauseBtn" disabled class="base-btn tgl">
+                    <img src="./resources/pause.png" alt="Pause" class="w-8 h-8">
+                </button>
                 <!-- 재생 버튼 -->
-                <button id="playBtn" disabled class="base-btn tgl">▶️</button>
+                <button id="playBtn" disabled class="base-btn tgl">
+                    <img src="./resources/play.png" alt="Play" class="w-8 h-8">
+                </button>
                 <!-- 다음 프레임 버튼 -->
-                <button id="nextFrameBtn" disabled class="base-btn btn">⏩</button>
+                <button id="nextFrameBtn" disabled class="base-btn btn">
+                    <img src="./resources/next.png" alt="Next Frame" class="w-8 h-8">
+                </button>
                 <!-- 마지막으로 빨리감기 버튼 -->
-                <button id="fastForwardBtn" disabled class="base-btn btn">⏭️</button>
+                <button id="fastForwardBtn" disabled class="base-btn btn">
+                    <img src="./resources/fastforward.png" alt="Fast Forward" class="w-8 h-8">
+                </button>
             </div>
 
             <!-- 오른쪽 정렬: Repeat 버튼 -->
@@ -63,7 +83,10 @@
                         class="w-15 bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-sm text-center disabled">
                 </label>
                 <!-- 반복 재생 토글 버튼 -->
-                <button id="repeatBtn" disabled class="base-btn tgl">🔁Repeat</button>
+                <button id="repeatBtn" disabled class="base-btn tgl w-28 flex items-center justify-center">
+                    <img src="./resources/repeat.png" alt="Repeat" class="w-8 h-8 mr-0">
+                    <span>Repeat</span>
+                </button>
             </div>
         </section>
 
