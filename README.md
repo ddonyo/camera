@@ -4,7 +4,7 @@
 
 이 Application은 연속된 JPEG Stream을 실시간으로 보고, 녹화하며, 녹화된 영상을 다양한 방식으로 재생할 수 있는 기능을 제공합니다.
 
-Electron 기반의 Application으로, 파일 시스템 기반의 MJPEG 스트리밍을 지원합니다.
+Electron 기반의 Application으로, **파일 시스템 기반**의 MJPEG 스트리밍과 **바이너리 데이터 직접 처리**를 지원합니다.
 
 **Dev. JIRA URL :** http://jira.lge.com/issue/browse/SICDTV-15711
 
@@ -37,8 +37,9 @@ git push -uf origin main
 ### **Backend**
 - **Node.js**: v18.0.0 이상
 - **Express**: v5.1.0 - 웹 서버 프레임워크
-- **Electron**: v36.2.0 - 데스크톱 애플리케이션 프레임워크
-- **Chokidar**: v3.6.0 - 파일 시스템 감시
+- **Electron**: v36.2.1 - 데스크톱 애플리케이션 프레임워크
+- **Chokidar**: v4.0.3 - 파일 시스템 감시
+- **Socket.IO**: v4.8.1 - 실시간 통신 (선택적)
 
 ## 💻 **System Requirements**
 
@@ -68,7 +69,11 @@ Server는 웹 개발자 도구를 사용한 개발 편의와 외부접속으로 
 
 ### **Electron Application Start (Local Machine)**
 ```bash
+# Linux/Wayland 환경
 npm start
+
+# Windows 환경
+npm run start:win
 ```
 
 ### **Server Start (Web Browser)**
@@ -108,18 +113,24 @@ PORT=8080 npm run prod
 ### **Live Mode**
 - 실시간 MJPEG 스트림 뷰어
 - 파일 시스템 기반 프레임 로딩
+- **바이너리 데이터 직접 처리**: 파일 I/O 없이 메모리에서 직접 이미지 데이터 처리
+- 자동 fallback 지원 (바이너리 처리 실패 시 기존 path 방식으로 전환)
 
 ### **Record Mode**
 - 라이브 스트림을 개별 프레임으로 저장
 - 녹화 중 실시간 프리뷰
 - 녹화 완료 시 자동으로 재생 모드 전환
+- **바이너리 데이터로 직접 저장**: 성능 향상 및 메모리 효율성 개선
 
 ### **Playback Mode**
 - 정방향/역방향 재생
 - 프레임 단위 이동 (다음/이전 프레임)
 - 빨리감기/되감기
 - 반복 재생
-- 프로그레스 바를 통한 시크 기능
+- **부드러운 프로그레스 바 애니메이션**: 상황별 최적화된 애니메이션 효과
+  - 재생 중: 부드러운 애니메이션 (0.3초)
+  - 일시정지: 빠른 응답 (0.1초)
+  - 시크: 즉시 위치 변경
 - 사용자 정의 FPS 설정 (1-60 FPS)
 
 ## 🏗️ **System Architecture**
@@ -184,19 +195,18 @@ graph LR
     ├── main.js                   # Electron 메인 프로세스 (FrameHandler 클래스 포함)
     ├── server.js                 # Express 웹 서버
     ├── package.json              # 프로젝트 설정 및 의존성
-    ├── package-lock.json         # 의존성 버전 잠금
-    │
     └── public/                   # 웹 애플리케이션 파일
         ├── index.html            # 메인 HTML
         ├── styles/
         │   └── main.css          # 스타일시트
+        ├── resources/            # 리소스 파일 (아이콘 등)
         ├── js/                   # JavaScript 모듈
         │   ├── mjpeg-viewer.js   # 메인 뷰어 클래스
         │   ├── frame-manager.js  # 프레임 관리
-        │   ├── ui-controller.js  # UI 제어
+        │   ├── ui-controller.js  # UI 제어 (애니메이션 포함)
         │   ├── config.js         # 설정 및 상수
         │   ├── utils.js          # 유틸리티 함수
-        │   ├── frame-watcher.js  # 파일 시스템 감시
+        │   ├── frame-watcher.js  # 파일 시스템 감시 (바이너리 데이터 지원)
         │   ├── preload.js        # Electron 프리로드 스크립트
         │   └── app-init.js       # 애플리케이션 초기화
         ├── live/                 # 라이브 프레임 저장 위치
@@ -249,6 +259,7 @@ mindmap
         IPC 통신 인터페이스
       frame-watcher.js
         파일 시스템 감시
+        바이너리 데이터 처리
         자동 재시작 메커니즘
         비동기 처리
       app-init.js
@@ -310,9 +321,11 @@ mindmap
 
 #### `public/js/frame-watcher.js`
 - 파일 시스템 감시 (Node.js 환경)
+- **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
 - **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
 - **비동기 함수 사용**: async/await 패턴
 - awaitWriteFinish 옵션으로 파일 쓰기 완료 대기
+- fallback 지원: 바이너리 읽기 실패 시 기존 path 방식으로 자동 전환
 
 ## ➡️ **Data Flow Diagram**
 
@@ -325,20 +338,23 @@ flowchart LR
     D -->|Record| F[FrameHandler]
     D -->|Playback| G[Frame Manager]
 
-    E --> H[Frame Watcher]
+    E --> H[Frame Watcher<br/>dataType: 'bin']
     F --> H
-    H --> I[(Live Frames)]
+    H -->|Binary Data| I[frame-data IPC]
+    H -->|Fallback| J[frame-path IPC]
 
-    F --> J[(Record Frames)]
-    G --> J
+    F -->|Binary Save| K[(Record Frames)]
+    G --> K
 
-    I --> K[Canvas Rendering]
-    J --> K
+    I --> L[ArrayBuffer → Blob]
+    J --> M[File Path Loading]
+    L --> N[Canvas Rendering]
+    M --> N
 
-    K --> L[UI Update]
-    L --> M[Progress Bar]
-    L --> N[Status Display]
-    L --> O[Button State]
+    N --> O[UI Update]
+    O --> P[Progress Bar<br/>with Animation]
+    O --> Q[Status Display]
+    O --> R[Button State]
 ```
 
 ## 🔄 **State Management**
@@ -456,9 +472,11 @@ flowchart LR
 
 ### **FrameWatcher**
 - 파일 시스템 실시간 감시
-- 자동 재시작 메커니즘 (최대 3회)
-- 비동기 처리로 안정성 향상
-- awaitWriteFinish로 파일 쓰기 완료 대기
+- **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
+- **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
+- **비동기 함수 사용**: async/await 패턴
+- awaitWriteFinish 옵션으로 파일 쓰기 완료 대기
+- fallback 지원: 바이너리 읽기 실패 시 기존 path 방식으로 자동 전환
 
 ### **TimerUtils**
 - Accurate Timing Control
@@ -471,6 +489,16 @@ flowchart LR
 - `public/live` 및 `public/record` 디렉토리 존재 확인
 - 디렉토리 쓰기 권한 확인
 - 디스크 공간 확인
+
+### **Binary Data Processing Issues**
+- Node.js 메모리 제한 확인: `node --max-old-space-size=4096`
+- 대용량 파일 처리 시 자동 fallback 동작 확인
+- 에러 로그에서 `[FrameWatcher] Error reading file as binary` 메시지 확인
+
+### **Animation Performance Issues**
+- `prefers-reduced-motion` 설정 확인 (애니메이션 자동 비활성화)
+- GPU 가속 지원 확인 (`will-change: width` CSS 속성)
+- 브라우저 성능 모니터에서 리플로우/리페인트 확인
 
 ## 📜 **License**
 
