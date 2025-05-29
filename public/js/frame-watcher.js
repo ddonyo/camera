@@ -2,6 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 
+// 현재 활성화된 watcher 추적을 위한 변수
+let activeWatchers = new Set();
+
 // 프레임 감시 설정
 const FRAME_WATCHER_CONFIG = Object.freeze({
     // 감시할 프레임 패턴 (frame0.jpg ~ frame3.jpg)
@@ -93,6 +96,10 @@ async function start(onChangeCallback, options = {}) {
     // chokidar로 디렉토리 감시 시작
     const watcher = chokidar.watch(liveDir, FRAME_WATCHER_CONFIG.WATCH_OPTIONS);
 
+    // 활성 watcher 추가
+    activeWatchers.add(watcher);
+    console.log(`[FrameWatcher] Active watchers count: ${activeWatchers.size}`);
+
     // 에러 발생 시 재시작 시도 카운터
     let restartAttempts = 0;
 
@@ -154,16 +161,34 @@ async function stop(watcher) {
         } else {
             console.warn('[FrameWatcher] Watcher does not have close method');
         }
+
+        // 활성 watcher에서 제거
+        activeWatchers.delete(watcher);
+        console.log(`[FrameWatcher] Watcher removed. Active watchers count: ${activeWatchers.size}`);
+
     } catch (error) {
         console.error('[FrameWatcher] Error stopping watcher:', error);
-        // close 에러는 무시 (이미 종료된 경우일 수 있음)
+        // close 에러가 발생해도 Set에서는 제거
+        activeWatchers.delete(watcher);
     }
+}
+
+// 모든 활성 watcher 정리
+async function stopAll() {
+    console.log(`[FrameWatcher] Stopping all active watchers (${activeWatchers.size})`);
+
+    const stopPromises = Array.from(activeWatchers).map(watcher => stop(watcher));
+    await Promise.all(stopPromises);
+
+    activeWatchers.clear();
+    console.log('[FrameWatcher] All watchers stopped');
 }
 
 // CommonJS 모듈 export
 module.exports = {
     start,
     stop,
+    stopAll,
     // 테스트를 위한 유틸리티 함수들 export
     convertToWebPath,
     isTargetFrameFile,

@@ -73,8 +73,8 @@ class FrameHandler {
     async startMode(mode, win) {
         console.log(`Starting ${mode} mode...`);
 
-        // 기존 watcher 정리
-        this.cleanup();
+        // 기존 watcher 정리 (await 추가)
+        await this.cleanup();
 
         try {
             // 모드별 초기화
@@ -86,7 +86,7 @@ class FrameHandler {
             }
 
             // 프레임 감시 시작
-            this.watcher = watcher.start(async (type, webPath, frameNumber) => {
+            this.watcher = await watcher.start(async (type, webPath, frameNumber) => {
                 console.log(`${mode} mode - Send frame: ${frameNumber} - ${webPath}`);
                 win.webContents.send('frame-path', webPath);
 
@@ -100,12 +100,12 @@ class FrameHandler {
             console.log(`${mode} mode started successfully`);
         } catch (error) {
             console.error(`Error starting ${mode} mode:`, error);
-            this.cleanup();
+            await this.cleanup();
             throw error;
         }
     }
 
-    stopMode(mode) {
+    async stopMode(mode) {
         console.log(`Stopping ${mode} mode...`);
 
         if (mode === 'record') {
@@ -114,13 +114,15 @@ class FrameHandler {
             console.log(`Record stopped. Total frames recorded: ${totalFrames}`);
         }
 
-        this.cleanup();
+        await this.cleanup();
     }
 
-    cleanup() {
+    async cleanup() {
         if (this.watcher) {
-            watcher.stop(this.watcher);
+            console.log('[FrameHandler] Cleaning up watcher...');
+            await watcher.stop(this.watcher);
             this.watcher = null;
+            console.log('[FrameHandler] Watcher cleanup completed');
         }
     }
 }
