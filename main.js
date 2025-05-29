@@ -85,17 +85,35 @@ class FrameHandler {
                 await this.clearDirectory(PATHS.LIVE_DIR, 'Live');
             }
 
-            // 프레임 감시 시작
-            this.watcher = await watcher.start(async (type, webPath, frameNumber) => {
-                console.log(`${mode} mode - Send frame: ${frameNumber} - ${webPath}`);
-                win.webContents.send('frame-path', webPath);
+            // 프레임 감시 시작 - frame-data 모드 사용
+            this.watcher = await watcher.start(async (type, data, frameNumber) => {
+                console.log(`${mode} mode - Send frame: ${frameNumber}`);
 
-                // Record 모드일 때만 파일 복사
-                if (mode === 'record' && this.recordState.isRecording) {
-                    const actualPath = webPath.replace('./', './public/');
-                    await this.copyFrameToRecord(actualPath);
+                if (type === 'frame-data') {
+                    // 바이너리 데이터 직접 전송
+                    win.webContents.send('frame-data', data);
+                } else {
+                    // fallback: path 방식
+                    win.webContents.send('frame-path', data);
                 }
-            }, { liveDir: PATHS.LIVE_DIR });
+
+                // Record 모드일 때만 파일 저장 (바이너리 데이터로 저장)
+                if (mode === 'record' && this.recordState.isRecording && type === 'frame-data') {
+                    const fileName = `frame${this.recordState.frameCounter}.jpg`;
+                    const destPath = path.join(PATHS.RECORD_DIR, fileName);
+
+                    try {
+                        await fsp.writeFile(destPath, data);
+                        this.recordState.frameCounter++;
+                        console.log(`Saved frame ${this.recordState.frameCounter - 1} to record directory`);
+                    } catch (error) {
+                        console.error('Error saving frame:', error);
+                    }
+                }
+            }, {
+                liveDir: PATHS.LIVE_DIR,
+                dataType: 'bin'  // 바이너리 데이터 모드 사용
+            });
 
             console.log(`${mode} mode started successfully`);
         } catch (error) {

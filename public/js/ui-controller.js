@@ -132,10 +132,30 @@ export class UIController {
         this._toggleElementClasses(progressBar, Config.CLASSES.ENABLED, Config.CLASSES.DISABLED, shouldEnable);
     }
 
-    updateProgress(percentage) {
-        if (this.elements.progress) {
-            this.elements.progress.style.width = `${percentage}%`;
+    updateProgress(percentage, animationType = 'smooth') {
+        if (!this.elements.progress) return;
+
+        // 기존 애니메이션 클래스 제거
+        this.elements.progress.classList.remove('fast-update', 'smooth-update', 'no-animation');
+
+        // 애니메이션 타입에 따른 클래스 추가
+        switch (animationType) {
+            case 'fast':
+                this.elements.progress.classList.add('fast-update');
+                break;
+            case 'smooth':
+                this.elements.progress.classList.add('smooth-update');
+                break;
+            case 'none':
+                this.elements.progress.classList.add('no-animation');
+                break;
+            default:
+                // 기본값: smooth-update
+                this.elements.progress.classList.add('smooth-update');
         }
+
+        // width 업데이트
+        this.elements.progress.style.width = `${percentage}%`;
     }
 
     // 상태 정보 업데이트 (템플릿 리터럴 사용)

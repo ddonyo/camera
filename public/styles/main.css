@@ -168,6 +168,27 @@ body {
     pointer-events: auto;
 }
 
+/* 프로그레스 바 내부 진행 표시줄 애니메이션 */
+#progress {
+    transition: width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    will-change: width;
+}
+
+/* 빠른 업데이트를 위한 클래스 (라이브 모드용) */
+#progress.fast-update {
+    transition: width 0.1s ease-out;
+}
+
+/* 부드러운 업데이트를 위한 클래스 (재생 모드용) */
+#progress.smooth-update {
+    transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 애니메이션 비활성화 (즉시 업데이트용) */
+#progress.no-animation {
+    transition: none;
+}
+
 /* ================================================
    텍스트 상태 스타일
    ================================================ */

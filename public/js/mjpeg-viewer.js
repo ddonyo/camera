@@ -122,6 +122,12 @@ export class MJPEGViewer {
             console.log('Received frame path:', filePath);
             this._handleLiveFrame(filePath);
         });
+
+        // 메인 프로세스에서 오는 프레임 바이너리 데이터 수신
+        this.#electronAPI.on('frame-data', (binaryData) => {
+            console.log('Received frame data:', binaryData.length, 'bytes');
+            this._handleLiveFrameData(binaryData);
+        });
     }
 
     // 라이브 프레임 처리
@@ -141,6 +147,31 @@ export class MJPEGViewer {
             await this._renderLiveImageToCanvas(imageUrl);
         } catch (error) {
             console.error('Failed to handle live frame:', error);
+        }
+    }
+
+    // 라이브 프레임 바이너리 데이터 처리
+    async _handleLiveFrameData(binaryData) {
+        if (this.state !== State.LIVE && this.state !== State.RECORD) {
+            return; // 라이브나 레코드 모드가 아니면 무시
+        }
+
+        try {
+            console.log(`Received binary data: ${binaryData.length} bytes`);
+
+            // ArrayBuffer를 Blob으로 변환
+            const blob = new Blob([binaryData], { type: 'image/jpeg' });
+
+            // Blob URL 생성
+            const imageUrl = URL.createObjectURL(blob);
+
+            // 이미지를 캔버스에 렌더링
+            await this._renderLiveImageToCanvas(imageUrl);
+
+            // 메모리 누수 방지를 위해 Blob URL 해제
+            URL.revokeObjectURL(imageUrl);
+        } catch (error) {
+            console.error('Failed to handle live frame data:', error);
         }
     }
 
@@ -257,6 +288,9 @@ export class MJPEGViewer {
 
         const position = this.uiController.getProgressBarClickPosition(event);
         this.frameManager.seekToPosition(position);
+
+        // 시크할 때는 즉시 위치 변경
+        this.uiController.updateProgress(this.frameManager.getProgress(), 'none');
         this._updateFrameDisplay();
     }
 
@@ -284,7 +318,7 @@ export class MJPEGViewer {
     _resetUIForStreaming() {
         this._pause();
         this.uiController.clearMessage();
-        this.uiController.updateProgress(0);
+        this.uiController.updateProgress(0, 'none');
     }
 
     // Live 모드에서 Record 모드로 전환
@@ -332,7 +366,7 @@ export class MJPEGViewer {
         this._pause();
         this.uiController.clearCanvas();
         this.frameManager.clear();
-        this.uiController.updateProgress(0);
+        this.uiController.updateProgress(0, 'none'); // 즉시 리셋
     }
 
     // 재생 모드 시작
@@ -487,7 +521,9 @@ export class MJPEGViewer {
         );
 
         if (this.state === State.PLAYBACK || this.state === State.IDLE) {
-            this.uiController.updateProgress(this.frameManager.getProgress());
+            // 재생 모드에서는 부드러운 애니메이션 사용
+            const animationType = this.state === State.PLAYBACK && this.playing ? 'smooth' : 'fast';
+            this.uiController.updateProgress(this.frameManager.getProgress(), animationType);
         }
 
         const statusInfo = this.frameManager.getStatusInfo();
@@ -506,7 +542,7 @@ export class MJPEGViewer {
         this.frameManager.clear();
         this._setState(State.IDLE);
         this.uiController.clearMessage();
-        this.uiController.updateProgress(0);
+        this.uiController.updateProgress(0, 'none'); // 즉시 리셋
     }
 
     // 유틸리티 메서드들

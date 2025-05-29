@@ -62,18 +62,32 @@ async function ensureDirectoryExists(dirPath) {
 }
 
 // 프레임 변경 이벤트 처리
-function handleFrameEvent(callback, eventType, filePath, state) {
+function handleFrameEvent(callback, eventType, filePath, state, dataType) {
     if (!isTargetFrameFile(filePath)) {
         return;
     }
 
-    const webPath = convertToWebPath(filePath);
     const frameNumber = state.frameCount++;
 
     console.log(`[FrameWatcher] Frame ${eventType}: ${filePath} (${frameNumber})`);
 
     try {
-        callback('frame-path', webPath, frameNumber);
+        if (dataType === 'bin') {
+            // 바이너리 데이터로 파일 읽기
+            try {
+                const data = fs.readFileSync(filePath);
+                callback('frame-data', data, frameNumber);
+            } catch (error) {
+                console.error(`[FrameWatcher] Error reading file as binary:`, error);
+                // 에러 발생시 path 방식으로 fallback
+                const webPath = convertToWebPath(filePath);
+                callback('frame-path', webPath, frameNumber);
+            }
+        } else {
+            // 기존 path 방식
+            const webPath = convertToWebPath(filePath);
+            callback('frame-path', webPath, frameNumber);
+        }
     } catch (error) {
         console.error(`[FrameWatcher] Callback error for ${eventType} event:`, error);
     }
@@ -86,12 +100,13 @@ async function start(onChangeCallback, options = {}) {
     }
 
     const liveDir = options.liveDir || FRAME_WATCHER_CONFIG.DEFAULT_LIVE_DIR;
+    const dataType = options.dataType || 'path'; // 'bin' 또는 'path' (기본값: 'path')
     const state = { frameCount: 0 };
 
     // 디렉토리 존재 확인 및 생성
     await ensureDirectoryExists(liveDir);
 
-    console.log(`[FrameWatcher] Starting to watch directory: ${liveDir}`);
+    console.log(`[FrameWatcher] Starting to watch directory: ${liveDir} (dataType: ${dataType})`);
 
     // chokidar로 디렉토리 감시 시작
     const watcher = chokidar.watch(liveDir, FRAME_WATCHER_CONFIG.WATCH_OPTIONS);
@@ -106,10 +121,10 @@ async function start(onChangeCallback, options = {}) {
     // 이벤트 핸들러 등록
     watcher
         .on('add', (filePath) => {
-            handleFrameEvent(onChangeCallback, 'add', filePath, state);
+            handleFrameEvent(onChangeCallback, 'add', filePath, state, dataType);
         })
         .on('change', (filePath) => {
-            handleFrameEvent(onChangeCallback, 'change', filePath, state);
+            handleFrameEvent(onChangeCallback, 'change', filePath, state, dataType);
         })
         .on('unlink', (filePath) => {
             if (isTargetFrameFile(filePath)) {

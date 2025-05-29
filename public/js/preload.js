@@ -5,7 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CONFIG = Object.freeze({
     USE_SOCKET_IO: false,
     SOCKET_URL: 'http://localhost:3000',
-    VALID_CHANNELS: ['frame-path'],
+    VALID_CHANNELS: ['frame-path', 'frame-data'],
     LOG_PREFIX: '[Preload]'
 });
 
