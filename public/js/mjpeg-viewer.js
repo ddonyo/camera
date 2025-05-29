@@ -342,7 +342,7 @@ export class MJPEGViewer {
 
             if (frameCount === 0) {
                 this.uiController.setMessage(ErrorMessages.NO_RECORDED_FRAMES, MessageType.WARNING);
-                this._updateUI();
+                this._resetToIdle();
                 return;
             }
 

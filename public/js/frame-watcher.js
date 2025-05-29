@@ -147,8 +147,13 @@ async function stop(watcher) {
     }
 
     try {
-        await watcher.close();
-        console.log('[FrameWatcher] File watching stopped');
+        // watcher가 close 메서드를 가지고 있는지 확인
+        if (typeof watcher.close === 'function') {
+            await watcher.close();
+            console.log('[FrameWatcher] File watching stopped');
+        } else {
+            console.warn('[FrameWatcher] Watcher does not have close method');
+        }
     } catch (error) {
         console.error('[FrameWatcher] Error stopping watcher:', error);
         // close 에러는 무시 (이미 종료된 경우일 수 있음)
