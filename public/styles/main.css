@@ -1,62 +1,164 @@
-/* 전체 페이지 배경색을 어두운 회색으로 설정 */
+/* ================================================
+   CSS 변수 정의 - 색상 및 크기 관리
+   ================================================ */
+:root {
+    /* 색상 팔레트 */
+    --color-bg-primary: #121212;
+    --color-bg-secondary: #1e1e1e;
+    --color-bg-tertiary: #1c1c1c;
+    --color-bg-button: #3b3b3b;
+    --color-bg-button-hover: #6b6b6b;
+    --color-bg-button-active: #B01010;
+    --color-bg-input: #2a2a2a;
+
+    --color-text-primary: #f1f1f1;
+    --color-text-secondary: #ccc;
+    --color-text-disabled: #666;
+    --color-text-loading: #60a5fa;
+    --color-text-error: #ef4444;
+    --color-text-warning: #fbbf24;
+    --color-text-normal: #d1d5db;
+
+    --color-border-primary: #333;
+    --color-border-secondary: #444;
+    --color-border-input: #444;
+
+    /* 크기 및 간격 */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.4rem;
+    --spacing-md: 0.5rem;
+    --spacing-lg: 1rem;
+
+    --font-size-base: 1.3rem;
+    --font-weight-medium: 500;
+
+    --border-radius-sm: 0.25rem;
+    --border-radius-md: 0.375rem;
+    --border-radius-lg: 0.5rem;
+
+    --opacity-disabled: 0.2;
+    --opacity-semi-disabled: 0.3;
+
+    /* 그림자 */
+    --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.5);
+    --shadow-canvas: 0 4px 8px rgba(0, 0, 0, 0.3);
+
+    /* 전환 효과 */
+    --transition-base: 0.2s ease;
+    --transition-fast: 0.1s ease;
+    --transition-slow: 0.3s ease;
+}
+
+/* ================================================
+   기본 페이지 스타일
+   ================================================ */
 body {
-    background-color: #121212;
+    background-color: var(--color-bg-primary);
 }
 
-/* 기본 버튼 스타일 정의 */
+/* ================================================
+   버튼 컴포넌트 시스템
+   ================================================ */
+
+/* 기본 버튼 스타일 */
 .base-btn {
-    background-color: #3b3b3b;  /* 어두운 회색 배경 */
-    color: #f1f1f1;             /* 밝은 회색 텍스트 */
-    padding: 0.4rem 0.4rem;     /* 내부 여백 설정 */
-    border-radius: 0.25rem;     /* 모서리 둥글게 */
-    font-size: 1.3rem;          /* 글씨 크기 */
-    font-weight: 500;           /* 굵은 글씨 */
-    cursor: pointer;            /* 마우스 포인터 변경 */
-    transition: background-color 0.2s ease, transform 0.1s ease; /* 부드러운 전환 효과 */
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* 그림자 효과 */
+    background-color: var(--color-bg-button);
+    color: var(--color-text-primary);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition:
+        background-color var(--transition-base),
+        transform var(--transition-fast),
+        box-shadow var(--transition-base);
+    box-shadow: var(--shadow-button);
 }
 
-/* 버튼 호버 효과 (비활성화되지 않은 경우만) */
+/* 제어 버튼 확장 (HTML의 style 태그에서 이동) */
+.control-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+}
+
+.control-icon {
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+/* 호버 효과 (통합) */
 .btn:hover:not(:disabled),
 .tgl:hover:not(:disabled) {
-    background-color: #6b6b6b;
+    background-color: var(--color-bg-button-hover);
+    transform: translateY(-1px);
 }
 
-/* 버튼 클릭 효과 (비활성화되지 않은 경우만) */
+/* 활성화/클릭 효과 (통합) */
+.btn:active:not(:disabled),
+.tgl:active:not(:disabled),
 .btn:hover:active:not(:disabled),
 .tgl:hover:active:not(:disabled) {
-    background-color: #B01010;  /* 빨간색으로 변경 */
-    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5); /* 내부 그림자로 눌린 효과 */
+    background-color: var(--color-bg-button-active);
+    box-shadow: var(--shadow-inset);
+    transform: translateY(0);
 }
 
-/* 비활성화된 버튼 스타일 */
+/* 비활성화 상태 (통합) */
 .btn:disabled,
 .tgl:disabled {
-    opacity: 0.2;      /* 투명도 낮춤 */
-    cursor: default;   /* 기본 커서로 변경 */
+    opacity: var(--opacity-disabled);
+    cursor: not-allowed;
+    transform: none;
 }
 
-/* 활성화된 토글 버튼 스타일 */
+/* 활성화된 토글 버튼 */
 .tgl.active {
-    background-color: #B01010;
-    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5);
+    background-color: var(--color-bg-button-active);
+    box-shadow: var(--shadow-inset);
 }
 
-/* 상태 표시 영역 스타일 */
+/* ================================================
+   컨테이너 및 레이아웃 스타일
+   ================================================ */
+
+/* 상태 표시 영역 */
 #status {
-    background-color: #1c1c1c;  /* 매우 어두운 배경 */
-    border: 1px solid #333;     /* 어두운 테두리 */
-    color: #ccc;                /* 밝은 회색 텍스트 */
-    border-radius: 0.375rem;    /* 둥근 모서리 */
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-primary);
+    color: var(--color-text-secondary);
+    border-radius: var(--border-radius-md);
 }
 
-/* 프로그레스 바 스타일 */
+/* 캔버스 스타일 */
+.viewer-canvas {
+    border: 1px solid var(--color-border-secondary);
+    background-color: black;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-canvas);
+}
+
+/* ================================================
+   프로그레스 바 컴포넌트
+   ================================================ */
 .progress-bar {
-    transition: opacity 0.3s ease;
+    transition: opacity var(--transition-slow);
 }
 
 .progress-bar.disabled {
-    opacity: 0.3;
+    opacity: var(--opacity-semi-disabled);
     cursor: not-allowed;
     pointer-events: none;
 }
@@ -66,41 +168,70 @@ body {
     pointer-events: auto;
 }
 
-/* 캔버스 스타일 */
-.viewer-canvas {
-    border: 1px solid #444;
-    background-color: black;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+/* ================================================
+   텍스트 상태 스타일
+   ================================================ */
+.status-text {
+    transition: color var(--transition-base);
 }
 
-/* 상태별 텍스트 색상 */
 .status-text.loading {
-    color: #60a5fa; /* text-blue-400 */
+    color: var(--color-text-loading);
 }
 
 .status-text.error {
-    color: #ef4444; /* text-red-500 */
+    color: var(--color-text-error);
 }
 
 .status-text.warning {
-    color: #fbbf24; /* text-yellow-400 */
+    color: var(--color-text-warning);
 }
 
 .status-text.normal {
-    color: #d1d5db; /* text-gray-300 */
+    color: var(--color-text-normal);
 }
 
-/* 비활성화된 요소들 스타일 */
+/* ================================================
+   폼 요소 스타일
+   ================================================ */
+
+/* 비활성화된 요소들 공통 스타일 */
 .disabled {
-    opacity: 0.3;
+    opacity: var(--opacity-semi-disabled);
     cursor: not-allowed;
     pointer-events: none;
 }
 
-/* 비활성화된 input 요소 추가 스타일 */
+/* 비활성화된 input 요소 */
 input.disabled {
-    background-color: #2a2a2a !important;
-    color: #666 !important;
-    border-color: #444 !important;
+    background-color: var(--color-bg-input) !important;
+    color: var(--color-text-disabled) !important;
+    border-color: var(--color-border-input) !important;
+}
+
+/* ================================================
+   반응형 및 접근성
+   ================================================ */
+
+/* 포커스 스타일 */
+.base-btn:focus-visible {
+    outline: 2px solid var(--color-text-loading);
+    outline-offset: 2px;
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+    :root {
+        --color-bg-button: #000;
+        --color-text-primary: #fff;
+        --color-border-primary: #fff;
+    }
+}
+
+/* 애니메이션 감소 설정 지원 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
 }

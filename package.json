@@ -3,15 +3,19 @@
     "version": "1.0.0",
     "main": "main.js",
     "scripts": {
-        "start": "electron .",
+        "start": "XDG_RUNTIME_DIR=/tmp/weston WAYLAND_DISPLAY=wayland-0 electron . --no-sandbox --ozone-platform=wayland",
+        "start:win": "electron .",
         "dev": "node server.js",
         "prod": "cross-env NODE_ENV=production node server.js",
         "server": "node server.js"
     },
+    "author": "LGE SoC Media BSP Task",
+    "description": "MJPEG Viewer",
     "dependencies": {
+        "chokidar": "^4.0.3",
         "cross-env": "^7.0.3",
-        "electron": "^36.2.0",
+        "electron": "^36.2.1",
         "express": "^5.1.0",
-        "koffi": "^2.11.0"
+        "socket.io": "^4.8.1"
     }
 }

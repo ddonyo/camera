@@ -3,7 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LG SoC MJPEG Viewer</title>
+    <meta name="description" content="LG SoC MJPEG 실시간 스트리밍 뷰어">
+
     <!-- Tailwind CSS CDN을 통한 스타일링 프레임워크 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 커스텀 CSS 로드 -->
@@ -12,110 +15,104 @@
 
 <body class="font-bold text-gray-300 font-mono bg-[#121212] p-6 min-h-screen flex flex-col items-center">
     <!-- 페이지 제목 헤더 -->
-    <header class="text-3xl font-bold text-gray-400 mb-2">SoC MJPEG Viewer</header>
+    <header class="text-3xl font-bold text-gray-400 mb-2">
+        <h1>SoC MJPEG Viewer</h1>
+    </header>
 
     <!-- 메인 콘텐츠 영역 -->
-    <main class="w-full max-w-5xl bg-[#1e1e1e] border border-[#333] rounded-xl shadow-xl p-6 space-y-2">
+    <main class="w-full max-w-5xl bg-[#1e1e1e] border border-[#333] rounded-xl shadow-xl p-6 space-y-2" role="main">
 
-        <!-- MJPEG 이미지를 표시할 캔버스 (1280x720 해상도) -->
-        <canvas id="viewer" width="1280" height="720"
-            class="w-full viewer-canvas"></canvas>
+        <!-- MJPEG 이미지를 표시할 캔버스 -->
+        <canvas
+            id="viewer"
+            width="1280"
+            height="720"
+            class="w-full viewer-canvas"
+            aria-label="MJPEG 비디오 스트림 표시 영역"
+            role="img">
+        </canvas>
 
         <!-- 재생 진행률을 표시하는 프로그레스 바 -->
-        <div id="progressBar" class="w-full h-2 bg-[#333] rounded progress-bar overflow-hidden">
+        <div id="progressBar" class="w-full h-2 bg-[#333] rounded progress-bar overflow-hidden" role="progressbar" aria-label="재생 진행률">
             <div id="progress" class="h-full bg-blue-500"></div>
         </div>
 
         <!-- 제어 버튼들과 설정 영역 -->
-        <section class="grid grid-cols-3 items-center text-sm gap-0">
-            <!-- 왼쪽 정렬: Live/Rec 버튼 -->
-            <div class="flex gap-2 justify-start">
-                <!-- 라이브 모드 토글 버튼 -->
-                <button id="liveBtn" class="base-btn tgl w-24 flex items-center justify-center">
-                    <img src="./resources/live.png" alt="Live" class="w-8 h-8 mr-0">
+        <section class="grid grid-cols-3 items-center text-sm gap-4" aria-label="비디오 제어 패널">
+
+            <!-- 왼쪽: 모드 제어 버튼 그룹 -->
+            <div class="control-group justify-start" role="group" aria-label="모드 제어">
+                <button id="liveBtn" class="control-btn tgl w-20" aria-label="라이브 모드 토글">
+                    <img src="./resources/live.png" alt="" class="control-icon" aria-hidden="true">
                     <span>Live</span>
                 </button>
-                <!-- 녹화 모드 토글 버튼 -->
-                <button id="recordBtn" class="base-btn tgl w-24 flex items-center justify-center">
-                    <img src="./resources/record.png" alt="Record" class="w-8 h-8 mr-0">
+                <button id="recordBtn" class="control-btn tgl w-20" aria-label="녹화 모드 토글">
+                    <img src="./resources/record.png" alt="" class="control-icon" aria-hidden="true">
                     <span>Rec</span>
                 </button>
             </div>
 
-            <!-- 중앙 정렬: 재생 컨트롤 버튼들 -->
-            <div class="flex gap-0 justify-center">
-                <!-- 처음으로 되감기 버튼 -->
-                <button id="rewindBtn" disabled class="base-btn btn flex items-center justify-center">
-                    <img src="./resources/rewind.png" alt="Rewind" class="w-8 h-8">
+            <!-- 중앙: 재생 제어 버튼 그룹 -->
+            <div class="flex gap-0 justify-center" role="group" aria-label="재생 제어">
+                <button id="rewindBtn" disabled class="control-btn btn" aria-label="처음으로 되감기">
+                    <img src="./resources/rewind.png" alt="" class="control-icon" aria-hidden="true">
                 </button>
-                <!-- 이전 프레임 버튼 -->
-                <button id="prevFrameBtn" disabled class="base-btn btn">
-                    <img src="./resources/prev.png" alt="Previous Frame" class="w-8 h-8">
+                <button id="prevFrameBtn" disabled class="control-btn btn" aria-label="이전 프레임">
+                    <img src="./resources/prev.png" alt="" class="control-icon" aria-hidden="true">
                 </button>
-                <!-- 역재생 버튼 -->
-                <button id="reverseBtn" disabled class="base-btn tgl ">
-                    <img src="./resources/reverse.png" alt="Reverse" class="w-8 h-8">
+                <button id="reverseBtn" disabled class="control-btn tgl" aria-label="역재생">
+                    <img src="./resources/reverse.png" alt="" class="control-icon" aria-hidden="true">
                 </button>
-                <!-- 일시정지 버튼 -->
-                <button id="pauseBtn" disabled class="base-btn tgl">
-                    <img src="./resources/pause.png" alt="Pause" class="w-8 h-8">
+                <button id="pauseBtn" disabled class="control-btn tgl" aria-label="일시정지">
+                    <img src="./resources/pause.png" alt="" class="control-icon" aria-hidden="true">
                 </button>
-                <!-- 재생 버튼 -->
-                <button id="playBtn" disabled class="base-btn tgl">
-                    <img src="./resources/play.png" alt="Play" class="w-8 h-8">
+                <button id="playBtn" disabled class="control-btn tgl" aria-label="재생">
+                    <img src="./resources/play.png" alt="" class="control-icon" aria-hidden="true">
                 </button>
-                <!-- 다음 프레임 버튼 -->
-                <button id="nextFrameBtn" disabled class="base-btn btn">
-                    <img src="./resources/next.png" alt="Next Frame" class="w-8 h-8">
+                <button id="nextFrameBtn" disabled class="control-btn btn" aria-label="다음 프레임">
+                    <img src="./resources/next.png" alt="" class="control-icon" aria-hidden="true">
                 </button>
-                <!-- 마지막으로 빨리감기 버튼 -->
-                <button id="fastForwardBtn" disabled class="base-btn btn">
-                    <img src="./resources/fastforward.png" alt="Fast Forward" class="w-8 h-8">
+                <button id="fastForwardBtn" disabled class="control-btn btn" aria-label="마지막으로 빨리감기">
+                    <img src="./resources/fastforward.png" alt="" class="control-icon" aria-hidden="true">
                 </button>
             </div>
 
-            <!-- 오른쪽 정렬: Repeat 버튼 -->
-            <div class="flex gap-2 justify-end">
-                <!-- FPS(초당 프레임 수) 설정 라벨 및 입력 필드 -->
-                <label class="flex items-center gap-2 text-sm">
-                    <span class="disabled">FPS:</span>
-                    <input type="number" id="fpsInput" value="30" min="1" max="60" disabled
-                        class="w-15 bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-sm text-center disabled">
+            <!-- 오른쪽: 설정 제어 그룹 -->
+            <div class="control-group justify-end" role="group" aria-label="재생 설정">
+                <label class="flex items-center gap-2 text-sm" for="fpsInput">
+                    <span>FPS:</span>
+                    <input
+                        type="number"
+                        id="fpsInput"
+                        name="fps"
+                        value="30"
+                        min="1"
+                        max="60"
+                        disabled
+                        class="w-15 bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-sm text-center disabled:opacity-50"
+                        aria-label="초당 프레임 수 설정">
                 </label>
-                <!-- 반복 재생 토글 버튼 -->
-                <button id="repeatBtn" disabled class="base-btn tgl w-28 flex items-center justify-center">
-                    <img src="./resources/repeat.png" alt="Repeat" class="w-8 h-8 mr-0">
+                <button id="repeatBtn" disabled class="control-btn tgl w-28" aria-label="반복 재생 토글">
+                    <img src="./resources/repeat.png" alt="" class="control-icon" aria-hidden="true">
                     <span>Repeat</span>
                 </button>
             </div>
         </section>
 
         <!-- 현재 상태와 파일 정보를 표시하는 영역 -->
-        <div id="status" class="text-xs p-3 whitespace-pre-wrap flex justify-between items-start">
-            <pre id="statusText" class="whitespace-pre-wrap status-text normal">File Path:<br>File Name:<br>Frame:</pre>
+        <div id="status" class="text-xs p-3 whitespace-pre-wrap flex justify-between items-start" role="status" aria-live="polite">
+            <pre id="statusText" class="whitespace-pre-wrap status-text normal" aria-label="현재 파일 정보">File Path:<br>File Name:<br>Frame:</pre>
         </div>
     </main>
 
     <!-- 페이지 하단 저작권 정보 -->
-    <footer class="mt-2 text-center text-s text-gray-400">
-        Copyright &copy; 2025 LG Electronics Inc. All rights reserved.<br />
-        support : mbtask-all@lge.com<br />
+    <footer class="mt-2 text-center text-sm text-gray-400" role="contentinfo">
+        <p>Copyright &copy; 2025 LG Electronics Inc. All rights reserved.</p>
+        <p>Support: <a href="mailto:mbtask-all@lge.com" class="hover:text-blue-400 transition-colors">mbtask-all@lge.com</a></p>
     </footer>
 
-    <!-- 모듈화된 JavaScript 로드 -->
-    <script type="module">
-        import { MJPEGViewer } from './js/mjpeg-viewer.js';
-
-        // MJPEG 뷰어 인스턴스 생성하여 애플리케이션 시작
-        window.mjpegViewer = new MJPEGViewer();
-
-        // 페이지 언로드 시 리소스 정리
-        window.addEventListener('beforeunload', () => {
-            if (window.mjpegViewer) {
-                window.mjpegViewer.destroy();
-            }
-        });
-    </script>
+    <!-- 애플리케이션 초기화 스크립트 -->
+    <script type="module" src="./js/app-init.js"></script>
 </body>
 
 </html>

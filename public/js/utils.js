@@ -1,4 +1,51 @@
-import { Config, ElementIds } from './config.js';
+import { Config } from './config.js';
+
+// 매개변수 검증 유틸리티
+export class ValidationUtils {
+    static validateRequired(value, name, type = null) {
+        if (value === null || value === undefined) {
+            throw new Error(`${name} is required`);
+        }
+
+        if (type && typeof value !== type) {
+            throw new Error(`${name} must be of type ${type}`);
+        }
+
+        return value;
+    }
+
+    static validateNumber(value, name, options = {}) {
+        const { min = -Infinity, max = Infinity, allowNaN = false } = options;
+
+        if (typeof value !== 'number' || (!allowNaN && isNaN(value))) {
+            throw new Error(`${name} must be a valid number`);
+        }
+
+        if (value < min || value > max) {
+            throw new Error(`${name} must be between ${min} and ${max}`);
+        }
+
+        return value;
+    }
+
+    static validateString(value, name, options = {}) {
+        const { allowEmpty = false, maxLength = Infinity } = options;
+
+        if (typeof value !== 'string') {
+            throw new Error(`${name} must be a string`);
+        }
+
+        if (!allowEmpty && value.length === 0) {
+            throw new Error(`${name} cannot be empty`);
+        }
+
+        if (value.length > maxLength) {
+            throw new Error(`${name} cannot exceed ${maxLength} characters`);
+        }
+
+        return value;
+    }
+}
 
 // DOM 조작 유틸리티
 export class DOMUtils {
@@ -9,104 +56,141 @@ export class DOMUtils {
             return obj;
         }, {});
     }
-
-    static toggleClass(element, className, add) {
-        if (add) {
-            element.classList.add(className);
-        } else {
-            element.classList.remove(className);
-        }
-    }
-
-    static removeClassFromElements(elements, className) {
-        elements.forEach(el => el.classList.remove(className));
-    }
 }
 
 // 수학 계산 유틸리티
 export class MathUtils {
     static clamp(value, min, max) {
+        ValidationUtils.validateNumber(value, 'value');
+        ValidationUtils.validateNumber(min, 'min');
+        ValidationUtils.validateNumber(max, 'max');
+
         return Math.max(min, Math.min(max, value));
     }
 
     static validateFPS(fps) {
-        const val = parseInt(fps, 10);
-        return isNaN(val) ? Config.DEFAULT_FPS : this.clamp(val, Config.MIN_FPS, Config.MAX_FPS);
-    }
-
-    static calculatePercentage(current, total) {
-        return total > 1 ? (current / (total - 1)) * 100 : 0;
+        const val = Number(fps);
+        if (isNaN(val) || val <= 0) {
+            return Config.FPS.DEFAULT;
+        }
+        return this.clamp(val, Config.FPS.MIN, Config.FPS.MAX);
     }
 }
 
 // 이미지 로딩 유틸리티
 export class ImageLoader {
-    static async loadImage(src) {
+    static async loadImage(src, options = {}) {
+        const { timeout = 5000 } = options;
+
+        ValidationUtils.validateString(src, 'Image source', { allowEmpty: false });
+
         return new Promise((resolve, reject) => {
             const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
+            let timeoutId;
+
+            const cleanup = () => {
+                if (timeoutId) clearTimeout(timeoutId);
+            };
+
+            img.onload = () => {
+                cleanup();
+                // 이미지가 완전히 로드되었는지 확인
+                if (!img.complete || img.naturalWidth === 0) {
+                    reject(new Error('Image failed to load properly'));
+                    return;
+                }
+                resolve(img);
+            };
+
+            img.onerror = () => {
+                cleanup();
+                reject(new Error(`Failed to load image: ${src}`));
+            };
+
+            if (timeout > 0) {
+                timeoutId = setTimeout(() => {
+                    reject(new Error(`Image load timeout: ${src}`));
+                }, timeout);
+            }
+
             img.src = src;
         });
     }
 
-    static createFrameInfo(index, basePath, extension = Config.RECORD_FRAME_EXTENSION) {
+    static createFrameInfo(index, basePath, extension = Config.PATHS.RECORD_FRAME_EXTENSION) {
+        ValidationUtils.validateNumber(index, 'Frame index', { min: 0 });
+        ValidationUtils.validateString(basePath, 'Base path', { allowEmpty: false });
+
         const name = `frame${index}${extension}`;
         const path = `${basePath}${index}${extension}`;
-        return { name, path, data: path };
-    }
 
-    static createLiveFrameInfo() {
-        return {
-            name: 'frame.jpg',
-            path: Config.LIVE_FRAME_PATH,
-            data: Config.LIVE_FRAME_PATH
-        };
+        return Object.freeze({
+            name,
+            path,
+            data: path,
+            index
+        });
     }
 }
 
 // 타이머 유틸리티
 export class TimerUtils {
     static delay(ms) {
+        ValidationUtils.validateNumber(ms, 'Delay time', { min: 0 });
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    static waitForNextFrame(fps) {
-        return this.delay(1000 / fps);
+    static waitForNextFrame(fps, options = {}) {
+        const { validateFPS = true } = options;
+        const validFPS = validateFPS ? MathUtils.validateFPS(fps) : fps;
+        return this.delay(1000 / validFPS);
     }
 }
 
 // 캔버스 유틸리티
 export class CanvasUtils {
-    static clearCanvas(canvas) {
+    static #contextCache = new WeakMap();
+
+    static #getContext(canvas) {
+        if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Canvas must be a valid HTMLCanvasElement');
+        }
+
+        if (this.#contextCache.has(canvas)) {
+            return this.#contextCache.get(canvas);
+        }
+
         const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            throw new Error('Failed to get 2D context from canvas');
+        }
+
+        this.#contextCache.set(canvas, ctx);
+        return ctx;
+    }
+
+    static clearCanvas(canvas) {
+        const ctx = this.#getContext(canvas);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    static drawImageToCanvas(canvas, image) {
-        const ctx = canvas.getContext('2d');
-        this.clearCanvas(canvas);
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-    }
-}
+    static drawImageToCanvas(canvas, image, options = {}) {
+        const { clearFirst = true } = options;
 
-// 배열 조작 유틸리티
-export class ArrayUtils {
-    static getNextIndex(currentIndex, direction, arrayLength, wrap = false) {
-        const nextIndex = currentIndex + direction;
-
-        if (wrap) {
-            if (nextIndex >= arrayLength) return 0;
-            if (nextIndex < 0) return arrayLength - 1;
-        } else {
-            if (nextIndex >= arrayLength) return arrayLength - 1;
-            if (nextIndex < 0) return 0;
+        if (!(image instanceof HTMLImageElement)) {
+            throw new Error('Image must be a valid HTMLImageElement');
         }
 
-        return nextIndex;
-    }
+        if (!image.complete || image.naturalWidth === 0) {
+            throw new Error('Image is not fully loaded');
+        }
 
-    static isIndexOutOfBounds(index, arrayLength) {
-        return index < 0 || index >= arrayLength;
+        const ctx = this.#getContext(canvas);
+
+        if (clearFirst) {
+            this.clearCanvas(canvas);
+        }
+
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     }
 }

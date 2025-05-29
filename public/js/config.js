@@ -6,7 +6,7 @@ export const State = Object.freeze({
     PLAYBACK: Symbol('PLAYBACK')
 });
 
-// 메시지 타입
+// 메시지 타입 (UI 메시지 및 CSS 클래스와 연동)
 export const MessageType = Object.freeze({
     INFO: 'info',
     ERROR: 'error',
@@ -14,70 +14,51 @@ export const MessageType = Object.freeze({
     LOADING: 'loading'
 });
 
-// 애플리케이션 설정
-export const Config = Object.freeze({
-    CANVAS_WIDTH: 1280,
-    CANVAS_HEIGHT: 720,
+// CSS 클래스 상수
+export const CSSClasses = Object.freeze({
+    // 상태 관련
+    ACTIVE: 'active',
+    DISABLED: 'disabled',
+    ENABLED: 'enabled',
+    NORMAL: 'normal',
 
-    DEFAULT_FPS: 30,
-    MIN_FPS: 1,
-    MAX_FPS: 60,
-
-    LIVE_FRAME_PATH: './live/frame.jpg',
-    RECORD_FRAME_PATH: './record/frame',
-    RECORD_FRAME_EXTENSION: '.jpg',
-
-    MESSAGE_TIMEOUT: 3000,
-
-    CLASSES: {
-        ACTIVE: 'active',
-        DISABLED: 'disabled',
-        ENABLED: 'enabled',
-        LOADING: 'loading',
-        ERROR: 'error',
-        WARNING: 'warning',
-        NORMAL: 'normal'
-    }
+    // 메시지 타입 (MessageType과 동일한 값)
+    ...MessageType
 });
 
-// UI 요소 ID
-export const ElementIds = Object.freeze({
-    VIEWER: 'viewer',
+// 애플리케이션 설정
+export const Config = Object.freeze({
+    // FPS 관련 설정
+    FPS: {
+        DEFAULT: 30,
+        MIN: 1,
+        MAX: 60
+    },
 
-    PROGRESS_BAR: 'progressBar',
-    PROGRESS: 'progress',
+    // 파일 경로 및 확장자
+    PATHS: {
+        RECORD_FRAME: './record/frame',
+        RECORD_FRAME_EXTENSION: '.jpg'
+    },
 
-    LIVE_BTN: 'liveBtn',
-    RECORD_BTN: 'recordBtn',
-    PLAY_BTN: 'playBtn',
-    REVERSE_BTN: 'reverseBtn',
-    PAUSE_BTN: 'pauseBtn',
-    REWIND_BTN: 'rewindBtn',
-    FAST_FORWARD_BTN: 'fastForwardBtn',
-    NEXT_FRAME_BTN: 'nextFrameBtn',
-    PREV_FRAME_BTN: 'prevFrameBtn',
-    REPEAT_BTN: 'repeatBtn',
+    // UI 관련 설정
+    UI: {
+        MESSAGE_TIMEOUT: 3000
+    },
 
-    STATUS: 'status',
-    STATUS_TEXT: 'statusText',
-
-    FPS_INPUT: 'fpsInput'
+    // CSS 클래스
+    CLASSES: CSSClasses
 });
 
 // 에러 메시지
 export const ErrorMessages = Object.freeze({
-    LOAD_LIVE_FRAME_FAILED: 'Failed to load live frame',
     LOAD_RECORD_FRAME_FAILED: 'Failed to load record frame',
     NO_RECORDED_FRAMES: 'No recorded frames found',
     LOAD_RECORDED_FRAMES_FAILED: 'Failed to load recorded frames',
-    ALREADY_PLAYING: 'Already playing, ignoring duplicate play call',
-    INVALID_STATE: 'Invalid state for frame loading attempt',
-    NATIVE_LIBRARY_NOT_AVAILABLE: 'Native camera library is not available',
-    NATIVE_FUNCTION_FAILED: 'Native function call failed'
+    ALREADY_PLAYING: 'Already playing, ignoring duplicate play call'
 });
 
 // 정보 메시지
 export const InfoMessages = Object.freeze({
-    LOADING_FRAMES: 'Loading recorded frames...',
-    NATIVE_LIBRARY_UNAVAILABLE: 'Camera control features are limited. File playback is available.'
+    LOADING_FRAMES: 'Loading recorded frames...'
 });
