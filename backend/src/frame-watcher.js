@@ -12,10 +12,10 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
         persistent: true,
         ignoreInitial: true,
         usePolling: true,
-        interval: 100,
+        interval: 50,
         awaitWriteFinish: {
-            stabilityThreshold: 100,
-            pollInterval: 50
+            stabilityThreshold: 50,
+            pollInterval: 25
         }
     },
     DEFAULT_LIVE_DIR: '../../frontend/public/live', // 기본 감시 디렉토리
