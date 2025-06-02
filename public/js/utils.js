@@ -194,3 +194,40 @@ export class CanvasUtils {
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     }
 }
+
+// 파일 처리 유틸리티
+export class FileUtils {
+    // JSON 파일을 읽어서 파싱하는 함수
+    static async readJSONFile(filePath) {
+        try {
+            const response = await fetch(filePath);
+
+            if (!response.ok) {
+                throw new Error(`Failed to load file: ${response.status} ${response.statusText}`);
+            }
+
+            const jsonData = await response.json();
+            return jsonData;
+        } catch (error) {
+            console.error(`Error reading JSON file ${filePath}:`, error);
+            throw error;
+        }
+    }
+
+    // rec_info.json에서 FPS 값을 읽어오는 함수
+    static async getRecordingFPS() {
+        try {
+            const recInfo = await this.readJSONFile('./record/rec_info.json');
+
+            if (recInfo && typeof recInfo.fps === 'number' && recInfo.fps > 0) {
+                return recInfo.fps;
+            } else {
+                console.warn('Invalid FPS value in rec_info.json, using default FPS (15)');
+                return Config.FPS.RECORD_DEFAULT;
+            }
+        } catch (error) {
+            console.warn('Failed to read rec_info.json, using default FPS (15):', error);
+            return Config.FPS.RECORD_DEFAULT;
+        }
+    }
+}

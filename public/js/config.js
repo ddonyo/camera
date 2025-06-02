@@ -31,6 +31,7 @@ export const Config = Object.freeze({
     // FPS 관련 설정
     FPS: {
         DEFAULT: 30,
+        RECORD_DEFAULT: 15,
         MIN: 1,
         MAX: 60
     },

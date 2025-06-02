@@ -1,5 +1,5 @@
 import { State, MessageType, ErrorMessages, InfoMessages } from './config.js';
-import { TimerUtils, CanvasUtils } from './utils.js';
+import { TimerUtils, CanvasUtils, FileUtils } from './utils.js';
 import { FrameManager } from './frame-manager.js';
 import { UIController } from './ui-controller.js';
 
@@ -372,6 +372,11 @@ export class MJPEGViewer {
     // 재생 모드 시작
     async _startPlaybackMode(direction = MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD) {
         try {
+            // rec_info.json에서 FPS 값을 읽어서 설정
+            const recordedFPS = await FileUtils.getRecordingFPS();
+            this.uiController.setFPS(recordedFPS);
+            console.log(`[Playback] Set FPS to ${recordedFPS} from rec_info.json`);
+
             const frameCount = await this._loadFramesWithProgress();
 
             if (frameCount === 0) {
