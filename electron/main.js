@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fsp = require('fs').promises;
-const watcher = require('../frontend/public/src/frame-watcher');
+const watcher = require('../backend/src/frame-watcher');
 
 // 상수 정의
 const WINDOW_CONFIG = {
@@ -12,7 +12,7 @@ const WINDOW_CONFIG = {
 const PATHS = {
     LIVE_DIR: path.join(__dirname, '../frontend/public/live'),
     RECORD_DIR: path.join(__dirname, '../frontend/public/record'),
-    PRELOAD: path.join(__dirname, '../frontend/public/src/preload.js'),
+    PRELOAD: path.join(__dirname, '../backend/src/preload.js'),
     INDEX: path.join(__dirname, '../frontend/public/index.html')
 };
 

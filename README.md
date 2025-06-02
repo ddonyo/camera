@@ -167,7 +167,7 @@ mindmap
       frontend/public/index.html
         메인 HTML 구조
         UI 레이아웃
-      frontend/public/src/
+      frontend/src/
         mjpeg-viewer.js
           메인 애플리케이션 로직
           상태 관리
@@ -191,15 +191,15 @@ mindmap
           ValidationUtils 클래스
           DOM/Canvas/Math 헬퍼
     (Bridge & Services)
-      frontend/public/src/preload.js
+      backend/src/preload.js
         Electron Context Bridge
         IPC 통신 인터페이스
-      frontend/public/src/frame-watcher.js
+      backend/src/frame-watcher.js
         파일 시스템 감시
         바이너리 데이터 처리
         자동 재시작 메커니즘
         비동기 처리
-      frontend/public/src/app-init.js
+      frontend/src/app-init.js
         애플리케이션 초기화
         정리된 구조
 ```
@@ -216,32 +216,32 @@ mindmap
 - IPC 통신 핸들러
 - 윈도우 생성 및 관리
 
-#### `frontend/public/src/mjpeg-viewer.js`
+#### `frontend/src/mjpeg-viewer.js`
 - 메인 애플리케이션 로직
 - 상태 관리 및 전환
 - 재생 제어
 - Private 상수를 통한 설정 관리
 
-#### `frontend/public/src/frame-manager.js`
+#### `frontend/src/frame-manager.js`
 - 프레임 데이터 관리
 - 이미지 로딩 및 캐싱
 - 프레임 인덱스 제어
 - **Private 필드 사용**: `#currentIndex`로 캡슐화
 - 통합된 navigate 메서드
 
-#### `frontend/public/src/ui-controller.js`
+#### `frontend/src/ui-controller.js`
 - UI 요소 제어
 - 캔버스 렌더링
 - 사용자 입력 처리
 - 상태 표시
 
-#### `frontend/public/src/config.js`
+#### `frontend/src/config.js`
 - 애플리케이션 설정값
 - 상태 정의
 - 에러/정보 메시지
 - **중복 제거**: Messages 객체 제거, 직접적인 구조 사용
 
-#### `frontend/public/src/utils.js`
+#### `frontend/src/utils.js`
 - **ValidationUtils 클래스**: 통합된 매개변수 검증
   - validateRequired
   - validateNumber
@@ -249,7 +249,7 @@ mindmap
 - 기존 유틸리티 클래스들 (DOMUtils, MathUtils, ImageLoader, TimerUtils, CanvasUtils)
 - Private 메서드 사용 (#contextCache, #getContext)
 
-#### `frontend/public/src/frame-watcher.js`
+#### `backend/src/frame-watcher.js`
 - 파일 시스템 감시 (Node.js 환경)
 - **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
 - **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
@@ -393,7 +393,7 @@ flowchart LR
 - 코드 중복 제거
 
 ### **FrameWatcher**
-- 파일 시스템 실시간 감시 (`frontend/public/src/frame-watcher.js` 모듈 사용)
+- 파일 시스템 실시간 감시 (`backend/src/frame-watcher.js` 모듈 사용)
 - **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
 - **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
 - **비동기 함수 사용**: async/await 패턴

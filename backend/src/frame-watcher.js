@@ -23,7 +23,7 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
     },
 
     // 기본 디렉토리
-    DEFAULT_LIVE_DIR: '../frontend/public/live',
+    DEFAULT_LIVE_DIR: '../../frontend/public/live',
 
     // 재시도 설정
     RETRY: {
