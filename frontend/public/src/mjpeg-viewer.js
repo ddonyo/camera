@@ -85,6 +85,10 @@ export class MJPEGViewer {
                 console.log('Record button clicked');
                 this._handleRecord();
             },
+            playbackBtn: () => {
+                console.log('Playback button clicked');
+                this._handlePlaybackMode();
+            },
             playBtn: () => this._handlePlayback(MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD),
             reverseBtn: () => this._handlePlayback(MJPEGViewer.#CONSTANTS.DIRECTION.REVERSE),
             pauseBtn: () => this._handlePause(),
@@ -573,5 +577,14 @@ export class MJPEGViewer {
         this.uiController.destroy();
         this.frameManager.clear();
         console.log('MJPEGViewer destroyed');
+    }
+
+    // Playback 버튼 핸들러
+    async _handlePlaybackMode() {
+        if (this.state !== State.PLAYBACK) {
+            await this._startPlaybackMode(MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD);
+        } else {
+            this._stopCurrentMode();
+        }
     }
 }

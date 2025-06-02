@@ -81,12 +81,16 @@ export class UIController {
             case State.IDLE:
                 this._enableButtons(['liveBtn', 'recordBtn']);
                 if (hasFrames) {
+                    this._enableButtons(['playbackBtn']);
                     this._enablePlaybackButtons();
                 }
                 break;
 
             case State.LIVE:
                 this._enableButtons(['liveBtn', 'recordBtn']);
+                if (hasFrames) {
+                    this._enableButtons(['playbackBtn']);
+                }
                 this._addActiveClass('liveBtn');
                 break;
 
@@ -96,7 +100,8 @@ export class UIController {
                 break;
 
             case State.PLAYBACK:
-                this._enableButtons(['liveBtn', 'recordBtn']);
+                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn']);
+                this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
                 break;
         }
