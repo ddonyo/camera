@@ -80,18 +80,21 @@ graph LR
             A[electron/main.js<br/>메인 프로세스]
             D[FrameHandler<br/>프레임 핸들러]
         end
+        subgraph "Backend Services"
+            B[backend/src/preload.js<br/>프리로드 스크립트]
+            O[backend/src/frame-watcher.js<br/>파일 감시자]
+            S[backend/src/server.js<br/>서버 로직]
+        end
     end
     subgraph "Frontend"
-        B[preload.js<br/>프리로드 스크립트]
-        G[index.html<br/>메인 HTML]
-        H[mjpeg-viewer.js<br/>메인 뷰어 클래스]
-        I[config.js<br/>설정 및 상수]
-        J[frame-manager.js<br/>프레임 관리]
-        K[ui-controller.js<br/>UI 컨트롤]
-        L[utils.js<br/>유틸리티 함수들]
-        M[CSS Files<br/>스타일시트]
-        O[frame-watcher.js<br/>파일 감시자]
-        P[app-init.js<br/>앱 초기화]
+        G[frontend/public/index.html<br/>메인 HTML]
+        H[frontend/src/mjpeg-viewer.js<br/>메인 뷰어 클래스]
+        I[frontend/src/config.js<br/>설정 및 상수]
+        J[frontend/src/frame-manager.js<br/>프레임 관리]
+        K[frontend/src/ui-controller.js<br/>UI 컨트롤]
+        L[frontend/src/utils.js<br/>유틸리티 함수들]
+        M[frontend/public/styles/<br/>CSS Files<br/>스타일시트]
+        P[frontend/src/app-init.js<br/>앱 초기화]
     end
 
     N[(Image Files<br/>프레임 이미지들)]
@@ -99,6 +102,8 @@ graph LR
     AA --> A
     A --> D
     A --> B
+    A --> O
+    A --> S
     D --> O
     B --> G
     G --> P
@@ -117,6 +122,7 @@ graph LR
     B -.->|Context Bridge| H
     H -.->|Static Files| N
     O -.->|File Watch| N
+    S -.->|Server Communication| H
 ```
 
 ## 🗂️ **Project Structure**
@@ -126,24 +132,25 @@ graph LR
     ├── electron/
     │   └── main.js               # Electron 메인 프로세스 (FrameHandler 클래스 포함)
     ├── frontend/
-    │   └── public/               # 웹 애플리케이션 파일
-    │       ├── index.html        # 메인 HTML
-    │       ├── styles/
-    │       │   └── main.css      # 스타일시트
-    │       ├── resources/        # 리소스 파일 (아이콘 등)
-    │       ├── src/              # JavaScript 모듈
-    │       │   ├── mjpeg-viewer.js   # 메인 뷰어 클래스
-    │       │   ├── frame-manager.js  # 프레임 관리
-    │       │   ├── ui-controller.js  # UI 제어 (애니메이션 포함)
-    │       │   ├── config.js         # 설정 및 상수
-    │       │   ├── utils.js          # 유틸리티 함수
-    │       │   ├── frame-watcher.js  # 파일 시스템 감시 (바이너리 데이터 지원)
-    │       │   ├── preload.js        # Electron 프리로드 스크립트
-    │       │   └── app-init.js       # 애플리케이션 초기화
-    │       ├── live/             # 라이브 프레임 저장 위치
-    │       └── record/           # 녹화 프레임 저장 위치
-    ├── backend/                  # 백엔드 디렉토리 (현재 미사용)
+    │   ├── public/               # 웹 애플리케이션 파일
+    │   │   ├── index.html        # 메인 HTML
+    │   │   ├── styles/
+    │   │   │   └── main.css      # 스타일시트
+    │   │   ├── resources/        # 리소스 파일 (아이콘 등)
+    │   │   ├── live/             # 라이브 프레임 저장 위치
+    │   │   └── record/           # 녹화 프레임 저장 위치
+    │   └── src/                  # 프론트엔드 JavaScript 모듈
+    │       ├── mjpeg-viewer.js   # 메인 뷰어 클래스
+    │       ├── frame-manager.js  # 프레임 관리
+    │       ├── ui-controller.js  # UI 제어 (애니메이션 포함)
+    │       ├── config.js         # 설정 및 상수
+    │       ├── utils.js          # 유틸리티 함수
+    │       └── app-init.js       # 애플리케이션 초기화
+    ├── backend/                  # 백엔드 디렉토리
     │   └── src/
+    │       ├── frame-watcher.js  # 파일 시스템 감시 (Node.js 환경)
+    │       ├── server.js         # 서버 로직
+    │       └── preload.js        # Electron 프리로드 스크립트
     ├── test/                     # 테스트 파일
     ├── package.json              # 프로젝트 설정 및 의존성
     └── node_install.sh           # Node.js 설치 스크립트
@@ -187,18 +194,22 @@ mindmap
           공통 유틸리티 함수
           ValidationUtils 클래스
           DOM/Canvas/Math 헬퍼
-    (Bridge & Services)
-      backend/src/preload.js
-        Electron Context Bridge
-        IPC 통신 인터페이스
+        app-init.js
+          애플리케이션 초기화
+          정리된 구조
+    (Backend Services)
       backend/src/frame-watcher.js
         파일 시스템 감시
         바이너리 데이터 처리
         자동 재시작 메커니즘
         비동기 처리
-      frontend/src/app-init.js
-        애플리케이션 초기화
-        정리된 구조
+      backend/src/server.js
+        서버 로직
+        API 엔드포인트 관리
+      backend/src/preload.js
+        Electron Context Bridge
+        IPC 통신 인터페이스
+        보안 컨텍스트 제공
 ```
 
 ### **주요 파일 설명**
@@ -246,13 +257,29 @@ mindmap
 - 기존 유틸리티 클래스들 (DOMUtils, MathUtils, ImageLoader, TimerUtils, CanvasUtils)
 - Private 메서드 사용 (#contextCache, #getContext)
 
+#### `frontend/src/app-init.js`
+- 애플리케이션 초기화 로직
+- DOM 준비 상태 확인
+- 모듈 간 의존성 설정
+
+#### `backend/src/preload.js`
+- Electron Context Bridge
+- IPC 통신 인터페이스
+- 메인 프로세스와 렌더러 프로세스 간 안전한 통신
+- 보안 컨텍스트 제공
+
 #### `backend/src/frame-watcher.js`
-- 파일 시스템 감시 (Node.js 환경)
+- 파일 시스템 감시 (Node.js 환경에서 실행)
 - **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
 - **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
 - **비동기 함수 사용**: async/await 패턴
 - awaitWriteFinish 옵션으로 파일 쓰기 완료 대기
 - fallback 지원: 바이너리 읽기 실패 시 기존 path 방식으로 자동 전환
+
+#### `backend/src/server.js`
+- 서버 관련 로직
+- API 엔드포인트 관리
+- 네트워크 통신 처리
 
 ## ➡️ **Data Flow Diagram**
 
@@ -402,12 +429,24 @@ flowchart LR
 - 코드 중복 제거
 
 ### **FrameWatcher**
-- 파일 시스템 실시간 감시 (`backend/src/frame-watcher.js` 모듈 사용)
+- 파일 시스템 실시간 감시 (`backend/src/frame-watcher.js`)
 - **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
 - **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
 - **비동기 함수 사용**: async/await 패턴
 - awaitWriteFinish 옵션으로 파일 쓰기 완료 대기
 - fallback 지원: 바이너리 읽기 실패 시 기존 path 방식으로 자동 전환
+
+### **PreloadScript**
+- Electron Context Bridge (`backend/src/preload.js`)
+- 메인 프로세스와 렌더러 프로세스 간 안전한 IPC 통신
+- 보안 컨텍스트 제공
+- API 노출 제한
+
+### **ServerModule**
+- 서버 관련 로직 (`backend/src/server.js`)
+- API 엔드포인트 관리
+- 네트워크 통신 처리
+- 추가 백엔드 서비스 지원
 
 ### **TimerUtils**
 - Accurate Timing Control
