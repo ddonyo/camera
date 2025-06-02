@@ -26,7 +26,6 @@ git push -uf origin main
 ![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
 ![Electron.js](https://img.shields.io/badge/Electron-191970?style=for-the-badge&logo=Electron&logoColor=white)
 
 ### **Frontend**
@@ -36,7 +35,6 @@ git push -uf origin main
 
 ### **Backend**
 - **Node.js**: v18.0.0 이상
-- **Express**: v5.1.0 - 웹 서버 프레임워크
 - **Electron**: v36.2.1 - 데스크톱 애플리케이션 프레임워크
 - **Chokidar**: v4.0.3 - 파일 시스템 감시
 - **Socket.IO**: v4.8.1 - 실시간 통신 (선택적)
@@ -63,10 +61,6 @@ npm install
 
 ## 🚀 **How to Run**
 
-Electron Application 사용시 Server는 실행시킬 필요 없습니다.
-
-Server는 웹 개발자 도구를 사용한 개발 편의와 외부접속으로 인한 UI/UX Test 및 Feedback을 위함입니다.
-
 ### **Electron Application Start (Local Machine)**
 ```bash
 # Linux/Wayland 환경
@@ -76,75 +70,17 @@ npm start
 npm run start:win
 ```
 
-### **Server Start (Web Browser)**
-브라우저에서 `http://localhost:3000` 접속
-
-참고로 Live Coding 서버 개발 페이지는 다음과 같습니다. `http://10.178.44.110:3000/`
-
-```bash
-npm run dev
-# Disable cache
-# Detailed logging
-# Hot reload support
-
-# or
-
-npm run prod
-# Enable cache
-# Optimized performance
-# Serve compressed static files
-```
-
-### **Server Start w/ port change**
-```bash
-# Windows (CMD)
-set PORT=8080 && npm run dev
-# or
-set PORT=8080 && npm run prod
-
-# Linux
-PORT=8080 npm run dev
-# or
-PORT=8080 npm run prod
-```
-
-## ⭐ **Key Features**
-
-### **Live Mode**
-- 실시간 MJPEG 스트림 뷰어
-- 파일 시스템 기반 프레임 로딩
-- **바이너리 데이터 직접 처리**: 파일 I/O 없이 메모리에서 직접 이미지 데이터 처리
-- 자동 fallback 지원 (바이너리 처리 실패 시 기존 path 방식으로 전환)
-
-### **Record Mode**
-- 라이브 스트림을 개별 프레임으로 저장
-- 녹화 중 실시간 프리뷰
-- 녹화 완료 시 자동으로 재생 모드 전환
-- **바이너리 데이터로 직접 저장**: 성능 향상 및 메모리 효율성 개선
-
-### **Playback Mode**
-- 정방향/역방향 재생
-- 프레임 단위 이동 (다음/이전 프레임)
-- 빨리감기/되감기
-- 반복 재생
-- **부드러운 프로그레스 바 애니메이션**: 상황별 최적화된 애니메이션 효과
-  - 재생 중: 부드러운 애니메이션 (0.3초)
-  - 일시정지: 빠른 응답 (0.1초)
-  - 시크: 즉시 위치 변경
-- 사용자 정의 FPS 설정 (1-60 FPS)
+### **개발자 참고사항**
+현재 버전에서는 웹 서버 기능이 제거되었습니다. Electron 애플리케이션으로만 실행 가능합니다.
 
 ## 🏗️ **System Architecture**
 
 ```mermaid
 graph LR
-    AAA[Network]
     AA[Local Machine]
     subgraph " "
-        subgraph "Express Server"
-            C[server.js<br/>웹 서버]
-        end
         subgraph "Electron Main Process"
-            A[main.js<br/>메인 프로세스]
+            A[electron/main.js<br/>메인 프로세스]
             D[FrameHandler<br/>프레임 핸들러]
         end
     end
@@ -164,12 +100,10 @@ graph LR
     N[(Image Files<br/>프레임 이미지들)]
 
     AA --> A
-    AAA --> C
     A --> D
     A --> B
     D --> O
     B --> G
-    C --> G
     G --> P
     P --> H
     H --> I
@@ -192,25 +126,30 @@ graph LR
 
 ```
     camera/
-    ├── main.js                   # Electron 메인 프로세스 (FrameHandler 클래스 포함)
-    ├── server.js                 # Express 웹 서버
+    ├── electron/
+    │   └── main.js               # Electron 메인 프로세스 (FrameHandler 클래스 포함)
+    ├── frontend/
+    │   └── public/               # 웹 애플리케이션 파일
+    │       ├── index.html        # 메인 HTML
+    │       ├── styles/
+    │       │   └── main.css      # 스타일시트
+    │       ├── resources/        # 리소스 파일 (아이콘 등)
+    │       ├── src/              # JavaScript 모듈
+    │       │   ├── mjpeg-viewer.js   # 메인 뷰어 클래스
+    │       │   ├── frame-manager.js  # 프레임 관리
+    │       │   ├── ui-controller.js  # UI 제어 (애니메이션 포함)
+    │       │   ├── config.js         # 설정 및 상수
+    │       │   ├── utils.js          # 유틸리티 함수
+    │       │   ├── frame-watcher.js  # 파일 시스템 감시 (바이너리 데이터 지원)
+    │       │   ├── preload.js        # Electron 프리로드 스크립트
+    │       │   └── app-init.js       # 애플리케이션 초기화
+    │       ├── live/             # 라이브 프레임 저장 위치
+    │       └── record/           # 녹화 프레임 저장 위치
+    ├── backend/                  # 백엔드 디렉토리 (현재 미사용)
+    │   └── src/
+    ├── test/                     # 테스트 파일
     ├── package.json              # 프로젝트 설정 및 의존성
-    └── public/                   # 웹 애플리케이션 파일
-        ├── index.html            # 메인 HTML
-        ├── styles/
-        │   └── main.css          # 스타일시트
-        ├── resources/            # 리소스 파일 (아이콘 등)
-        ├── js/                   # JavaScript 모듈
-        │   ├── mjpeg-viewer.js   # 메인 뷰어 클래스
-        │   ├── frame-manager.js  # 프레임 관리
-        │   ├── ui-controller.js  # UI 제어 (애니메이션 포함)
-        │   ├── config.js         # 설정 및 상수
-        │   ├── utils.js          # 유틸리티 함수
-        │   ├── frame-watcher.js  # 파일 시스템 감시 (바이너리 데이터 지원)
-        │   ├── preload.js        # Electron 프리로드 스크립트
-        │   └── app-init.js       # 애플리케이션 초기화
-        ├── live/                 # 라이브 프레임 저장 위치
-        └── record/               # 녹화 프레임 저장 위치
+    └── node_install.sh           # Node.js 설치 스크립트
 ```
 
 ```mermaid
@@ -220,56 +159,54 @@ mindmap
       package.json
         Electron 앱 설정
         의존성 관리
-      main.js
+      electron/main.js
         Electron 메인 프로세스
         FrameHandler 클래스
         IPC 핸들러
-      server.js
-        Express 웹 서버
-        정적 파일 서빙
     (Frontend)
-      index.html
+      frontend/public/index.html
         메인 HTML 구조
         UI 레이아웃
-      mjpeg-viewer.js
-        메인 애플리케이션 로직
-        상태 관리
-        이벤트 처리
-        안정적인 모드 전환
-      frame-manager.js
-        프레임 로딩
-        재생 제어
-        인덱스 관리
-        Private 필드 사용
-      ui-controller.js
-        UI 상태 업데이트
-        버튼 활성화/비활성화
-        메시지 표시
-      config.js
-        상수 정의
-        설정값 관리
-        중복 제거된 구조
-      utils.js
-        공통 유틸리티 함수
-        ValidationUtils 클래스
-        DOM/Canvas/Math 헬퍼
+      frontend/public/src/
+        mjpeg-viewer.js
+          메인 애플리케이션 로직
+          상태 관리
+          이벤트 처리
+          안정적인 모드 전환
+        frame-manager.js
+          프레임 로딩
+          재생 제어
+          인덱스 관리
+          Private 필드 사용
+        ui-controller.js
+          UI 상태 업데이트
+          버튼 활성화/비활성화
+          메시지 표시
+        config.js
+          상수 정의
+          설정값 관리
+          중복 제거된 구조
+        utils.js
+          공통 유틸리티 함수
+          ValidationUtils 클래스
+          DOM/Canvas/Math 헬퍼
     (Bridge & Services)
-      preload.js
+      frontend/public/src/preload.js
         Electron Context Bridge
         IPC 통신 인터페이스
-      frame-watcher.js
+      frontend/public/src/frame-watcher.js
         파일 시스템 감시
         바이너리 데이터 처리
         자동 재시작 메커니즘
         비동기 처리
-      app-init.js
+      frontend/public/src/app-init.js
         애플리케이션 초기화
         정리된 구조
 ```
 
 ### **주요 파일 설명**
 
-#### `main.js`
+#### `electron/main.js`
 - Electron 메인 프로세스
 - **FrameHandler 클래스**: 프레임 관련 로직을 캡슐화
   - 디렉토리 관리
@@ -279,39 +216,32 @@ mindmap
 - IPC 통신 핸들러
 - 윈도우 생성 및 관리
 
-#### `server.js`
-- Express 웹 서버
-- 정적 파일 서빙
-- 개발/프로덕션 모드 구분
-- 요청 로깅
-- 유틸리티 함수들을 객체로 구조화
-
-#### `public/js/mjpeg-viewer.js`
+#### `frontend/public/src/mjpeg-viewer.js`
 - 메인 애플리케이션 로직
 - 상태 관리 및 전환
 - 재생 제어
 - Private 상수를 통한 설정 관리
 
-#### `public/js/frame-manager.js`
+#### `frontend/public/src/frame-manager.js`
 - 프레임 데이터 관리
 - 이미지 로딩 및 캐싱
 - 프레임 인덱스 제어
 - **Private 필드 사용**: `#currentIndex`로 캡슐화
 - 통합된 navigate 메서드
 
-#### `public/js/ui-controller.js`
+#### `frontend/public/src/ui-controller.js`
 - UI 요소 제어
 - 캔버스 렌더링
 - 사용자 입력 처리
 - 상태 표시
 
-#### `public/js/config.js`
+#### `frontend/public/src/config.js`
 - 애플리케이션 설정값
 - 상태 정의
 - 에러/정보 메시지
 - **중복 제거**: Messages 객체 제거, 직접적인 구조 사용
 
-#### `public/js/utils.js`
+#### `frontend/public/src/utils.js`
 - **ValidationUtils 클래스**: 통합된 매개변수 검증
   - validateRequired
   - validateNumber
@@ -319,7 +249,7 @@ mindmap
 - 기존 유틸리티 클래스들 (DOMUtils, MathUtils, ImageLoader, TimerUtils, CanvasUtils)
 - Private 메서드 사용 (#contextCache, #getContext)
 
-#### `public/js/frame-watcher.js`
+#### `frontend/public/src/frame-watcher.js`
 - 파일 시스템 감시 (Node.js 환경)
 - **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
 - **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
@@ -370,7 +300,7 @@ flowchart LR
 - 실시간 스트림 표시
 - 상세 동작 프로세스:
   1. `FrameHandler.startMode('live')` 호출
-  2. `live/` 디렉토리 초기화
+  2. `frontend/public/live/` 디렉토리 초기화
   3. `FrameWatcher`가 프레임 파일 감시 시작
   4. IPC를 통해 프레임 경로 전달
   5. Canvas에 실시간 렌더링
@@ -379,7 +309,7 @@ flowchart LR
 - 라이브 스트림을 개별 프레임으로 저장
 - 상세 동작 프로세스:
   1. `FrameHandler.startMode('record')` 호출
-  2. `record/` 디렉토리 초기화
+  2. `frontend/public/record/` 디렉토리 초기화
   3. 프레임 카운터 리셋
   4. `FrameWatcher`가 감지한 프레임을 순차적으로 복사 저장
   5. Canvas에 실시간 렌더링
@@ -398,8 +328,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     A[IDLE] --> B[LIVE]
-    A --> C[RECORD]
-    C --> B
+    B --> C[RECORD]
     B --> A
     C --> E[PLAYBACK]
     E --> C
@@ -416,23 +345,15 @@ flowchart LR
 2. **LIVE → IDLE**
    - Live 버튼 재클릭
 
-3. **IDLE → RECORD**
-   - Record 버튼 클릭
-
-4. **LIVE → IDLE → RECORD**
+3. **LIVE → RECORD**
    - Live 모드에서 Record 버튼 클릭
-   - 중간에 IDLE 상태를 거쳐 안정적인 전환
-   - 200ms 지연으로 프레임 손실 방지
+   - 라이브 스트림 확인 후 녹화 시작
 
-5. **RECORD → PLAYBACK**
+4. **RECORD → PLAYBACK**
    - Record 버튼 재클릭 (수동 중지)
    - 프레임 복사 완료 후 자동 전환
 
-6. **PLAYBACK → RECORD**
-   - Record 버튼 클릭
-   - 기존 녹화 삭제 후 새로 시작
-
-7. **PLAYBACK → LIVE**
+5. **PLAYBACK → LIVE**
    - Live 버튼 클릭
 
 ## 🔑 **Key Components**
@@ -443,6 +364,7 @@ flowchart LR
 - 프레임 복사 및 저장
 - Watcher 생명주기 관리
 - 에러 처리 및 정리
+- 바이너리 데이터 직접 저장 지원
 
 ### **MJPEGViewer**
 - Main Controller Class
@@ -471,7 +393,7 @@ flowchart LR
 - 코드 중복 제거
 
 ### **FrameWatcher**
-- 파일 시스템 실시간 감시
+- 파일 시스템 실시간 감시 (`frontend/public/src/frame-watcher.js` 모듈 사용)
 - **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
 - **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
 - **비동기 함수 사용**: async/await 패턴
@@ -486,7 +408,7 @@ flowchart LR
 ## 🆘 **Trouble-shooting**
 
 ### **Frame Loading Fail**
-- `public/live` 및 `public/record` 디렉토리 존재 확인
+- `frontend/public/live` 및 `frontend/public/record` 디렉토리 존재 확인
 - 디렉토리 쓰기 권한 확인
 - 디스크 공간 확인
 
@@ -499,6 +421,32 @@ flowchart LR
 - `prefers-reduced-motion` 설정 확인 (애니메이션 자동 비활성화)
 - GPU 가속 지원 확인 (`will-change: width` CSS 속성)
 - 브라우저 성능 모니터에서 리플로우/리페인트 확인
+
+## ⭐ **Key Features**
+
+### **Live Mode**
+- 실시간 MJPEG 스트림 뷰어
+- 파일 시스템 기반 프레임 로딩
+- **바이너리 데이터 직접 처리**: 파일 I/O 없이 메모리에서 직접 이미지 데이터 처리
+- 자동 fallback 지원 (바이너리 처리 실패 시 기존 path 방식으로 전환)
+
+### **Record Mode**
+- 라이브 스트림을 개별 프레임으로 저장
+- 녹화 중 실시간 프리뷰
+- 녹화 완료 시 자동으로 재생 모드 전환
+- **바이너리 데이터로 직접 저장**: 성능 향상 및 메모리 효율성 개선
+- **UI 제한**: IDLE 상태에서는 Record 버튼이 비활성화되어 Live 모드를 먼저 시작해야 함
+
+### **Playback Mode**
+- 정방향/역방향 재생
+- 프레임 단위 이동 (다음/이전 프레임)
+- 빨리감기/되감기
+- 반복 재생
+- **부드러운 프로그레스 바 애니메이션**: 상황별 최적화된 애니메이션 효과
+  - 재생 중: 부드러운 애니메이션 (0.3초)
+  - 일시정지: 빠른 응답 (0.1초)
+  - 시크: 즉시 위치 변경
+- 사용자 정의 FPS 설정 (1-60 FPS)
 
 ## 📜 **License**
 

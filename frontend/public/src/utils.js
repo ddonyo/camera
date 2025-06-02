@@ -230,4 +230,25 @@ export class FileUtils {
             return Config.FPS.RECORD_DEFAULT;
         }
     }
+
+    // record 폴더에 실제 frame 파일들이 존재하는지 확인
+    static async hasRecordedFrames() {
+        try {
+            // frame0.jpg 파일이 존재하는지 확인 (첫 번째 프레임 파일)
+            const response = await fetch('./record/frame0.jpg', {
+                method: 'HEAD' // HEAD 요청으로 파일 존재만 확인
+            });
+
+            if (response.ok) {
+                console.log('[FileUtils] Found recorded frames in record folder');
+                return true;
+            } else {
+                console.log('[FileUtils] No recorded frames found in record folder');
+                return false;
+            }
+        } catch (error) {
+            console.log('[FileUtils] Error checking recorded frames:', error);
+            return false;
+        }
+    }
 }

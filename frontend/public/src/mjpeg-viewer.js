@@ -1,31 +1,10 @@
-import { State, MessageType, ErrorMessages, InfoMessages } from './config.js';
+import { State, MessageType, ErrorMessages, InfoMessages, Direction, IPCCommands, StateNames, Config } from './config.js';
 import { TimerUtils, CanvasUtils, FileUtils } from './utils.js';
 import { FrameManager } from './frame-manager.js';
 import { UIController } from './ui-controller.js';
 
 // MJPEG 뷰어 메인 클래스
 export class MJPEGViewer {
-    // 상수 정의
-    static #CONSTANTS = {
-        DELAY_MS: {
-            MODE_SWITCH: 200  // 100ms에서 200ms로 증가하여 안정성 향상
-        },
-        DIRECTION: {
-            FORWARD: 1,
-            REVERSE: -1
-        },
-        STATE_NAMES: {
-            [State.LIVE]: 'Live',
-            [State.RECORD]: 'Record'
-        },
-        IPC_COMMANDS: {
-            START_LIVE: 'start-live',
-            STOP_LIVE: 'stop-live',
-            START_RECORD: 'start-record',
-            STOP_RECORD: 'stop-record'
-        }
-    };
-
     constructor() {
         console.log('MJPEGViewer constructor started');
 
@@ -36,7 +15,7 @@ export class MJPEGViewer {
 
         this.state = State.IDLE;
         this.playing = false;
-        this.currentDirection = MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD;
+        this.currentDirection = Direction.FORWARD;
         this.repeatMode = false;
 
         this._bindEvents();
@@ -77,25 +56,16 @@ export class MJPEGViewer {
     // 버튼 핸들러 생성
     _createButtonHandlers() {
         return {
-            liveBtn: () => {
-                console.log('Live button clicked');
-                this._handleLive();
-            },
-            recordBtn: () => {
-                console.log('Record button clicked');
-                this._handleRecord();
-            },
-            playbackBtn: () => {
-                console.log('Playback button clicked');
-                this._handlePlaybackMode();
-            },
-            playBtn: () => this._handlePlayback(MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD),
-            reverseBtn: () => this._handlePlayback(MJPEGViewer.#CONSTANTS.DIRECTION.REVERSE),
+            liveBtn: () => this._handleLive(),
+            recordBtn: () => this._handleRecord(),
+            playbackBtn: () => this._handlePlayback(),
+            playBtn: () => this._handlePlay(Direction.FORWARD),
+            reverseBtn: () => this._handlePlay(Direction.REVERSE),
             pauseBtn: () => this._handlePause(),
             rewindBtn: () => this._handleFrameControl('rewind'),
             fastForwardBtn: () => this._handleFrameControl('fastForward'),
-            nextFrameBtn: () => this._handleStep(MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD),
-            prevFrameBtn: () => this._handleStep(MJPEGViewer.#CONSTANTS.DIRECTION.REVERSE),
+            nextFrameBtn: () => this._handleStep(Direction.FORWARD),
+            prevFrameBtn: () => this._handleStep(Direction.REVERSE),
             repeatBtn: () => this._handleRepeat(),
             progressBar: (evt) => this._handleSeek(evt)
         };
@@ -124,58 +94,46 @@ export class MJPEGViewer {
         // 메인 프로세스에서 오는 프레임 경로 수신
         this.#electronAPI.on('frame-path', (filePath) => {
             console.log('Received frame path:', filePath);
-            this._handleLiveFrame(filePath);
+            this._handleLiveFrame(filePath, 'path');
         });
 
         // 메인 프로세스에서 오는 프레임 바이너리 데이터 수신
         this.#electronAPI.on('frame-data', (binaryData) => {
             console.log('Received frame data:', binaryData.length, 'bytes');
-            this._handleLiveFrameData(binaryData);
+            this._handleLiveFrame(binaryData, 'binary');
         });
     }
 
-    // 라이브 프레임 처리
-    async _handleLiveFrame(filePath) {
-        if (this.state !== State.LIVE && this.state !== State.RECORD) {
+    // 라이브 프레임 처리 (통합)
+    async _handleLiveFrame(data, type) {
+        if (!this._isStreamingMode()) {
             return; // 라이브나 레코드 모드가 아니면 무시
         }
 
         try {
-            console.log(`Received web path: ${filePath}`);
+            let imageUrl;
 
-            // 타임스탬프를 추가해서 캐시 문제 해결
-            const timestamp = new Date().getTime();
-            const imageUrl = `${filePath}?t=${timestamp}`;
+            if (type === 'path') {
+                // 타임스탬프를 추가해서 캐시 문제 해결
+                const timestamp = new Date().getTime();
+                imageUrl = `${data}?t=${timestamp}`;
+            } else if (type === 'binary') {
+                // ArrayBuffer를 Blob으로 변환
+                const blob = new Blob([data], { type: 'image/jpeg' });
+                imageUrl = URL.createObjectURL(blob);
+            } else {
+                throw new Error('Invalid frame data type');
+            }
 
             // 이미지를 캔버스에 렌더링
             await this._renderLiveImageToCanvas(imageUrl);
+
+            // binary 타입인 경우 메모리 누수 방지를 위해 Blob URL 해제
+            if (type === 'binary') {
+                URL.revokeObjectURL(imageUrl);
+            }
         } catch (error) {
             console.error('Failed to handle live frame:', error);
-        }
-    }
-
-    // 라이브 프레임 바이너리 데이터 처리
-    async _handleLiveFrameData(binaryData) {
-        if (this.state !== State.LIVE && this.state !== State.RECORD) {
-            return; // 라이브나 레코드 모드가 아니면 무시
-        }
-
-        try {
-            console.log(`Received binary data: ${binaryData.length} bytes`);
-
-            // ArrayBuffer를 Blob으로 변환
-            const blob = new Blob([binaryData], { type: 'image/jpeg' });
-
-            // Blob URL 생성
-            const imageUrl = URL.createObjectURL(blob);
-
-            // 이미지를 캔버스에 렌더링
-            await this._renderLiveImageToCanvas(imageUrl);
-
-            // 메모리 누수 방지를 위해 Blob URL 해제
-            URL.revokeObjectURL(imageUrl);
-        } catch (error) {
-            console.error('Failed to handle live frame data:', error);
         }
     }
 
@@ -216,10 +174,8 @@ export class MJPEGViewer {
     // 녹화 버튼 핸들러
     async _handleRecord() {
         const handlers = {
-            [State.IDLE]: () => this._startStreamingMode(State.RECORD),
             [State.LIVE]: () => this._switchFromLiveToRecord(),
-            [State.RECORD]: () => this._stopRecordMode(),
-            [State.PLAYBACK]: () => this._restartRecordMode()
+            [State.RECORD]: () => this._stopRecordMode()
         };
 
         const handler = handlers[this.state];
@@ -228,16 +184,32 @@ export class MJPEGViewer {
         }
     }
 
-    // 재생 버튼 핸들러 (통합)
-    async _handlePlayback(direction) {
+    // 재생 버튼 핸들러
+    async _handlePlayback() {
+        if (this.state === State.PLAYBACK) {
+            this._stopCurrentMode();
+        } else {
+            // IDLE 또는 LIVE 상태에서만 실행됨 (RECORD에서는 버튼이 비활성화됨)
+            await this._startPlaybackMode();
+        }
+    }
+
+    // 방향성 재생 핸들러
+    async _handlePlay(direction) {
         if (this.state === State.PLAYBACK) {
             this._handlePlaybackDirection(direction);
         } else {
+            // IDLE 또는 LIVE 상태에서만 실행됨 (RECORD에서는 재생 버튼들이 비활성화됨)
+            const hasFrames = await FileUtils.hasRecordedFrames();
+            if (!hasFrames) {
+                this._showNoFramesWarning();
+                return;
+            }
             await this._startPlaybackMode(direction);
         }
     }
 
-    // 재생 모드에서 방향 처리 (통합)
+    // 재생 모드에서 방향 처리
     _handlePlaybackDirection(direction) {
         const isCurrentDirection = this.currentDirection === direction;
 
@@ -266,7 +238,7 @@ export class MJPEGViewer {
         this._pause();
     }
 
-    // 프레임 제어 핸들러 (통합)
+    // 프레임 제어 핸들러
     _handleFrameControl(action) {
         this._pause();
         this.frameManager[action]();
@@ -298,12 +270,10 @@ export class MJPEGViewer {
         this._updateFrameDisplay();
     }
 
-    // 스트리밍 모드 시작 (Live 또는 Record) - 통합
+    // 스트리밍 모드 시작 (Live 또는 Record)
     async _startStreamingMode(targetState) {
-        const stateName = MJPEGViewer.#CONSTANTS.STATE_NAMES[targetState] || 'Unknown';
-        const ipcCommand = targetState === State.LIVE ?
-            MJPEGViewer.#CONSTANTS.IPC_COMMANDS.START_LIVE :
-            MJPEGViewer.#CONSTANTS.IPC_COMMANDS.START_RECORD;
+        const stateName = StateNames[targetState] || 'Unknown';
+        const ipcCommand = this._getIPCCommandForState(targetState, 'start');
 
         try {
             this._resetUIForStreaming();
@@ -318,28 +288,18 @@ export class MJPEGViewer {
         }
     }
 
-    // 스트리밍을 위한 UI 리셋
-    _resetUIForStreaming() {
-        this._pause();
-        this.uiController.clearMessage();
-        this.uiController.updateProgress(0, 'none');
-    }
-
     // Live 모드에서 Record 모드로 전환
     async _switchFromLiveToRecord() {
         try {
             console.log('[Live to Record] Switching from Live to Record mode');
 
-            // 현재 상태를 임시로 저장
-            const previousState = this.state;
-
             // 전환 중 상태로 설정하여 프레임 처리 중단
             this._setState(State.IDLE);
 
-            this._emitToElectron(MJPEGViewer.#CONSTANTS.IPC_COMMANDS.STOP_LIVE);
+            this._emitToElectron(IPCCommands.STOP_LIVE);
 
             // 잠시 대기 (Live 모드 종료 완료를 위해)
-            await this._delay(MJPEGViewer.#CONSTANTS.DELAY_MS.MODE_SWITCH);
+            await this._delay(Config.TIMING.MODE_SWITCH_DELAY);
 
             await this._startStreamingMode(State.RECORD);
             console.log('[Live to Record] Successfully switched to Record mode');
@@ -350,31 +310,12 @@ export class MJPEGViewer {
 
     // 녹화 모드 중지 후 재생 모드로 전환
     async _stopRecordMode() {
-        this._emitToElectron(MJPEGViewer.#CONSTANTS.IPC_COMMANDS.STOP_RECORD);
-        await this._startPlaybackMode(MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD);
-    }
-
-    // 녹화 모드 재시작
-    async _restartRecordMode() {
-        try {
-            this._resetForRestart();
-            await this._startStreamingMode(State.RECORD);
-            console.log('[Record Restart] Record mode restarted');
-        } catch (error) {
-            this._handleError(error, 'Record restart error');
-        }
-    }
-
-    // 재시작을 위한 리셋
-    _resetForRestart() {
-        this._pause();
-        this.uiController.clearCanvas();
-        this.frameManager.clear();
-        this.uiController.updateProgress(0, 'none'); // 즉시 리셋
+        this._emitToElectron(IPCCommands.STOP_RECORD);
+        await this._startPlaybackMode(Direction.FORWARD);
     }
 
     // 재생 모드 시작
-    async _startPlaybackMode(direction = MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD) {
+    async _startPlaybackMode(direction = Direction.FORWARD) {
         try {
             // rec_info.json에서 FPS 값을 읽어서 설정
             const recordedFPS = await FileUtils.getRecordingFPS();
@@ -384,8 +325,7 @@ export class MJPEGViewer {
             const frameCount = await this._loadFramesWithProgress();
 
             if (frameCount === 0) {
-                this.uiController.setMessage(ErrorMessages.NO_RECORDED_FRAMES, MessageType.WARNING);
-                this._resetToIdle();
+                this._showNoFramesWarning();
                 return;
             }
 
@@ -415,12 +355,7 @@ export class MJPEGViewer {
     _stopCurrentMode() {
         this._pause();
 
-        const stopCommands = {
-            [State.LIVE]: MJPEGViewer.#CONSTANTS.IPC_COMMANDS.STOP_LIVE,
-            [State.RECORD]: MJPEGViewer.#CONSTANTS.IPC_COMMANDS.STOP_RECORD
-        };
-
-        const command = stopCommands[this.state];
+        const command = this._getIPCCommandForState(this.state, 'stop');
         if (command) {
             this._emitToElectron(command);
         }
@@ -429,7 +364,7 @@ export class MJPEGViewer {
     }
 
     // 재생 시작
-    async _play(direction = MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD) {
+    async _play(direction = Direction.FORWARD) {
         if (this.playing) {
             console.warn(ErrorMessages.ALREADY_PLAYING);
             return;
@@ -545,16 +480,58 @@ export class MJPEGViewer {
         this._updateUI();
     }
 
+    // === 유틸리티 메서드들 ===
+
+    // 스트리밍 모드 체크
+    _isStreamingMode() {
+        return this.state === State.LIVE || this.state === State.RECORD;
+    }
+
+    // 스트리밍을 위한 UI 리셋 (통합)
+    _resetUIForStreaming() {
+        this._pause();
+        this.uiController.clearMessage();
+        this.uiController.updateProgress(0, 'none');
+    }
+
+    // 재시작을 위한 리셋
+    _resetForRestart() {
+        this._resetUIForStreaming();
+        this.uiController.clearCanvas();
+        this.frameManager.clear();
+    }
+
     // 초기 상태로 리셋
     _resetToIdle() {
         this.uiController.clearCanvas();
         this.frameManager.clear();
         this._setState(State.IDLE);
         this.uiController.clearMessage();
-        this.uiController.updateProgress(0, 'none'); // 즉시 리셋
+        this.uiController.updateProgress(0, 'none');
     }
 
-    // 유틸리티 메서드들
+    // 프레임이 없을 때 경고 표시
+    _showNoFramesWarning() {
+        this.uiController.setMessage(ErrorMessages.NO_RECORDED_FRAMES, MessageType.WARNING);
+        this._resetToIdle();
+    }
+
+    // 상태에 따른 IPC 명령어 반환
+    _getIPCCommandForState(state, action) {
+        const commandMap = {
+            [State.LIVE]: {
+                start: IPCCommands.START_LIVE,
+                stop: IPCCommands.STOP_LIVE
+            },
+            [State.RECORD]: {
+                start: IPCCommands.START_RECORD,
+                stop: IPCCommands.STOP_RECORD
+            }
+        };
+
+        return commandMap[state]?.[action];
+    }
+
     _emitToElectron(command, data = null) {
         if (this.#electronAPI?.emit) {
             this.#electronAPI.emit(command, data);
@@ -577,14 +554,5 @@ export class MJPEGViewer {
         this.uiController.destroy();
         this.frameManager.clear();
         console.log('MJPEGViewer destroyed');
-    }
-
-    // Playback 버튼 핸들러
-    async _handlePlaybackMode() {
-        if (this.state !== State.PLAYBACK) {
-            await this._startPlaybackMode(MJPEGViewer.#CONSTANTS.DIRECTION.FORWARD);
-        } else {
-            this._stopCurrentMode();
-        }
     }
 }

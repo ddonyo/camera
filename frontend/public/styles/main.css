@@ -27,7 +27,6 @@
     --spacing-xs: 0.25rem;
     --spacing-sm: 0.4rem;
     --spacing-md: 0.5rem;
-    --spacing-lg: 1rem;
 
     --font-size-base: 1.3rem;
     --font-weight-medium: 500;
@@ -72,10 +71,7 @@ body {
     cursor: pointer;
     border: none;
     outline: none;
-    transition:
-        background-color var(--transition-base),
-        transform var(--transition-fast),
-        box-shadow var(--transition-base);
+    transition: transform var(--transition-fast);
     box-shadow: var(--shadow-button);
 }
 
@@ -85,12 +81,29 @@ body {
     align-items: center;
     justify-content: center;
     gap: var(--spacing-xs);
+    /* 균등한 크기 설정 */
+    width: 3rem;
+    height: 3rem;
+    min-width: 3rem; /* 최소 너비 보장 */
+    /* 세로 레이아웃 설정 */
+    flex-direction: column;
+    gap: 0rem; /* 아이콘과 텍스트 사이 간격 */
+    /* 텍스트 처리 */
+    font-size: 1rem; /* 텍스트 크기 조정 */
+    white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+    /* 패딩 조정 */
+    padding: 0rem;
 }
 
 .control-icon {
     width: 2rem;
     height: 2rem;
     flex-shrink: 0;
+    object-fit: contain;
+    object-position: center;
+    max-width: 2rem;
+    max-height: 2rem;
+    transition: var(--transition-base);
 }
 
 .control-group {
@@ -99,20 +112,17 @@ body {
     gap: var(--spacing-md);
 }
 
-/* 호버 효과 (통합) */
+/* 호버 효과 - 이미지 교체 및 미세한 변형만 유지 */
 .btn:hover:not(:disabled),
 .tgl:hover:not(:disabled) {
-    background-color: var(--color-bg-button-hover);
     transform: translateY(-1px);
 }
 
-/* 활성화/클릭 효과 (통합) */
+/* 활성화/클릭 효과 - 이미지 교체 및 미세한 변형만 유지 */
 .btn:active:not(:disabled),
 .tgl:active:not(:disabled),
 .btn:hover:active:not(:disabled),
 .tgl:hover:active:not(:disabled) {
-    background-color: var(--color-bg-button-active);
-    box-shadow: var(--shadow-inset);
     transform: translateY(0);
 }
 
@@ -124,10 +134,86 @@ body {
     transform: none;
 }
 
-/* 활성화된 토글 버튼 */
-.tgl.active {
-    background-color: var(--color-bg-button-active);
-    box-shadow: var(--shadow-inset);
+/* 활성화된 토글 버튼 - 배경색 제거, 이미지로만 표시 */
+.tgl.active .control-icon {
+    content: url('../resources/live_1.png'); /* 기본값, 각 버튼별로 오버라이드됨 */
+}
+
+/* ================================================
+   개별 버튼 이미지 교체 설정
+   ================================================ */
+
+/* Live 버튼 */
+#liveBtn:hover:not(:disabled) .control-icon,
+#liveBtn:active:not(:disabled) .control-icon,
+#liveBtn.active .control-icon {
+    content: url('../resources/live_1.png');
+}
+
+/* Record 버튼 */
+#recordBtn:hover:not(:disabled) .control-icon,
+#recordBtn:active:not(:disabled) .control-icon,
+#recordBtn.active .control-icon {
+    content: url('../resources/record_1.png');
+}
+
+/* Playback 버튼 */
+#playbackBtn:hover:not(:disabled) .control-icon,
+#playbackBtn:active:not(:disabled) .control-icon,
+#playbackBtn.active .control-icon {
+    content: url('../resources/playback_1.png');
+}
+
+/* Rewind 버튼 */
+#rewindBtn:hover:not(:disabled) .control-icon,
+#rewindBtn:active:not(:disabled) .control-icon {
+    content: url('../resources/rewind_1.png');
+}
+
+/* Previous Frame 버튼 */
+#prevFrameBtn:hover:not(:disabled) .control-icon,
+#prevFrameBtn:active:not(:disabled) .control-icon {
+    content: url('../resources/prevframe_1.png');
+}
+
+/* Reverse 버튼 */
+#reverseBtn:hover:not(:disabled) .control-icon,
+#reverseBtn:active:not(:disabled) .control-icon,
+#reverseBtn.active .control-icon {
+    content: url('../resources/reverse_1.png');
+}
+
+/* Pause 버튼 */
+#pauseBtn:hover:not(:disabled) .control-icon,
+#pauseBtn:active:not(:disabled) .control-icon,
+#pauseBtn.active .control-icon {
+    content: url('../resources/pause_1.png');
+}
+
+/* Play 버튼 */
+#playBtn:hover:not(:disabled) .control-icon,
+#playBtn:active:not(:disabled) .control-icon,
+#playBtn.active .control-icon {
+    content: url('../resources/play_1.png');
+}
+
+/* Next Frame 버튼 */
+#nextFrameBtn:hover:not(:disabled) .control-icon,
+#nextFrameBtn:active:not(:disabled) .control-icon {
+    content: url('../resources/nextframe_1.png');
+}
+
+/* Fast Forward 버튼 */
+#fastForwardBtn:hover:not(:disabled) .control-icon,
+#fastForwardBtn:active:not(:disabled) .control-icon {
+    content: url('../resources/fastforward_1.png');
+}
+
+/* Repeat 버튼 */
+#repeatBtn:hover:not(:disabled) .control-icon,
+#repeatBtn:active:not(:disabled) .control-icon,
+#repeatBtn.active .control-icon {
+    content: url('../resources/repeat_1.png');
 }
 
 /* ================================================

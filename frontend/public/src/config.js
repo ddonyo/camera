@@ -6,12 +6,26 @@ export const State = Object.freeze({
     PLAYBACK: Symbol('PLAYBACK')
 });
 
+// 재생 방향
+export const Direction = Object.freeze({
+    FORWARD: 1,
+    REVERSE: -1
+});
+
 // 메시지 타입 (UI 메시지 및 CSS 클래스와 연동)
 export const MessageType = Object.freeze({
     INFO: 'info',
     ERROR: 'error',
     WARNING: 'warning',
     LOADING: 'loading'
+});
+
+// IPC 명령어
+export const IPCCommands = Object.freeze({
+    START_LIVE: 'start-live',
+    STOP_LIVE: 'stop-live',
+    START_RECORD: 'start-record',
+    STOP_RECORD: 'stop-record'
 });
 
 // CSS 클래스 상수
@@ -47,8 +61,21 @@ export const Config = Object.freeze({
         MESSAGE_TIMEOUT: 3000
     },
 
+    // 타이밍 관련 설정
+    TIMING: {
+        MODE_SWITCH_DELAY: 200
+    },
+
     // CSS 클래스
     CLASSES: CSSClasses
+});
+
+// 상태 이름 매핑
+export const StateNames = Object.freeze({
+    [State.LIVE]: 'Live',
+    [State.RECORD]: 'Record',
+    [State.PLAYBACK]: 'Playback',
+    [State.IDLE]: 'Idle'
 });
 
 // 에러 메시지

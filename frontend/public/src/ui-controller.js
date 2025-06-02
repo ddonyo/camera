@@ -1,4 +1,4 @@
-import { Config, MessageType, State } from './config.js';
+import { Config, MessageType, State, Direction } from './config.js';
 import { DOMUtils, MathUtils, CanvasUtils } from './utils.js';
 
 // UI 상태 관리 및 업데이트
@@ -14,10 +14,6 @@ export class UIController {
         },
         CLASSES: {
             STATUS_TEXT: 'status-text'
-        },
-        DIRECTION: {
-            FORWARD: 1,
-            REVERSE: -1
         }
     };
 
@@ -79,17 +75,16 @@ export class UIController {
 
         switch (state) {
             case State.IDLE:
-                this._enableButtons(['liveBtn', 'recordBtn']);
+                this._enableButtons(['liveBtn', 'playbackBtn']);
                 if (hasFrames) {
-                    this._enableButtons(['playbackBtn']);
                     this._enablePlaybackButtons();
                 }
                 break;
 
             case State.LIVE:
-                this._enableButtons(['liveBtn', 'recordBtn']);
+                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn']);
                 if (hasFrames) {
-                    this._enableButtons(['playbackBtn']);
+                    this._enablePlaybackButtons();
                 }
                 this._addActiveClass('liveBtn');
                 break;
@@ -100,7 +95,7 @@ export class UIController {
                 break;
 
             case State.PLAYBACK:
-                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn']);
+                this._enableButtons(['liveBtn', 'playbackBtn']);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
                 break;
@@ -112,7 +107,7 @@ export class UIController {
         if (state !== State.PLAYBACK) return;
 
         if (playing) {
-            const activeButton = direction === UIController.#CONSTANTS.DIRECTION.FORWARD
+            const activeButton = direction === Direction.FORWARD
                 ? 'playBtn'
                 : 'reverseBtn';
             this._addActiveClass(activeButton);
