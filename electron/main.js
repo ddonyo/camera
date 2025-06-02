@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fsp = require('fs').promises;
-const watcher = require('./public/js/frame-watcher');
+const watcher = require('../frontend/public/src/frame-watcher');
 
 // 상수 정의
 const WINDOW_CONFIG = {
@@ -10,10 +10,10 @@ const WINDOW_CONFIG = {
 };
 
 const PATHS = {
-    LIVE_DIR: './public/live',
-    RECORD_DIR: './public/record',
-    PRELOAD: 'public/js/preload.js',
-    INDEX: 'public/index.html'
+    LIVE_DIR: path.join(__dirname, '../frontend/public/live'),
+    RECORD_DIR: path.join(__dirname, '../frontend/public/record'),
+    PRELOAD: path.join(__dirname, '../frontend/public/src/preload.js'),
+    INDEX: path.join(__dirname, '../frontend/public/index.html')
 };
 
 // 프레임 관리 클래스
@@ -174,7 +174,7 @@ function createWindow() {
         webPreferences: {
             contextIsolation: true,
             enableRemoteModule: false,
-            preload: path.join(__dirname, PATHS.PRELOAD),
+            preload: PATHS.PRELOAD,
             webSecurity: false
         }
     });
@@ -189,7 +189,7 @@ function createWindow() {
     });
 
     win.setMenuBarVisibility(false);
-    win.loadFile(path.join(__dirname, PATHS.INDEX));
+    win.loadFile(PATHS.INDEX);
 
     // 개발 모드일 때 개발자 도구 열기
     if (process.env.NODE_ENV === 'development') {

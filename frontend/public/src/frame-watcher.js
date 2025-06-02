@@ -23,7 +23,7 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
     },
 
     // 기본 디렉토리
-    DEFAULT_LIVE_DIR: './public/live',
+    DEFAULT_LIVE_DIR: '../frontend/public/live',
 
     // 재시도 설정
     RETRY: {
@@ -36,8 +36,8 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
 function convertToWebPath(filePath) {
     return filePath
         .replace(/\\/g, '/') // Windows 경로를 웹 경로로 변환
-        .replace(/^\.\/public\//, './') // ./public/ 제거
-        .replace(/^public\//, './') // public/ 제거
+        .replace(/^\.\/frontend\/public\//, './') // ./frontend/public/ 제거
+        .replace(/^frontend\/public\//, './') // frontend/public/ 제거
         .replace(/^(?!\.\/)/, './'); // ./로 시작하지 않으면 추가
 }
 
