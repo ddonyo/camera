@@ -1,9 +1,9 @@
 import { Config, MessageType, State, Direction } from './config.js';
 import { DOMUtils, MathUtils, CanvasUtils } from './utils.js';
 
-// UI 상태 관리 및 업데이트
+// UI 상태 관리 및 업데이트 클래스
 export class UIController {
-    // 상수 정의
+    // 내부 상수
     static #CONSTANTS = {
         TAGS: {
             BUTTON: 'BUTTON'
@@ -18,27 +18,29 @@ export class UIController {
     };
 
     constructor() {
-        this.elements = DOMUtils.getAllElementsWithId();
-        this.currentMessage = '';
-        this.messageType = '';
-        this.messageTimeout = null;
+        this.elements = DOMUtils.getAllElementsWithId(); // DOM 요소 맵
+        this.currentMessage = ''; // 현재 메시지
+        this.messageType = ''; // 메시지 유형
+        this.messageTimeout = null; // 메시지 타임아웃 ID
 
-        // FPS 라벨 요소 캐싱 (성능 최적화)
+        // FPS 관련 요소 캐싱
         this._fpsLabel = this.elements.fpsInput?.closest(UIController.#CONSTANTS.SELECTORS.LABEL);
         this._fpsSpan = this._fpsLabel?.querySelector(UIController.#CONSTANTS.SELECTORS.SPAN);
     }
 
+    // 현재 설정된 FPS 값 반환 (검증 후)
     getFPS() {
         return MathUtils.validateFPS(this.elements.fpsInput.value);
     }
 
+    // FPS 값 설정 및 UI 업데이트 (검증 후)
     setFPS(fps) {
         const validatedFPS = MathUtils.validateFPS(fps);
         this.elements.fpsInput.value = validatedFPS;
         return validatedFPS;
     }
 
-    // 상태에 따른 버튼 활성화/비활성화
+    // 애플리케이션 상태에 따른 UI 적용 (버튼, 프로그레스 바 등)
     applyState(state, playing = false, direction = 1, repeatMode = false, hasFrames = false) {
         this._disableAllButtons();
         this._applyStateSpecificButtons(state, hasFrames);
@@ -69,7 +71,7 @@ export class UIController {
         this._toggleFPSElements(false);
     }
 
-    // 상태별 버튼 활성화 (switch문으로 개선)
+    // 특정 상태에 따른 버튼 활성화/비활성화 및 활성 클래스 적용
     _applyStateSpecificButtons(state, hasFrames) {
         const { elements } = this;
 
@@ -102,7 +104,7 @@ export class UIController {
         }
     }
 
-    // 재생 상태에 따른 활성 클래스 적용
+    // 재생 상태(재생 중, 방향)에 따른 활성 클래스 적용
     _applyPlaybackActiveStates(state, playing, direction) {
         if (state !== State.PLAYBACK) return;
 
@@ -116,14 +118,14 @@ export class UIController {
         }
     }
 
-    // 반복 모드 적용
+    // 반복 모드 활성화 시 repeatBtn에 활성 클래스 적용
     _applyRepeatMode(repeatMode) {
         if (repeatMode && !this.elements.repeatBtn?.disabled) {
             this._addActiveClass('repeatBtn');
         }
     }
 
-    // 프로그레스 바 상태 적용
+    // 프로그레스 바 활성화/비활성화 상태 적용
     _applyProgressBarState(state, hasFrames) {
         const progressBar = this.elements.progressBar;
         if (!progressBar) return;
@@ -132,6 +134,7 @@ export class UIController {
         this._toggleElementClasses(progressBar, Config.CLASSES.ENABLED, Config.CLASSES.DISABLED, shouldEnable);
     }
 
+    // 프로그레스 바 진행률 업데이트 (애니메이션 타입 지정 가능)
     updateProgress(percentage, animationType = 'smooth') {
         if (!this.elements.progress) return;
 
@@ -158,7 +161,7 @@ export class UIController {
         this.elements.progress.style.width = `${percentage}%`;
     }
 
-    // 상태 정보 업데이트 (템플릿 리터럴 사용)
+    // 상태 정보(경로, 파일명, 프레임 번호) UI 업데이트
     updateStatus(statusInfo) {
         const pathText = this._getPathText(statusInfo);
         const nameText = statusInfo.name ? `File Name: ${statusInfo.name}` : 'File Name: ';
@@ -170,7 +173,7 @@ export class UIController {
         }
     }
 
-    // 상태 텍스트 색상 적용 (수정된 로직)
+    // 상태 텍스트 색상 적용 (메시지 유형 기반)
     _applyStatusTextColor() {
         const statusText = this.elements.statusText;
         if (!statusText) return;
@@ -190,7 +193,7 @@ export class UIController {
         statusText.classList.add(classToAdd);
     }
 
-    // 메시지 설정
+    // 메시지 설정 및 표시 (일시적 또는 영구적)
     setMessage(message, type = MessageType.INFO, isTemporary = true) {
         this._clearMessageTimeout();
         this.currentMessage = message;
@@ -203,13 +206,14 @@ export class UIController {
         }
     }
 
+    // 현재 표시된 메시지 제거
     clearMessage() {
         this._clearMessageTimeout();
         this.currentMessage = '';
         this.messageType = '';
     }
 
-    // 프로그레스 바 클릭 위치 계산
+    // 프로그레스 바 클릭 위치(비율) 계산
     getProgressBarClickPosition(event) {
         if (!this.elements.progressBar) return 0;
 
@@ -218,21 +222,21 @@ export class UIController {
         return Math.max(0, Math.min(1, percentage));
     }
 
+    // 뷰어 캔버스 클리어
     clearCanvas() {
         if (this.elements.viewer) {
             CanvasUtils.clearCanvas(this.elements.viewer);
         }
     }
 
+    // UIController 인스턴스 소멸 시 정리 (메시지 타임아웃 제거)
     destroy() {
         this._clearMessageTimeout();
         this.clearCanvas();
         console.log('UIController destroyed');
     }
 
-    // === 헬퍼 메서드들 ===
-
-    // 모든 버튼 토글
+    // 모든 버튼 토글 (활성화/비활성화)
     _toggleAllButtons(disable) {
         Object.values(this.elements)
             .filter(el => el?.tagName === UIController.#CONSTANTS.TAGS.BUTTON)
@@ -244,7 +248,7 @@ export class UIController {
             });
     }
 
-    // FPS 관련 요소들 토글 (중복 제거)
+    // FPS 관련 요소(input, label) 토글 (활성화/비활성화)
     _toggleFPSElements(disable) {
         const { fpsInput } = this.elements;
         if (!fpsInput) return;
@@ -257,7 +261,7 @@ export class UIController {
         }
     }
 
-    // 여러 버튼 활성화
+    // 지정된 버튼들 활성화
     _enableButtons(buttonKeys) {
         buttonKeys.forEach(key => {
             if (this.elements[key]) {
@@ -266,14 +270,14 @@ export class UIController {
         });
     }
 
-    // 활성 클래스 추가
+    // 지정된 요소에 활성 클래스(active) 추가
     _addActiveClass(elementKey) {
         if (this.elements[elementKey]) {
             this.elements[elementKey].classList.add(Config.CLASSES.ACTIVE);
         }
     }
 
-    // 요소 클래스 토글 유틸리티
+    // 조건에 따라 요소의 클래스 토글
     _toggleElementClasses(element, addClassName, removeClassName, condition) {
         if (!element) return;
 
@@ -286,7 +290,7 @@ export class UIController {
         }
     }
 
-    // 경로 텍스트 생성
+    // 상태 정보로부터 경로 텍스트 생성
     _getPathText(statusInfo) {
         if (this.currentMessage) {
             return `File Path: [${this.messageType.toUpperCase()}] ${this.currentMessage}`;
@@ -294,7 +298,7 @@ export class UIController {
         return statusInfo.path ? `File Path: ${statusInfo.path}` : 'File Path: ';
     }
 
-    // 메시지 타임아웃 정리
+    // 메시지 타임아웃 클리어
     _clearMessageTimeout() {
         if (this.messageTimeout) {
             clearTimeout(this.messageTimeout);

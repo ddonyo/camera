@@ -1,47 +1,50 @@
 import { Config, State, ErrorMessages, InfoMessages } from './config.js';
 import { ImageLoader, CanvasUtils } from './utils.js';
 
-// 프레임 로딩 및 관리
+// 프레임 데이터 로딩, 관리 및 탐색 클래스
 export class FrameManager {
     constructor() {
-        this.frames = [];
-        this.#currentIndex = 0;
+        this.frames = []; // 로드된 프레임 배열
+        this.#currentIndex = 0; // 현재 프레임 인덱스
     }
 
-    // private 필드 선언
+    // Private 필드
     #currentIndex;
 
-    // getter로 currentIndex 접근 제공 (읽기 전용)
+    // 현재 인덱스 getter (읽기 전용)
     get currentIndex() {
         return this.#currentIndex;
     }
 
+    // 프레임 데이터 및 인덱스 초기화
     clear() {
         this.frames = [];
         this.#currentIndex = 0;
     }
 
+    // 현재 프레임 객체 반환
     getCurrentFrame() {
         return this.frames[this.#currentIndex] || null;
     }
 
+    // 총 프레임 수 반환
     getFrameCount() {
         return this.frames.length;
     }
 
-    // 인덱스 설정 (경계 검사 포함)
+    // 현재 인덱스 설정 (경계 값 자동 조정)
     setCurrentIndex(index) {
         this.#currentIndex = this.#clampIndex(index);
         return this.#currentIndex;
     }
 
-    // 인덱스 경계 처리 (private 메서드)
+    // 인덱스를 유효 범위 내로 제한 (private)
     #clampIndex(index) {
         if (this.frames.length === 0) return 0;
         return Math.max(0, Math.min(index, this.frames.length - 1));
     }
 
-    // 순환 인덱스 처리 (private 메서드)
+    // 인덱스를 유효 범위 내로 조정 (순환 옵션 포함, private)
     #wrapIndex(index, circular = false) {
         if (this.frames.length === 0) return 0;
 
@@ -54,7 +57,7 @@ export class FrameManager {
         return this.#clampIndex(index);
     }
 
-    // 녹화 프레임 로드
+    // 단일 녹화 프레임 로드
     async loadRecordFrame(index) {
         try {
             const frameInfo = ImageLoader.createFrameInfo(index, Config.PATHS.RECORD_FRAME);
@@ -66,7 +69,7 @@ export class FrameManager {
         }
     }
 
-    // 모든 녹화 프레임 로드
+    // 모든 녹화 프레임 로드 (진행 콜백 지원)
     async loadAllRecordFrames(onProgress = null) {
         this.clear();
         let frameIndex = 0;
@@ -103,7 +106,7 @@ export class FrameManager {
         return this.frames.length;
     }
 
-    // 통합된 재생 인덱스 업데이트
+    // 프레임 탐색 (방향, 순환, 스텝 크기 지정)
     navigate(direction, options = {}) {
         const { circular = false, step = 1 } = options;
 
@@ -127,7 +130,7 @@ export class FrameManager {
         };
     }
 
-    // 특정 위치로 시크
+    // 특정 위치(비율)로 프레임 이동 (탐색)
     seekToPosition(percentage) {
         if (this.frames.length === 0) return 0;
 
@@ -136,22 +139,22 @@ export class FrameManager {
         return this.setCurrentIndex(targetIndex);
     }
 
-    // 처음으로 이동
+    // 첫 프레임으로 이동
     rewind() {
         return this.setCurrentIndex(0);
     }
 
-    // 마지막으로 이동
+    // 마지막 프레임으로 이동
     fastForward() {
         return this.setCurrentIndex(this.frames.length - 1);
     }
 
-    // 스텝 이동 (하위 호환성)
+    // 단일 프레임 이동 (호환성 유지용)
     stepFrame(direction, circular = true) {
         return this.navigate(direction, { circular });
     }
 
-    // 재생 인덱스 업데이트 (하위 호환성)
+    // 재생 인덱스 업데이트 (호환성 유지용)
     updatePlaybackIndex(direction, repeatMode = false) {
         const result = this.navigate(direction, { circular: repeatMode });
         return {
@@ -160,7 +163,7 @@ export class FrameManager {
         };
     }
 
-    // 캔버스에 현재 프레임 그리기
+    // 현재 프레임을 캔버스에 그리기
     async drawCurrentFrame(canvas) {
         const frame = this.getCurrentFrame();
         if (!frame) return false;
@@ -175,13 +178,13 @@ export class FrameManager {
         }
     }
 
-    // 진행률 계산
+    // 현재 진행률(%) 계산
     getProgress() {
         if (this.frames.length <= 1) return 0;
         return (this.#currentIndex / (this.frames.length - 1)) * 100;
     }
 
-    // 현재 프레임 정보
+    // 현재 프레임 상세 정보 반환
     getCurrentFrameInfo() {
         const frame = this.getCurrentFrame();
         if (!frame) return null;
@@ -194,7 +197,7 @@ export class FrameManager {
         };
     }
 
-    // 상태 정보 반환 (UI용)
+    // UI 표시용 상태 정보 반환
     getStatusInfo() {
         const frame = this.getCurrentFrame();
         return {
@@ -204,17 +207,17 @@ export class FrameManager {
         };
     }
 
-    // 유효성 검사
+    // 유효한 인덱스 여부 확인
     isValidIndex(index) {
         return Number.isInteger(index) && index >= 0 && index < this.frames.length;
     }
 
-    // 프레임 존재 여부 확인
+    // 로드된 프레임 존재 여부 확인
     hasFrames() {
         return this.frames.length > 0;
     }
 
-    // 현재 상태 요약
+    // (사용되지 않음, 필요시 구현) 현재 FrameManager 상태 반환
     getState() {
         return {
             frameCount: this.frames.length,

@@ -1,31 +1,34 @@
+// Electron 애플리케이션 메인 프로세스
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fsp = require('fs').promises;
 const watcher = require('../backend/src/frame-watcher');
 
-// 상수 정의
+// 윈도우 설정
 const WINDOW_CONFIG = {
     width: 1024,
     height: 920
 };
 
+// 경로 설정
 const PATHS = {
-    LIVE_DIR: path.join(__dirname, '../frontend/public/live'),
-    RECORD_DIR: path.join(__dirname, '../frontend/public/record'),
-    PRELOAD: path.join(__dirname, '../backend/src/preload.js'),
-    INDEX: path.join(__dirname, '../frontend/public/index.html')
+    LIVE_DIR: path.join(__dirname, '../frontend/public/live'), // 라이브 프레임 저장 경로
+    RECORD_DIR: path.join(__dirname, '../frontend/public/record'), // 녹화 프레임 저장 경로
+    PRELOAD: path.join(__dirname, '../backend/src/preload.js'), // Preload 스크립트
+    INDEX: path.join(__dirname, '../frontend/public/index.html') // 메인 HTML
 };
 
-// 프레임 관리 클래스
+// 프레임 처리 및 관리 클래스
 class FrameHandler {
     constructor() {
-        this.watcher = null;
-        this.recordState = {
-            isRecording: false,
-            frameCounter: 0
-        };
+        this.watcher = null; // 프레임 감지기
+        this.isStreaming = false; // 스트리밍 상태
+        this.isRecording = false; // 녹화 상태
+        this.frameCounter = 0; // 녹화 프레임 카운터
+        this.currentWindow = null; // 현재 창
     }
 
+    // 디렉토리 내 프레임 파일 정리
     async clearDirectory(dirPath, dirName) {
         try {
             const files = await fsp.readdir(dirPath).catch(async (error) => {
@@ -54,87 +57,125 @@ class FrameHandler {
         }
     }
 
-    async copyFrameToRecord(sourcePath) {
-        if (!this.recordState.isRecording) return;
+    // 스트리밍 시작
+    async startStreaming(win) {
+        if (this.isStreaming) {
+            console.log('Streaming already active');
+            return;
+        }
 
-        const fileName = `frame${this.recordState.frameCounter}.jpg`;
+        console.log('Starting streaming mode...');
+        this.currentWindow = win;
+
+        try {
+            // Live 디렉토리 초기화
+            await this.clearDirectory(PATHS.LIVE_DIR, 'Live');
+
+            // Frame Watcher 시작 (최초에만)
+            if (!this.watcher) {
+                this.watcher = await watcher.start(async (type, data, frameNumber) => {
+                    console.log(`Streaming mode - Send frame: ${frameNumber}`);
+
+                    if (type === 'frame-data') {
+                        // 바이너리 데이터 직접 전송
+                        win.webContents.send('frame-data', data);
+                    } else {
+                        // fallback: path 방식
+                        win.webContents.send('frame-path', data);
+                    }
+
+                    // Recording이 활성화되어 있으면 파일 저장
+                    if (this.isRecording && type === 'frame-data') {
+                        await this.saveFrameToRecord(data);
+                    }
+                }, {
+                    liveDir: PATHS.LIVE_DIR,
+                    dataType: 'bin'  // 바이너리 데이터 모드 사용
+                });
+            }
+
+            this.isStreaming = true;
+            console.log('Streaming mode started successfully');
+        } catch (error) {
+            console.error('Error starting streaming mode:', error);
+            await this.stopStreaming();
+            throw error;
+        }
+    }
+
+    // 녹화 활성화 (스트리밍 중)
+    async enableRecording() {
+        if (!this.isStreaming) {
+            throw new Error('Cannot enable recording: streaming not active');
+        }
+
+        if (this.isRecording) {
+            console.log('Recording already enabled');
+            return;
+        }
+
+        console.log('Enabling recording...');
+
+        try {
+            // Record 디렉토리 초기화
+            await this.clearDirectory(PATHS.RECORD_DIR, 'Record');
+
+            this.isRecording = true;
+            this.frameCounter = 0;
+
+            console.log('Recording enabled successfully');
+        } catch (error) {
+            console.error('Error enabling recording:', error);
+            this.isRecording = false;
+            throw error;
+        }
+    }
+
+    // 녹화 비활성화
+    async disableRecording() {
+        if (!this.isRecording) {
+            console.log('Recording already disabled');
+            return;
+        }
+
+        console.log('Disabling recording...');
+        const totalFrames = this.frameCounter;
+        this.isRecording = false;
+        console.log(`Recording disabled. Total frames recorded: ${totalFrames}`);
+        return totalFrames;
+    }
+
+    // 프레임 데이터 저장 (녹화 중)
+    async saveFrameToRecord(data) {
+        if (!this.isRecording) return;
+
+        const fileName = `frame${this.frameCounter}.jpg`;
         const destPath = path.join(PATHS.RECORD_DIR, fileName);
 
         try {
-            await fsp.copyFile(sourcePath, destPath);
-            this.recordState.frameCounter++;
-            console.log(`Copied frame ${this.recordState.frameCounter - 1} to record directory`);
+            await fsp.writeFile(destPath, data);
+            this.frameCounter++;
+            console.log(`Saved frame ${this.frameCounter - 1} to record directory`);
         } catch (error) {
-            console.error('Error copying frame:', error);
+            console.error('Error saving frame:', error);
             throw error;
         }
     }
 
-    async startMode(mode, win) {
-        console.log(`Starting ${mode} mode...`);
+    // 스트리밍 중지
+    async stopStreaming() {
+        console.log('Stopping streaming mode...');
 
-        // 기존 watcher 정리 (await 추가)
-        await this.cleanup();
-
-        try {
-            // 모드별 초기화
-            if (mode === 'record') {
-                this.recordState = { isRecording: true, frameCounter: 0 };
-                await this.clearDirectory(PATHS.RECORD_DIR, 'Record');
-            } else {
-                await this.clearDirectory(PATHS.LIVE_DIR, 'Live');
-            }
-
-            // 프레임 감시 시작 - frame-data 모드 사용
-            this.watcher = await watcher.start(async (type, data, frameNumber) => {
-                console.log(`${mode} mode - Send frame: ${frameNumber}`);
-
-                if (type === 'frame-data') {
-                    // 바이너리 데이터 직접 전송
-                    win.webContents.send('frame-data', data);
-                } else {
-                    // fallback: path 방식
-                    win.webContents.send('frame-path', data);
-                }
-
-                // Record 모드일 때만 파일 저장 (바이너리 데이터로 저장)
-                if (mode === 'record' && this.recordState.isRecording && type === 'frame-data') {
-                    const fileName = `frame${this.recordState.frameCounter}.jpg`;
-                    const destPath = path.join(PATHS.RECORD_DIR, fileName);
-
-                    try {
-                        await fsp.writeFile(destPath, data);
-                        this.recordState.frameCounter++;
-                        console.log(`Saved frame ${this.recordState.frameCounter - 1} to record directory`);
-                    } catch (error) {
-                        console.error('Error saving frame:', error);
-                    }
-                }
-            }, {
-                liveDir: PATHS.LIVE_DIR,
-                dataType: 'bin'  // 바이너리 데이터 모드 사용
-            });
-
-            console.log(`${mode} mode started successfully`);
-        } catch (error) {
-            console.error(`Error starting ${mode} mode:`, error);
-            await this.cleanup();
-            throw error;
-        }
-    }
-
-    async stopMode(mode) {
-        console.log(`Stopping ${mode} mode...`);
-
-        if (mode === 'record') {
-            const totalFrames = this.recordState.frameCounter;
-            this.recordState.isRecording = false;
-            console.log(`Record stopped. Total frames recorded: ${totalFrames}`);
+        // Recording이 활성화되어 있으면 먼저 비활성화
+        if (this.isRecording) {
+            await this.disableRecording();
         }
 
+        this.isStreaming = false;
         await this.cleanup();
     }
 
+    // 리소스 정리 (Watcher 중지 등)
     async cleanup() {
         if (this.watcher) {
             console.log('[FrameHandler] Cleaning up watcher...');
@@ -142,19 +183,29 @@ class FrameHandler {
             this.watcher = null;
             console.log('[FrameHandler] Watcher cleanup completed');
         }
+        this.currentWindow = null;
+    }
+
+    // 현재 상태 반환
+    getStatus() {
+        return {
+            isStreaming: this.isStreaming,
+            isRecording: this.isRecording,
+            frameCounter: this.frameCounter
+        };
     }
 }
 
-// 전역 프레임 핸들러 인스턴스
+// 전역 FrameHandler 인스턴스
 const frameHandler = new FrameHandler();
 
-// IPC 이벤트 핸들러 설정
+// IPC 이벤트 핸들러
 function setupIpcHandlers(win) {
     const handlers = {
-        'start-live': () => frameHandler.startMode('live', win),
-        'stop-live': () => frameHandler.stopMode('live'),
-        'start-record': () => frameHandler.startMode('record', win),
-        'stop-record': () => frameHandler.stopMode('record'),
+        'start-live': () => frameHandler.startStreaming(win),
+        'stop-live': () => frameHandler.stopStreaming(),
+        'start-record': () => frameHandler.enableRecording(),
+        'stop-record': () => frameHandler.disableRecording(),
         'log-message': (event, message) => console.log('APP: ' + message)
     };
 
@@ -163,7 +214,7 @@ function setupIpcHandlers(win) {
     });
 }
 
-// 윈도우 생성
+// 메인 창 생성 및 설정
 function createWindow() {
     const win = new BrowserWindow({
         width: WINDOW_CONFIG.width,
@@ -200,16 +251,16 @@ function createWindow() {
     return win;
 }
 
-// 앱 정리 함수
+// 앱 종료 시 리소스 정리
 function cleanupApp() {
     console.log('Cleaning up application...');
-    frameHandler.stopMode('live');
-    frameHandler.stopMode('record');
+    frameHandler.stopStreaming();
 }
 
-// 앱 시작
+// 앱 준비 완료 시 창 생성
 app.whenReady().then(createWindow);
 
+// 모든 창 종료 시 앱 종료 (macOS 예외)
 app.on('window-all-closed', () => {
     cleanupApp();
     if (process.platform !== 'darwin') {
@@ -217,7 +268,7 @@ app.on('window-all-closed', () => {
     }
 });
 
-// 예상치 못한 종료 시 정리
+// 예기치 않은 종료 시 정리 (SIGINT, SIGTERM)
 process.on('SIGINT', () => {
     cleanupApp();
     process.exit(0);

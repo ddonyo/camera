@@ -70,9 +70,6 @@ npm start
 npm run start:win
 ```
 
-### **개발자 참고사항**
-현재 버전에서는 웹 서버 기능이 제거되었습니다. Electron 애플리케이션으로만 실행 가능합니다.
-
 ## 🏗️ **System Architecture**
 
 ```mermaid
@@ -294,28 +291,29 @@ flowchart LR
 ### **1. IDLE (정지 상태)**
 - 초기 상태
 - 아무 작업도 수행하지 않음
-- 모든 컨트롤 활성화
+- Live 모드 시작 가능 (Record는 Live에서만 가능)
+- 녹화된 영상이 있을 경우, Playback 모드 시작 가능
 
 ### **2. LIVE (라이브 모드)**
 - 실시간 스트림 표시
 - 상세 동작 프로세스:
-  1. `FrameHandler.startMode('live')` 호출
+  1. `FrameHandler.startStreaming()` 호출
   2. `frontend/public/live/` 디렉토리 초기화
-  3. `FrameWatcher`가 프레임 파일 감시 시작
-  4. IPC를 통해 프레임 경로 전달
+  3. `FrameWatcher` 시작 (최초에만)
+  4. IPC를 통해 프레임 데이터 전달
   5. Canvas에 실시간 렌더링
 
 ### **3. RECORD (녹화 모드)**
-- 라이브 스트림을 개별 프레임으로 저장
-- 상세 동작 프로세스:
-  1. `FrameHandler.startMode('record')` 호출
-  2. `frontend/public/record/` 디렉토리 초기화
-  3. 프레임 카운터 리셋
-  4. `FrameWatcher`가 감지한 프레임을 순차적으로 복사 저장
-  5. Canvas에 실시간 렌더링
+- **Live 모드에서 진입**: Live 모드에서 스트리밍 중단 없이 녹화 시작
+- **Frame Watcher 재사용**: 기존 스트리밍 인프라를 그대로 활용
+- 녹화 중 실시간 프리뷰 (Live 모드와 동일)
+- 녹화 완료 시 자동으로 재생 모드 전환
+- **바이너리 데이터로 직접 저장**: 성능 향상 및 메모리 효율성 개선
+- **단방향 워크플로우**: Live → Record → Playback 순서로 진행
 
 ### **4. PLAYBACK (재생 모드)**
 - 녹화된 프레임 시퀀스 재생
+- Record 모드 종료 시 자동 전환
 - 상세 동작 프로세스:
   1. `FrameManager.loadAllRecordFrames()` 호출
   2. 연속 실패 5회까지 프레임 로딩 시도
@@ -330,41 +328,52 @@ flowchart LR
     A[IDLE] --> B[LIVE]
     B --> C[RECORD]
     B --> A
-    C --> E[PLAYBACK]
-    E --> C
-    E --> B
+    C --> D[PLAYBACK]
+    D --> A
+    A --> D
 
     style A fill:#444,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    style B fill:#28a745,stroke:#1e7e34,stroke-width:2px
+    style C fill:#dc3545,stroke:#bd2130,stroke-width:2px
+    style D fill:#007bff,stroke:#0056b3,stroke-width:2px
 ```
 
 ### **State Transition Trigger**
 
 1. **IDLE → LIVE**
    - Live 버튼 클릭
+   - Frame Watcher 시작
 
-2. **LIVE → IDLE**
-   - Live 버튼 재클릭
-
-3. **LIVE → RECORD**
+2. **LIVE → RECORD**
    - Live 모드에서 Record 버튼 클릭
-   - 라이브 스트림 확인 후 녹화 시작
+   - **Frame Watcher 유지**, 녹화 기능만 활성화
+   - 스트리밍 중단 없음
+
+3. **LIVE → IDLE**
+   - Live 모드에서 Live 버튼 재클릭
+   - Frame Watcher 완전 중지
 
 4. **RECORD → PLAYBACK**
-   - Record 버튼 재클릭 (수동 중지)
-   - 프레임 복사 완료 후 자동 전환
+   - Record 모드에서 Record 버튼 재클릭
+   - 녹화 중지 후 자동으로 재생 모드 전환
+   - Frame Watcher 완전 중지
 
-5. **PLAYBACK → LIVE**
-   - Live 버튼 클릭
+5. **IDLE → PLAYBACK**
+   - IDLE 상태에서 Playback 버튼 클릭 또는 Play/Reverse 버튼 클릭 (녹화된 프레임이 있는 경우)
+
+6. **PLAYBACK → IDLE**
+   - Playback 모드에서 Playback 버튼 재클릭
 
 ## 🔑 **Key Components**
 
 ### **FrameHandler**
-- 프레임 관련 모든 작업 통합 관리
+- **통합된 스트리밍 관리**: Live와 Record 모드를 하나의 스트리밍으로 관리
+- **Frame Watcher 재사용**: 한 번 시작된 watcher를 Live ↔ Record 전환 시 유지
+- **무중단 녹화 전환**: 스트리밍 중단 없이 녹화 기능 활성화/비활성화
+- **상태 기반 처리**: `isStreaming`, `isRecording` 플래그로 동작 제어
 - 디렉토리 관리 및 초기화
-- 프레임 복사 및 저장
-- Watcher 생명주기 관리
-- 에러 처리 및 정리
 - 바이너리 데이터 직접 저장 지원
+- 에러 처리 및 정리
 
 ### **MJPEGViewer**
 - Main Controller Class
@@ -431,11 +440,12 @@ flowchart LR
 - 자동 fallback 지원 (바이너리 처리 실패 시 기존 path 방식으로 전환)
 
 ### **Record Mode**
-- 라이브 스트림을 개별 프레임으로 저장
-- 녹화 중 실시간 프리뷰
+- **Live 모드에서 진입**: Live 모드에서 스트리밍 중단 없이 녹화 시작
+- **Frame Watcher 재사용**: 기존 스트리밍 인프라를 그대로 활용
+- 녹화 중 실시간 프리뷰 (Live 모드와 동일)
 - 녹화 완료 시 자동으로 재생 모드 전환
 - **바이너리 데이터로 직접 저장**: 성능 향상 및 메모리 효율성 개선
-- **UI 제한**: IDLE 상태에서는 Record 버튼이 비활성화되어 Live 모드를 먼저 시작해야 함
+- **단방향 워크플로우**: Live → Record → Playback 순서로 진행
 
 ### **Playback Mode**
 - 정방향/역방향 재생

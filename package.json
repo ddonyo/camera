@@ -4,10 +4,7 @@
     "main": "electron/main.js",
     "scripts": {
         "start": "XDG_RUNTIME_DIR=/tmp/weston WAYLAND_DISPLAY=wayland-0 electron . --no-sandbox --ozone-platform=wayland",
-        "start:win": "electron .",
-        "dev": "node server.js",
-        "prod": "cross-env NODE_ENV=production node server.js",
-        "server": "node server.js"
+        "start:win": "electron ."
     },
     "author": "LGE SoC Media BSP Task",
     "description": "MJPEG Viewer",

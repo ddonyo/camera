@@ -1,18 +1,18 @@
-// Preload script for Electron renderer process
+// Electron 렌더러 프로세스용 Preload 스크립트
 const { contextBridge, ipcRenderer } = require('electron');
 
-// 설정
+// Preload 스크립트 설정
 const CONFIG = Object.freeze({
-    USE_SOCKET_IO: false,
-    SOCKET_URL: 'http://localhost:3000',
-    VALID_CHANNELS: ['frame-path', 'frame-data'],
-    LOG_PREFIX: '[Preload]'
+    USE_SOCKET_IO: false, // Socket.IO 사용 여부
+    SOCKET_URL: 'http://localhost:3000', // Socket.IO 서버 URL
+    VALID_CHANNELS: ['frame-path', 'frame-data'], // 유효한 IPC/Socket 채널 목록
+    LOG_PREFIX: '[Preload]' // 로그 접두사
 });
 
-// Socket.IO 연결 (지연 로딩)
+// Socket.IO 인스턴스 (지연 초기화)
 let socket = null;
 
-// Socket.IO 초기화 (필요할 때만)
+// Socket.IO 초기화 함수
 function initializeSocket() {
     if (!CONFIG.USE_SOCKET_IO) {
         return null;
@@ -45,12 +45,12 @@ function initializeSocket() {
     }
 }
 
-// 채널명 유효성 검사
+// 채널 유효성 검사 함수
 function isValidChannel(channel) {
     return typeof channel === 'string' && CONFIG.VALID_CHANNELS.includes(channel);
 }
 
-// 로그 메시지 전송
+// 메인 프로세스로 로그 메시지 전송
 function logMessage(message) {
     try {
         ipcRenderer.send('log-message', message);
@@ -59,7 +59,7 @@ function logMessage(message) {
     }
 }
 
-// 이벤트 리스너 등록
+// 이벤트 리스너 등록 (IPC 또는 Socket.IO)
 function registerListener(channel, callback) {
     if (!isValidChannel(channel)) {
         console.error(`${CONFIG.LOG_PREFIX} Invalid channel: ${channel}`);
@@ -88,7 +88,7 @@ function registerListener(channel, callback) {
     }
 }
 
-// 이벤트 전송
+// 이벤트 발생 (IPC 또는 Socket.IO)
 function emitEvent(event, data) {
     if (!event || typeof event !== 'string') {
         console.error(`${CONFIG.LOG_PREFIX} Event name must be a valid string`);
@@ -112,15 +112,13 @@ function emitEvent(event, data) {
     }
 }
 
-// 렌더러 프로세스에 안전한 API 노출
+// `electronAPI`를 렌더러 프로세스의 `window` 객체에 노출
 contextBridge.exposeInMainWorld('electronAPI', {
-    log: logMessage,
-    on: registerListener,
-    emit: emitEvent,
-
-    // 유틸리티 메서드
-    isSocketIOEnabled: () => CONFIG.USE_SOCKET_IO,
-    getValidChannels: () => [...CONFIG.VALID_CHANNELS] // 복사본 반환
+    log: logMessage, // 로그 함수
+    on: registerListener, // 이벤트 수신 함수
+    emit: emitEvent, // 이벤트 송신 함수
+    isSocketIOEnabled: () => CONFIG.USE_SOCKET_IO, // Socket.IO 활성화 상태 확인
+    getValidChannels: () => [...CONFIG.VALID_CHANNELS] // 유효 채널 목록 반환 (복사본)
 });
 
 console.log(`${CONFIG.LOG_PREFIX} Electron API exposed to renderer process`);

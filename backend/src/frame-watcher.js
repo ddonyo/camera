@@ -2,16 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 
-// 현재 활성화된 watcher 추적을 위한 변수
+// 활성 watcher Set
 let activeWatchers = new Set();
 
-// 프레임 감시 설정
+// 프레임 감시 설정 객체
 const FRAME_WATCHER_CONFIG = Object.freeze({
-    // 감시할 프레임 패턴 (frame0.jpg ~ frame3.jpg)
-    FRAME_PATTERN: /^frame[0-3]\.jpg$/i,
-
-    // chokidar 옵션
-    WATCH_OPTIONS: {
+    FRAME_PATTERN: /^frame[0-3]\.jpg$/i, // 감시 대상 프레임 파일명 패턴
+    WATCH_OPTIONS: { // Chokidar 감시 옵션
         persistent: true,
         ignoreInitial: true,
         usePolling: true,
@@ -21,12 +18,8 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
             pollInterval: 50
         }
     },
-
-    // 기본 디렉토리
-    DEFAULT_LIVE_DIR: '../../frontend/public/live',
-
-    // 재시도 설정
-    RETRY: {
+    DEFAULT_LIVE_DIR: '../../frontend/public/live', // 기본 감시 디렉토리
+    RETRY: { // 오류 시 재시도 설정
         MAX_ATTEMPTS: 3,
         DELAY_MS: 1000
     }
