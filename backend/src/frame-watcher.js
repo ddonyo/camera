@@ -11,12 +11,12 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
     WATCH_OPTIONS: { // Chokidar 감시 옵션
         persistent: true,
         ignoreInitial: true,
-        usePolling: true,
-        interval: 50,
-        awaitWriteFinish: {
-            stabilityThreshold: 50,
-            pollInterval: 25
-        }
+        usePolling: false,
+        depth: 0,
+        //awaitWriteFinish: {
+        //    stabilityThreshold: 50,
+        //    pollInterval: 25
+        //}
     },
     DEFAULT_LIVE_DIR: '../../frontend/public/live', // 기본 감시 디렉토리
     RETRY: { // 오류 시 재시도 설정

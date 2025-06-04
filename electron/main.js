@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fsp = require('fs').promises;
 const watcher = require('../backend/src/frame-watcher');
+const capture = require('../backend/src/capture');
 
 // 윈도우 설정
 const WINDOW_CONFIG = {
@@ -21,6 +22,8 @@ const PATHS = {
 // 프레임 처리 및 관리 클래스
 class FrameHandler {
     constructor() {
+        this.captureDevice = null;
+        this.captureInfo = null;
         this.watcher = null; // 프레임 감지기
         this.isStreaming = false; // 스트리밍 상태
         this.isRecording = false; // 녹화 상태
@@ -57,6 +60,54 @@ class FrameHandler {
         }
     }
 
+    async startCapture() {
+
+        if (process.platform != 'linux')
+            return;
+
+        if (!this.captureDevice) {
+            const device = new capture.Device({
+                saveDir: PATHS.LIVE_DIR,
+                fileFmt: 'frame%d.jpg',
+                numFiles: 4,
+                fps: 15,
+                useStdout: true, // 로그 출력
+                //debugLevel: 1,
+            });
+
+            device.on('connected', () => {
+                console.log('Device connected');
+                //device.send(capture.CAP_MSG_TYPE_REQ_INFO);
+            });
+
+            device.on('data', (msg) => {
+                if (msg.type == capture.CAP_MSG_TYPE_CAM_INFO) {
+                    const info = msg.payload;
+                    console.log(`Cam Info(${info.format}, ${info.width}x${info.height}, ${info.fps}fps)`);
+                    this.captureInfo = info;
+                } else {
+                    console.log(`Received Message : ${msg.type},${msg.payload}`);
+                }
+            });
+
+            device.on('error', (err) => {
+                console.log(`Device error : ${err}`);
+            });
+
+            await device.start();
+
+            this.captureDevice = device;
+        }
+    }
+
+    async stopCapture() {
+        if (this.captureDevice) {
+            await this.captureDevice.destroy();
+            this.captureDevice = null;
+            this.captureInfo = null;
+        }
+    }
+
     // 스트리밍 시작
     async startStreaming(win) {
         if (this.isStreaming) {
@@ -73,8 +124,14 @@ class FrameHandler {
 
             // Frame Watcher 시작 (최초에만)
             if (!this.watcher) {
+                let lastWatcherTime = null;
                 this.watcher = await watcher.start(async (type, data, frameNumber) => {
-                    console.log(`Streaming mode - Send frame: ${frameNumber}`);
+                    const currentTime = Date.now();
+                    if (!lastWatcherTime) lastWatcherTime = currentTime;
+                    const interval = currentTime - lastWatcherTime;
+                    lastWatcherTime = currentTime;
+
+                    console.log(`Streaming mode - Send frame: ${frameNumber}, Interval: ${interval}ms`);
 
                     if (type === 'frame-data') {
                         // 바이너리 데이터 직접 전송
@@ -93,6 +150,8 @@ class FrameHandler {
                     dataType: 'bin'  // 바이너리 데이터 모드 사용
                 });
             }
+
+            await this.startCapture();
 
             this.isStreaming = true;
             console.log('Streaming mode started successfully');
@@ -119,6 +178,14 @@ class FrameHandler {
         try {
             // Record 디렉토리 초기화
             await this.clearDirectory(PATHS.RECORD_DIR, 'Record');
+
+            if (this.captureInfo) {
+                const filePath = path.join(PATHS.RECORD_DIR, 'rec_info.json');
+                const jsonData = JSON.stringify(this.captureInfo, null, 2);
+
+                await fsp.writeFile(filePath, jsonData);
+                console.log(`Saved ${filePath}`);
+            }
 
             this.isRecording = true;
             this.frameCounter = 0;
@@ -170,6 +237,8 @@ class FrameHandler {
         if (this.isRecording) {
             await this.disableRecording();
         }
+
+        await this.stopCapture();
 
         this.isStreaming = false;
         await this.cleanup();
