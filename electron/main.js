@@ -69,8 +69,10 @@ class FrameHandler {
             const device = new capture.Device({
                 saveDir: PATHS.LIVE_DIR,
                 fileFmt: 'frame%d.jpg',
+                width: 640,
+                height: 360,
                 numFiles: 4,
-                fps: 15,
+                fps: 24,
                 useStdout: true, // 로그 출력
                 //debugLevel: 1,
             });

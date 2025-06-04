@@ -22,6 +22,8 @@ class Device extends EventEmitter {
      * @param {string} [options.saveDir='/tmp/camera/live'] - 저장 디렉토리
      * @param {string} [options.fileFmt='frame%d.jpg'] - 저장 파일 형식
      * @param {number} [options.numFiles=4] - 저장 파일 수
+     * @param {number} [options.width=640] - 프레임 Width
+     * @param {number} [options.height=480] - 프레임 Height
      * @param {number} [options.fps=30] - 초당 프레임 수
      * @param {boolean} [options.useStdout=false] - 표준 출력을 사용할지 여부
      */
@@ -35,6 +37,8 @@ class Device extends EventEmitter {
         this.saveDir = options.saveDir || '/tmp/camera/live';
         this.fileFmt = options.fileFmt || 'frame%d.jpg';
         this.numFiles = options.numFiles || 4;
+        this.width = options.width || 640;
+        this.height = options.height || 480;
         this.fps = options.fps || 30;
         this.stdout = options.useStdout ? 'inherit' : 'ignore';
     }
@@ -148,6 +152,8 @@ class Device extends EventEmitter {
         const args = [
             '-t', path.join(this.saveDir, '.tmp', 'live.jpg'),
             '-S', path.join(this.saveDir, this.fileFmt),
+            '-w', this.width,
+            '-h', this.height,
             '-n', this.numFiles,
             '-r', this.fps,
             '-u', this.socketPath,
