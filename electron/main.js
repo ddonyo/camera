@@ -7,8 +7,8 @@ const capture = require('../backend/src/capture');
 
 // 윈도우 설정
 const WINDOW_CONFIG = {
-    width: 1024,
-    height: 920
+    width: 1280,
+    height: 960
 };
 
 // 경로 설정
@@ -178,15 +178,21 @@ class FrameHandler {
         console.log('Enabling recording...');
 
         try {
-            // Record 디렉토리 초기화
-            await this.clearDirectory(PATHS.RECORD_DIR, 'Record');
+            // Record 디렉토리 초기화를 백그라운드에서 비동기적으로 처리
+            this.clearDirectory(PATHS.RECORD_DIR, 'Record').catch(error => {
+                console.error('Background directory cleanup error:', error);
+            });
 
+            // rec_info.json 파일 쓰기를 비동기적으로 처리
             if (this.captureInfo) {
                 const filePath = path.join(PATHS.RECORD_DIR, 'rec_info.json');
                 const jsonData = JSON.stringify(this.captureInfo, null, 2);
 
-                await fsp.writeFile(filePath, jsonData);
-                console.log(`Saved ${filePath}`);
+                fsp.writeFile(filePath, jsonData).then(() => {
+                    console.log(`Saved ${filePath}`);
+                }).catch(error => {
+                    console.error('Error saving rec_info.json:', error);
+                });
             }
 
             this.isRecording = true;
@@ -222,12 +228,18 @@ class FrameHandler {
         const destPath = path.join(PATHS.RECORD_DIR, fileName);
 
         try {
-            await fsp.writeFile(destPath, data);
+            // 파일 쓰기를 비동기적으로 처리하여 UI 블로킹 방지
+            fsp.writeFile(destPath, data).then(() => {
+                console.log(`Saved frame ${this.frameCounter} to record directory`);
+            }).catch(error => {
+                console.error('Error saving frame:', error);
+            });
+
             this.frameCounter++;
-            console.log(`Saved frame ${this.frameCounter - 1} to record directory`);
         } catch (error) {
-            console.error('Error saving frame:', error);
-            throw error;
+            console.error('Error preparing frame save:', error);
+            // 에러가 발생해도 카운터는 증가시켜 동기화 유지
+            this.frameCounter++;
         }
     }
 

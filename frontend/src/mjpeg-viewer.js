@@ -17,6 +17,7 @@ export class MJPEGViewer {
         this.playing = false; // 재생 상태 (PLAYBACK 모드)
         this.currentDirection = Direction.FORWARD; // 재생 방향
         this.repeatMode = false; // 반복 재생
+        this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
 
         this._bindEvents(); // 이벤트 바인딩
         this._setupLiveIpcListeners(); // IPC 리스너 (라이브)
@@ -200,13 +201,16 @@ export class MJPEGViewer {
         }
     }
 
-    // Live에서 Record 모드로 전환 (무중단)
+    // Live에서 Record로 전환 (무중단)
     async _switchFromLiveToRecord() {
         try {
             console.log('[Live to Record] Enabling recording without interruption');
 
-            this._emitToElectron(IPCCommands.START_RECORDING);
+            // UI 상태를 즉시 업데이트하여 반응성 향상
             this._setState(State.RECORD);
+
+            // 백그라운드에서 녹화 시작 명령 전송
+            this._emitToElectron(IPCCommands.START_RECORDING);
 
             console.log('[Live to Record] Successfully enabled recording');
         } catch (error) {
@@ -400,6 +404,18 @@ export class MJPEGViewer {
 
     // UI 업데이트 (상태 기반)
     _updateUI() {
+        // requestAnimationFrame을 사용하여 UI 업데이트 최적화
+        if (this._uiUpdateScheduled) return;
+
+        this._uiUpdateScheduled = true;
+        requestAnimationFrame(() => {
+            this._uiUpdateScheduled = false;
+            this._performUIUpdate();
+        });
+    }
+
+    // 실제 UI 업데이트 수행
+    _performUIUpdate() {
         const hasFrames = this.frameManager.getFrameCount() > 0;
 
         this.uiController.applyState(
