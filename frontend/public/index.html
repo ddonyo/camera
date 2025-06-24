@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LG SoC MJPEG Viewer</title>
-    <meta name="description" content="LG SoC MJPEG 실시간 스트리밍 뷰어">
+    <title>Delayed Show</title>
+    <meta name="description" content="Delayed Show">
 
     <!-- Tailwind CSS CDN을 통한 스타일링 프레임워크 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,14 +13,9 @@
     <link rel="stylesheet" href="./styles/main.css">
 </head>
 
-<body class="font-bold text-gray-300 font-mono bg-[#121212] p-6 min-h-screen flex flex-col items-center">
-    <!-- 페이지 제목 헤더 -->
-    <header class="text-3xl font-bold text-gray-400 mb-2">
-        <h1>SoC MJPEG Viewer</h1>
-    </header>
-
+<body class="font-bold font-mono min-h-screen flex flex-col items-center bg-primary text-primary p-md" role="main">
     <!-- 메인 콘텐츠 영역 -->
-    <main class="w-full max-w-5xl bg-[#1e1e1e] border border-[#333] rounded-xl shadow-xl p-6 space-y-2" role="main">
+    <main class="w-full max-w-5xl rounded-xl shadow-xl space-y-2 bg-secondary border border-primary p-md" role="main">
 
         <!-- MJPEG 이미지를 표시할 캔버스 -->
         <canvas
@@ -33,12 +28,12 @@
         </canvas>
 
         <!-- 재생 진행률을 표시하는 프로그레스 바 -->
-        <div id="progressBar" class="w-full h-3 bg-[#333] rounded progress-bar overflow-hidden" role="progressbar" aria-label="재생 진행률">
+        <div id="progressBar" class="w-full h-3 rounded progress-bar overflow-hidden bg-primary" role="progressbar" aria-label="재생 진행률">
             <div id="progress" class="h-full bg-blue-500"></div>
         </div>
 
         <!-- 제어 버튼들과 설정 영역 -->
-        <section class="grid grid-cols-3 items-center text-sm gap-4" aria-label="비디오 제어 패널">
+        <section class="grid grid-cols-3 items-center gap-md text-base" aria-label="비디오 제어 패널">
 
             <!-- 왼쪽: 모드 제어 버튼 그룹 -->
             <div class="control-group justify-start" role="group" aria-label="모드 제어">
@@ -83,20 +78,29 @@
 
             <!-- 오른쪽: 설정 제어 그룹 -->
             <div class="control-group justify-end" role="group" aria-label="재생 설정">
-                <label class="flex items-center gap-2 text-sm" for="fpsInput">
-                    <span>FPS:</span>
-                    <input
-                        type="number"
-                        id="fpsInput"
-                        name="fps"
-                        value="30"
-                        min="1"
-                        max="60"
-                        disabled
-                        class="w-15 bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-sm text-center disabled:opacity-50"
-                        aria-label="초당 프레임 수 설정">
+                <label class="number-input-label control-settings" for="delayInput">
+                    <div class="number-input-wrapper">
+                        <input type="number" id="delayInput" name="delay" value="0" min="0" max="10" disabled
+                            aria-label="딜레이 시간 설정">
+                        <div class="number-input-buttons">
+                            <button type="button" class="number-input-btn up" onclick="incrementValue('delayInput')" aria-label="딜레이 증가"></button>
+                            <button type="button" class="number-input-btn down" onclick="decrementValue('delayInput')" aria-label="딜레이 감소"></button>
+                        </div>
+                    </div>
+                    <span>Delay</span>
                 </label>
-                <button id="repeatBtn" disabled class="control-btn tgl w-28" aria-label="반복 재생 토글">
+                <label class="number-input-label control-settings" for="fpsInput">
+                    <div class="number-input-wrapper">
+                        <input type="number" id="fpsInput" name="fps" value="24" min="1" max="60" disabled
+                            aria-label="초당 프레임 수 설정">
+                        <div class="number-input-buttons">
+                            <button type="button" class="number-input-btn up" onclick="incrementValue('fpsInput')" aria-label="FPS 증가"></button>
+                            <button type="button" class="number-input-btn down" onclick="decrementValue('fpsInput')" aria-label="FPS 감소"></button>
+                        </div>
+                    </div>
+                    <span>FPS</span>
+                </label>
+                <button id="repeatBtn" disabled class="control-base control-btn tgl control-settings" aria-label="반복 재생 토글">
                     <img src="./resources/repeat_0.png" alt="" class="control-icon" aria-hidden="true">
                     <span>Repeat</span>
                 </button>
@@ -104,19 +108,54 @@
         </section>
 
         <!-- 현재 상태와 파일 정보를 표시하는 영역 -->
-        <div id="status" class="text-xs p-3 whitespace-pre-wrap flex justify-between items-start" role="status" aria-live="polite">
+        <div id="status" class="text-xs p-3 whitespace-pre-wrap flex justify-between items-start bg-tertiary border border-primary text-secondary" role="status" aria-live="polite">
             <pre id="statusText" class="whitespace-pre-wrap status-text normal" aria-label="현재 파일 정보">File Path:<br>File Name:<br>Frame:</pre>
         </div>
     </main>
 
     <!-- 페이지 하단 저작권 정보 -->
-    <footer class="mt-2 text-center text-sm text-gray-400" role="contentinfo">
+    <footer class="mt-2 text-center text-secondary text-base" role="contentinfo">
         <p>Copyright &copy; 2025 LG Electronics Inc. All rights reserved.</p>
         <p>Support: <a href="mailto:mbtask-all@lge.com" class="hover:text-blue-400 transition-colors">mbtask-all@lge.com</a></p>
     </footer>
 
     <!-- 애플리케이션 초기화 스크립트 -->
     <script type="module" src="../src/app-init.js"></script>
+
+    <!-- Number input 스피너 기능 -->
+    <script>
+        function incrementValue(inputId) {
+            const input = document.getElementById(inputId);
+            if (input && !input.disabled) {
+                const currentValue = parseInt(input.value) || 0;
+                const max = input.hasAttribute('max') ? parseInt(input.getAttribute('max')) : Infinity;
+                const step = parseInt(input.step) || 1;
+
+                if (currentValue + step <= max) {
+                    input.value = currentValue + step;
+                    // input 이벤트 발생시켜 다른 코드에서 감지할 수 있도록
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+
+        function decrementValue(inputId) {
+            const input = document.getElementById(inputId);
+            if (input && !input.disabled) {
+                const currentValue = parseInt(input.value) || 0;
+                const min = input.hasAttribute('min') ? parseInt(input.getAttribute('min')) : -Infinity;
+                const step = parseInt(input.step) || 1;
+
+                if (currentValue - step >= min) {
+                    input.value = currentValue - step;
+                    // input 이벤트 발생시켜 다른 코드에서 감지할 수 있도록
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+    </script>
 </body>
 
 </html>

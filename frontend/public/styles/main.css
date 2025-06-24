@@ -4,7 +4,7 @@
 :root {
     /* 색상 팔레트 */
     --color-bg-primary: #121212;
-    --color-bg-secondary: #1e1e1e;
+    --color-bg-secondary: #2e2e2e;
     --color-bg-tertiary: #1c1c1c;
     --color-bg-button: #3b3b3b;
     --color-bg-button-hover: #6b6b6b;
@@ -29,6 +29,8 @@
     --spacing-md: 0.5rem;
 
     --font-size-base: 1.3rem;
+    --font-size-sm: 0.875rem;
+    --font-size-xs: 0.75rem;
     --font-weight-medium: 500;
 
     --border-radius-sm: 0.25rem;
@@ -48,6 +50,40 @@
     --transition-fast: 0.1s ease;
     --transition-slow: 0.3s ease;
 }
+
+/* ================================================
+   CSS 변수 유틸리티 클래스
+   ================================================ */
+
+/* 배경색 유틸리티 */
+.bg-primary { background-color: var(--color-bg-primary); }
+.bg-secondary { background-color: var(--color-bg-secondary); }
+.bg-tertiary { background-color: var(--color-bg-tertiary); }
+.bg-button { background-color: var(--color-bg-button); }
+.bg-input { background-color: var(--color-bg-input); }
+
+/* 텍스트 색상 유틸리티 */
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-disabled { color: var(--color-text-disabled); }
+.text-loading { color: var(--color-text-loading); }
+.text-error { color: var(--color-text-error); }
+.text-warning { color: var(--color-text-warning); }
+.text-normal { color: var(--color-text-normal); }
+
+/* 테두리 색상 유틸리티 */
+.border-primary { border-color: var(--color-border-primary); }
+.border-secondary { border-color: var(--color-border-secondary); }
+.border-input { border-color: var(--color-border-input); }
+
+/* 간격 유틸리티 */
+.p-md { padding: var(--spacing-md); }
+.gap-md { gap: var(--spacing-md); }
+
+/* 폰트 크기 유틸리티 */
+.text-base { font-size: var(--font-size-base); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-xs { font-size: var(--font-size-xs); }
 
 /* ================================================
    기본 페이지 스타일
@@ -104,6 +140,12 @@ body {
     max-width: 2rem;
     max-height: 2rem;
     transition: var(--transition-base);
+}
+
+/* 설정 컨트롤 통일 너비 */
+.control-settings {
+    width: 4rem;
+    min-width: 4rem;
 }
 
 .control-group {
@@ -302,18 +344,134 @@ body {
    폼 요소 스타일
    ================================================ */
 
-/* 비활성화된 요소들 공통 스타일 */
-.disabled {
-    opacity: var(--opacity-semi-disabled);
-    cursor: not-allowed;
-    pointer-events: none;
+/* Number input 라벨 세로 레이아웃 (버튼 스타일과 유사) */
+.number-input-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    font-size: 1rem;
+    white-space: nowrap;
 }
 
-/* 비활성화된 input 요소 */
-input.disabled {
+.number-input-label span {
+    order: 2; /* 텍스트를 아래로 */
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.number-input-wrapper {
+    order: 1; /* input wrapper를 위로 */
+    position: relative;
+    display: inline-block;
+}
+
+/* Number input 기본 스타일 */
+input[type="number"] {
+    background-color: var(--color-bg-input);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-input);
+    border-radius: var(--border-radius-sm);
+    position: relative;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    padding-right: 24px; /* 화살표 공간 확보 */
+    width: 100%;
+    min-width: 3rem;
+    text-align: center;
+    font-size: var(--font-size-sm);
+}
+
+/* 기본 스피너 제거 */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* 클릭 가능한 화살표 버튼 컨테이너 */
+.number-input-buttons {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.number-input-btn {
+    width: 16px;
+    height: 12px;
+    background: var(--color-bg-button);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: var(--color-text-secondary);
+    line-height: 1;
+    user-select: none;
+    transition: all var(--transition-fast);
+}
+
+.number-input-btn:hover {
+    background: var(--color-bg-button-hover);
+    color: var(--color-text-primary);
+}
+
+.number-input-btn:active {
+    background: var(--color-bg-button-active);
+    transform: scale(0.95);
+}
+
+.number-input-btn.up::after {
+    content: "▲";
+}
+
+.number-input-btn.down::after {
+    content: "▼";
+}
+
+/* 포커스 시 테두리 강조 */
+input[type="number"]:focus {
+    outline: none;
+    border-color: var(--color-text-loading);
+    box-shadow: 0 0 0 1px var(--color-text-loading);
+}
+
+/* ================================================
+   비활성화 스타일 - HTML disabled 속성 기반 통일
+   ================================================ */
+
+/* 비활성화된 input 요소 - HTML disabled 속성만 사용 */
+input[type="number"]:disabled {
     background-color: var(--color-bg-input) !important;
     color: var(--color-text-disabled) !important;
     border-color: var(--color-border-input) !important;
+    cursor: not-allowed !important;
+    /* input 자체에만 opacity 적용 */
+    opacity: var(--opacity-semi-disabled) !important;
+}
+
+/* 비활성화된 input의 wrapper - 버튼 흐리게 처리 */
+.number-input-wrapper:has(input:disabled) .number-input-buttons {
+    opacity: var(--opacity-semi-disabled);
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+/* 비활성화된 input의 라벨 텍스트 스타일 */
+.number-input-label:has(input:disabled) span {
+    color: var(--color-text-disabled);
+    opacity: var(--opacity-semi-disabled);
 }
 
 /* ================================================

@@ -81,6 +81,7 @@ export class UIController {
                 if (hasFrames) {
                     this._enablePlaybackButtons();
                 }
+                this._toggleDelayElements(false);
                 break;
 
             case State.LIVE:
@@ -89,17 +90,20 @@ export class UIController {
                     this._enablePlaybackButtons();
                 }
                 this._addActiveClass('liveBtn');
+                this._toggleDelayElements(true);
                 break;
 
             case State.RECORD:
                 this._enableButtons(['recordBtn']);
                 this._addActiveClass('recordBtn');
+                this._toggleDelayElements(true);
                 break;
 
             case State.PLAYBACK:
                 this._enableButtons(['liveBtn', 'playbackBtn']);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
+                this._toggleDelayElements(true);
                 break;
         }
     }
@@ -254,11 +258,14 @@ export class UIController {
         if (!fpsInput) return;
 
         fpsInput.disabled = disable;
-        this._toggleElementClasses(fpsInput, 'disabled', null, disable);
+    }
 
-        if (this._fpsSpan) {
-            this._toggleElementClasses(this._fpsSpan, 'disabled', null, disable);
-        }
+    // Delay 관련 요소(input, wrapper) 토글 (활성화/비활성화)
+    _toggleDelayElements(disable) {
+        const { delayInput } = this.elements;
+        if (!delayInput) return;
+
+        delayInput.disabled = disable;
     }
 
     // 지정된 버튼들 활성화
