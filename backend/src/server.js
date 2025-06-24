@@ -58,7 +58,7 @@ function setupMiddleware() {
         maxAge: 0
     } : {};
 
-    app.use(express.static(path.join(__dirname, 'public'), staticOptions));
+    app.use(express.static(path.join(__dirname, '../../frontend/public'), staticOptions));
 }
 
 // API 라우트 설정
