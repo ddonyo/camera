@@ -103,7 +103,7 @@ export class UIController {
                 this._enableButtons(['liveBtn', 'playbackBtn']);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
-                this._toggleDelayElements(true);
+                this._toggleDelayElements(false);
                 break;
         }
     }
