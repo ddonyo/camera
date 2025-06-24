@@ -40,6 +40,12 @@ export class UIController {
         return validatedFPS;
     }
 
+    // 현재 설정된 Delay 값 반환 (검증 후)
+    getDelay() {
+        const delayValue = parseInt(this.elements.delayInput?.value) || 0;
+        return Math.max(0, Math.min(10, delayValue)); // 0-10 범위로 제한
+    }
+
     // 애플리케이션 상태에 따른 UI 적용 (버튼, 프로그레스 바 등)
     applyState(state, playing = false, direction = 1, repeatMode = false, hasFrames = false) {
         this._disableAllButtons();

@@ -60,19 +60,25 @@ class FrameHandler {
         }
     }
 
-    async startCapture() {
+    async startCapture(options = {}) {
 
         if (process.platform != 'linux')
             return;
 
-        if (!this.captureDevice) {
+                if (!this.captureDevice) {
+            const { delay = 0 } = options;
+            const fps = 24;
+            const numFiles = fps * delay + 4;
+
+            console.log(`Starting capture with fps: ${fps}, delay: ${delay}, numFiles: ${numFiles}`);
+
             const device = new capture.Device({
                 saveDir: PATHS.LIVE_DIR,
                 fileFmt: 'frame%d.jpg',
                 width: 640,
                 height: 360,
-                numFiles: 4,
-                fps: 24,
+                numFiles: numFiles,
+                fps: fps,
                 useStdout: true, // 로그 출력
                 //debugLevel: 1,
             });
@@ -111,7 +117,7 @@ class FrameHandler {
     }
 
     // 스트리밍 시작
-    async startStreaming(win) {
+    async startStreaming(win, options = {}) {
         if (this.isStreaming) {
             console.log('Streaming already active');
             return;
@@ -149,11 +155,11 @@ class FrameHandler {
                     }
                 }, {
                     liveDir: PATHS.LIVE_DIR,
-                    dataType: 'bin'  // 바이너리 데이터 모드 사용
+                    dataType: 'path'
                 });
             }
 
-            await this.startCapture();
+            await this.startCapture(options);
 
             this.isStreaming = true;
             console.log('Streaming mode started successfully');
@@ -285,7 +291,7 @@ const frameHandler = new FrameHandler();
 // IPC 이벤트 핸들러
 function setupIpcHandlers(win) {
     const handlers = {
-        'start-live': () => frameHandler.startStreaming(win),
+        'start-live': (event, options = {}) => frameHandler.startStreaming(win, options),
         'stop-live': () => frameHandler.stopStreaming(),
         'start-record': () => frameHandler.enableRecording(),
         'stop-record': () => frameHandler.disableRecording(),

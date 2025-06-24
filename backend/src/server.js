@@ -59,6 +59,9 @@ function setupMiddleware() {
     } : {};
 
     app.use(express.static(path.join(__dirname, '../../frontend/public'), staticOptions));
+
+    // src 폴더의 JS 파일들도 서빙
+    app.use('/src', express.static(path.join(__dirname, '../../frontend/src'), staticOptions));
 }
 
 // API 라우트 설정

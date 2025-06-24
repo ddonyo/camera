@@ -7,7 +7,7 @@ let activeWatchers = new Set();
 
 // 프레임 감시 설정 객체
 const FRAME_WATCHER_CONFIG = Object.freeze({
-    FRAME_PATTERN: /^frame[0-3]\.jpg$/i, // 감시 대상 프레임 파일명 패턴
+    FRAME_PATTERN: /^frame\d+\.jpg$/i, // 감시 대상 프레임 파일명 패턴
     WATCH_OPTIONS: { // Chokidar 감시 옵션
         persistent: true,
         ignoreInitial: true,

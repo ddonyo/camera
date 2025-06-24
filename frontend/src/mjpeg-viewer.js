@@ -192,7 +192,12 @@ export class MJPEGViewer {
             console.log('[Live] Starting live mode');
             this._resetUIForStreaming();
 
-            this._emitToElectron(IPCCommands.START_STREAMING);
+            // UI에서 Delay 가져와서 전송
+            const delay = this.uiController.getDelay();
+            const options = { delay };
+
+            console.log(`[Live] Starting with options: delay=${delay}`);
+            this._emitToElectron(IPCCommands.START_STREAMING, options);
             this._setState(State.LIVE);
 
             console.log('[Live] Live mode started successfully');
