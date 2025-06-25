@@ -5,7 +5,7 @@ const fsp = require('fs').promises;
 const watcher = require('../backend/src/frame-watcher');
 const capture = require('../backend/src/capture');
 
-const debugLevel = 1;
+const debugLevel = 0;
 
 // 윈도우 설정
 const WINDOW_CONFIG = {
@@ -257,7 +257,9 @@ class FrameHandler {
     async saveFrameToRecord(item) {
         if (!this.isRecording) return;
 
-        const fileName = `frame${this.frameCounter}.jpg`;
+        const count = this.frameCounter++;
+
+        const fileName = `frame${count}.jpg`;
         const destPath = path.join(PATHS.RECORD_DIR, fileName);
 
         try {
@@ -269,13 +271,9 @@ class FrameHandler {
             }
 
             if (debugLevel > 0)
-                console.log(`Saved frame ${this.frameCounter} to record directory ${destPath}`);
-
-            this.frameCounter++;
+                console.log(`Saved frame ${count} to record directory ${destPath}`);
         } catch (error) {
             console.error('Error preparing frame save:', error);
-            // 에러가 발생해도 카운터는 증가시켜 동기화 유지
-            this.frameCounter++;
         }
     }
 
