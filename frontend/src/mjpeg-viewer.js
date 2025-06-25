@@ -19,6 +19,7 @@ export class MJPEGViewer {
         this.repeatMode = false; // 반복 재생
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
         this.liveFrameCount = 0; // 라이브 프레임 카운터
+        this.originalFPS = null; // 파일에서 읽어온 원본 FPS
 
         this._bindEvents(); // 이벤트 바인딩
         this._setupLiveIpcListeners(); // IPC 리스너 (라이브)
@@ -332,8 +333,11 @@ export class MJPEGViewer {
         try {
             // rec_info.json에서 FPS 값을 읽어서 설정
             const recordedFPS = await FileUtils.getRecordingFPS();
-            this.uiController.setFPS(recordedFPS);
-            console.log(`[Playback] Set FPS to ${recordedFPS} from rec_info.json`);
+            this.originalFPS = recordedFPS;
+
+            // Speed 기본값으로 설정
+            this.uiController.setSpeed(Config.SPEED.DEFAULT);
+            console.log(`[Playback] Set original FPS to ${recordedFPS} from rec_info.json`);
 
             const frameCount = await this._loadFramesWithProgress();
 
@@ -554,12 +558,21 @@ export class MJPEGViewer {
         }
     }
 
+    // 원본 FPS에 Speed를 곱한 실제 FPS 계산
+    _getEffectiveFPS() {
+        if (!this.originalFPS) {
+            return Config.FPS.DEFAULT;
+        }
+        const speed = this.uiController.getSpeed();
+        return this.originalFPS * speed;
+    }
+
     // Playback 모드 프레임 재생 루프
     async _executePlayLoop() {
         while (this.playing) {
             try {
                 await this._processFrame(this.currentDirection);
-                await TimerUtils.waitForNextFrame(this.uiController.getFPS());
+                await TimerUtils.waitForNextFrame(this._getEffectiveFPS());
             } catch (error) {
                 this._handlePlayError(error);
                 break;

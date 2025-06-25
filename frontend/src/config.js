@@ -55,7 +55,15 @@ export const Config = Object.freeze({
         DEFAULT: 30,          // 기본 FPS
         RECORD_DEFAULT: 15,   // 녹화 기본 FPS
         MIN: 1,               // 최소 FPS
-        MAX: 60               // 최대 FPS
+        MAX: 240              // 최대 FPS
+    },
+
+    // Speed 설정
+    SPEED: {
+        DEFAULT: 1.0,         // 기본 Speed
+        MIN: 0.2,             // 최소 Speed
+        MAX: 4.0,             // 최대 Speed
+        STEP: 0.2             // Speed 단위
     },
 
     // 경로 및 확장자

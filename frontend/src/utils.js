@@ -83,6 +83,15 @@ export class MathUtils {
         }
         return this.clamp(val, Config.FPS.MIN, Config.FPS.MAX);
     }
+
+    // Speed 값 검증 및 조정
+    static validateSpeed(speed) {
+        const val = Number(speed);
+        if (isNaN(val) || val <= 0) {
+            return Config.SPEED.DEFAULT;
+        }
+        return this.clamp(val, Config.SPEED.MIN, Config.SPEED.MAX);
+    }
 }
 
 // 이미지 로딩 유틸리티

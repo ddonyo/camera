@@ -23,21 +23,24 @@ export class UIController {
         this.messageType = ''; // 메시지 유형
         this.messageTimeout = null; // 메시지 타임아웃 ID
 
-        // FPS 관련 요소 캐싱
-        this._fpsLabel = this.elements.fpsInput?.closest(UIController.#CONSTANTS.SELECTORS.LABEL);
-        this._fpsSpan = this._fpsLabel?.querySelector(UIController.#CONSTANTS.SELECTORS.SPAN);
+        // Speed 관련 요소 캐싱
+        this._speedLabel = this.elements.speedInput?.closest(UIController.#CONSTANTS.SELECTORS.LABEL);
+        this._speedSpan = this._speedLabel?.querySelector(UIController.#CONSTANTS.SELECTORS.SPAN);
     }
 
-    // 현재 설정된 FPS 값 반환 (검증 후)
-    getFPS() {
-        return MathUtils.validateFPS(this.elements.fpsInput.value);
+    // 현재 설정된 Speed 값 반환 (검증 후)
+    getSpeed() {
+        if (!this.elements.speedInput) return Config.SPEED.DEFAULT;
+        return MathUtils.validateSpeed(this.elements.speedInput.value);
     }
 
-    // FPS 값 설정 및 UI 업데이트 (검증 후)
-    setFPS(fps) {
-        const validatedFPS = MathUtils.validateFPS(fps);
-        this.elements.fpsInput.value = validatedFPS;
-        return validatedFPS;
+    // Speed 값 설정 및 UI 업데이트 (검증 후)
+    setSpeed(speed) {
+        const validatedSpeed = MathUtils.validateSpeed(speed);
+        if (this.elements.speedInput) {
+            this.elements.speedInput.value = validatedSpeed.toFixed(1);
+        }
+        return validatedSpeed;
     }
 
     // 현재 설정된 Delay 값 반환 (검증 후)
@@ -58,7 +61,7 @@ export class UIController {
     // 모든 버튼 비활성화
     _disableAllButtons() {
         this._toggleAllButtons(true);
-        this._toggleFPSElements(true);
+        this._toggleSpeedElements(true);
     }
 
     // 재생 관련 버튼 활성화
@@ -74,7 +77,7 @@ export class UIController {
             }
         });
 
-        this._toggleFPSElements(false);
+        this._toggleSpeedElements(false);
     }
 
     // 특정 상태에 따른 버튼 활성화/비활성화 및 활성 클래스 적용
@@ -257,12 +260,13 @@ export class UIController {
             });
     }
 
-    // FPS 관련 요소(input, label) 토글 (활성화/비활성화)
-    _toggleFPSElements(disable) {
-        const { fpsInput } = this.elements;
-        if (!fpsInput) return;
+    // Speed 관련 요소(input, label) 토글 (활성화/비활성화)
+    _toggleSpeedElements(disable) {
+        const { speedInput } = this.elements;
 
-        fpsInput.disabled = disable;
+        if (speedInput) {
+            speedInput.disabled = disable;
+        }
     }
 
     // Delay 관련 요소(input, wrapper) 토글 (활성화/비활성화)
