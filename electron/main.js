@@ -87,7 +87,7 @@ class FrameHandler {
                 height: 360,
                 numFiles: numFiles,
                 fps: fps,
-                useStdout: true, // 로그 출력
+                //useStdout: true, // 카메라 데몬 로그 출력
                 //debugLevel: 1,
             });
 

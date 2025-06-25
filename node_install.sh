@@ -6,7 +6,7 @@ NVM_DIR="$HOME/.nvm"
 
 if [ -s "$NVM_DIR/nvm.sh" ]; then
     echo "NVM is already installed."
-    exit 1
+    exit 0
 fi
 
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
