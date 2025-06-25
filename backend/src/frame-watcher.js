@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 
+const debugLevel = 0;
+
 // 활성 watcher Set
 let activeWatchers = new Set();
 
@@ -62,7 +64,8 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
 
     const frameNumber = state.frameCount++;
 
-    console.log(`[FrameWatcher] Frame ${eventType}: ${filePath} (${frameNumber})`);
+    if (debugLevel > 0)
+        console.log(`[FrameWatcher] Frame ${eventType}: ${filePath} (${frameNumber})`);
 
     try {
         if (dataType === 'bin') {
@@ -73,13 +76,11 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
             } catch (error) {
                 console.error(`[FrameWatcher] Error reading file as binary:`, error);
                 // 에러 발생시 path 방식으로 fallback
-                const webPath = convertToWebPath(filePath);
-                callback('frame-path', webPath, frameNumber);
+                callback('frame-path', filePath, frameNumber);
             }
         } else {
             // 기존 path 방식
-            const webPath = convertToWebPath(filePath);
-            callback('frame-path', webPath, frameNumber);
+            callback('frame-path', filePath, frameNumber);
         }
     } catch (error) {
         console.error(`[FrameWatcher] Callback error for ${eventType} event:`, error);

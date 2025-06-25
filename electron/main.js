@@ -5,6 +5,8 @@ const fsp = require('fs').promises;
 const watcher = require('../backend/src/frame-watcher');
 const capture = require('../backend/src/capture');
 
+const debugLevel = 1;
+
 // 윈도우 설정
 const WINDOW_CONFIG = {
     width: 1280,
@@ -24,6 +26,8 @@ class FrameHandler {
     constructor() {
         this.captureDevice = null;
         this.captureInfo = null;
+        this.numDelayedFrames = 0;
+        this.delayedFrames = [];
         this.watcher = null; // 프레임 감지기
         this.isStreaming = false; // 스트리밍 상태
         this.isRecording = false; // 녹화 상태
@@ -65,10 +69,14 @@ class FrameHandler {
         if (process.platform != 'linux')
             return;
 
-                if (!this.captureDevice) {
+        if (!this.captureDevice) {
             const { delay = 0 } = options;
             const fps = 24;
-            const numFiles = fps * delay + 4;
+
+            this.numDelayedFrames = fps * delay;
+            this.delayedFrames = [];
+
+            const numFiles = this.numDelayedFrames + 4;
 
             console.log(`Starting capture with fps: ${fps}, delay: ${delay}, numFiles: ${numFiles}`);
 
@@ -116,6 +124,16 @@ class FrameHandler {
         }
     }
 
+    async sendFrame(win, item) {
+        if (item.type === 'frame-data') {
+            // 바이너리 데이터 직접 전송
+            win.webContents.send('frame-data', item.data);
+        } else {
+            // fallback: path 방식
+            win.webContents.send('frame-path', item.data);
+        }
+    }
+
     // 스트리밍 시작
     async startStreaming(win, options = {}) {
         if (this.isStreaming) {
@@ -139,19 +157,30 @@ class FrameHandler {
                     const interval = currentTime - lastWatcherTime;
                     lastWatcherTime = currentTime;
 
-                    console.log(`Streaming mode - Send frame: ${frameNumber}, Interval: ${interval}ms`);
+                    let item = { type: type, number: frameNumber, data: data };
 
-                    if (type === 'frame-data') {
-                        // 바이너리 데이터 직접 전송
-                        win.webContents.send('frame-data', data);
-                    } else {
-                        // fallback: path 방식
-                        win.webContents.send('frame-path', data);
+                    if (this.numDelayedFrames > 0) {
+                        // 라이브 지연인 경우 첫장은 출력
+                        if (this.delayedFrames.length == 0) {
+                            this.sendFrame(win, item);
+                        }
+
+                        this.delayedFrames.push(item);
+                        if (this.delayedFrames.length <= this.numDelayedFrames) {
+                            console.log(`Waiting capture frames ${this.delayedFrames.length}/${this.numDelayedFrames}`);
+                            return;
+                        }
+                        item = this.delayedFrames.shift();
                     }
 
+                    if (debugLevel > 0)
+                        console.log(`Streaming mode - Frame: ${item.number}, Interval: ${interval}ms`);
+
+                    await this.sendFrame(win, item);
+
                     // Recording이 활성화되어 있으면 파일 저장
-                    if (this.isRecording && type === 'frame-data') {
-                        await this.saveFrameToRecord(data);
+                    if (this.isRecording) {
+                        await this.saveFrameToRecord(item);
                     }
                 }, {
                     liveDir: PATHS.LIVE_DIR,
@@ -185,9 +214,7 @@ class FrameHandler {
 
         try {
             // Record 디렉토리 초기화를 백그라운드에서 비동기적으로 처리
-            this.clearDirectory(PATHS.RECORD_DIR, 'Record').catch(error => {
-                console.error('Background directory cleanup error:', error);
-            });
+            await this.clearDirectory(PATHS.RECORD_DIR, 'Record');
 
             // rec_info.json 파일 쓰기를 비동기적으로 처리
             if (this.captureInfo) {
@@ -227,7 +254,7 @@ class FrameHandler {
     }
 
     // 프레임 데이터 저장 (녹화 중)
-    async saveFrameToRecord(data) {
+    async saveFrameToRecord(item) {
         if (!this.isRecording) return;
 
         const fileName = `frame${this.frameCounter}.jpg`;
@@ -235,11 +262,14 @@ class FrameHandler {
 
         try {
             // 파일 쓰기를 비동기적으로 처리하여 UI 블로킹 방지
-            fsp.writeFile(destPath, data).then(() => {
-                console.log(`Saved frame ${this.frameCounter} to record directory`);
-            }).catch(error => {
-                console.error('Error saving frame:', error);
-            });
+            if (item.type === 'frame-data') {
+                await fsp.writeFile(destPath, item.data);
+            } else {
+                await fsp.copyFile(item.data, destPath);
+            }
+
+            if (debugLevel > 0)
+                console.log(`Saved frame ${this.frameCounter} to record directory ${destPath}`);
 
             this.frameCounter++;
         } catch (error) {
