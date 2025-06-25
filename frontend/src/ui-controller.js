@@ -171,14 +171,13 @@ export class UIController {
         this.elements.progress.style.width = `${percentage}%`;
     }
 
-    // 상태 정보(경로, 파일명, 프레임 번호) UI 업데이트
+    // 상태 정보(경로, 프레임 번호) UI 업데이트
     updateStatus(statusInfo) {
         const pathText = this._getPathText(statusInfo);
-        const nameText = statusInfo.name ? `File Name: ${statusInfo.name}` : 'File Name: ';
         const frameText = statusInfo.frame ? `Frame: ${statusInfo.frame}` : 'Frame: ';
 
         if (this.elements.statusText) {
-            this.elements.statusText.textContent = `${pathText}\n${nameText}\n${frameText}`;
+            this.elements.statusText.textContent = `${pathText}\n${frameText}`;
             this._applyStatusTextColor();
         }
     }
@@ -306,9 +305,9 @@ export class UIController {
     // 상태 정보로부터 경로 텍스트 생성
     _getPathText(statusInfo) {
         if (this.currentMessage) {
-            return `File Path: [${this.messageType.toUpperCase()}] ${this.currentMessage}`;
+            return `Status: [${this.messageType.toUpperCase()}] ${this.currentMessage}`;
         }
-        return statusInfo.path ? `File Path: ${statusInfo.path}` : 'File Path: ';
+        return statusInfo.path ? `Status: ${statusInfo.path}` : 'Status: ';
     }
 
     // 메시지 타임아웃 클리어

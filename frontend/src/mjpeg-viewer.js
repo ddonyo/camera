@@ -18,6 +18,7 @@ export class MJPEGViewer {
         this.currentDirection = Direction.FORWARD; // 재생 방향
         this.repeatMode = false; // 반복 재생
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
+        this.liveFrameCount = 0; // 라이브 프레임 카운터
 
         this._bindEvents(); // 이벤트 바인딩
         this._setupLiveIpcListeners(); // IPC 리스너 (라이브)
@@ -147,6 +148,7 @@ export class MJPEGViewer {
                 try {
                     const canvas = this.uiController.elements.viewer;
                     CanvasUtils.drawImageToCanvas(canvas, img);
+                    this.liveFrameCount++; // 프레임 카운터 증가
                     this._updateUI();
                     resolve();
                 } catch (error) {
@@ -213,6 +215,7 @@ export class MJPEGViewer {
 
             // UI 상태를 즉시 업데이트하여 반응성 향상
             this._setState(State.RECORD);
+            this.liveFrameCount = 0; // Record 모드 카운터 리셋
 
             // 백그라운드에서 녹화 시작 명령 전송
             this._emitToElectron(IPCCommands.START_RECORDING);
@@ -437,7 +440,17 @@ export class MJPEGViewer {
             this.uiController.updateProgress(this.frameManager.getProgress(), animationType);
         }
 
-        const statusInfo = this.frameManager.getStatusInfo();
+        let statusInfo;
+        if (this.state === State.LIVE || this.state === State.RECORD) {
+            statusInfo = {
+                path: `${this.state === State.LIVE ? 'Live Streaming' : 'Recording'}`,
+                name: '',
+                frame: `${this.liveFrameCount}`
+            };
+        } else {
+            statusInfo = this.frameManager.getStatusInfo();
+        }
+
         this.uiController.updateStatus(statusInfo);
     }
 
@@ -457,6 +470,7 @@ export class MJPEGViewer {
         this._pause();
         this.uiController.clearMessage();
         this.uiController.updateProgress(0, 'none');
+        this.liveFrameCount = 0;
     }
 
     // 재시작을 위한 내부 상태 초기화
