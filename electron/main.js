@@ -35,7 +35,7 @@ class FrameHandler {
         this.currentWindow = null; // 현재 창
     }
 
-    // rename 후 디렉토리 정리
+    // 디렉토리 내 프레임 파일 정리
     async clearDirectory(dirPath, dirName) {
         try {
             const files = await fsp.readdir(dirPath).catch(async (error) => {
@@ -51,40 +51,13 @@ class FrameHandler {
                 file.startsWith('frame') && file.endsWith('.jpg')
             );
 
-            if (frameFiles.length === 0) {
-                console.log(`${dirName} directory is already clean`);
-                return;
-            }
-
-            // 임시 백업 디렉토리 생성
-            const timestamp = Date.now();
-            const backupDir = path.join(dirPath, `../.temp_backup_${timestamp}`);
-            await fsp.mkdir(backupDir, { recursive: true });
-
-            console.log(`${dirName} quick clearing ${frameFiles.length} files via move...`);
-
-            // Rename
             await Promise.all(
-                frameFiles.map(file => {
-                    const srcPath = path.join(dirPath, file);
-                    const destPath = path.join(backupDir, file);
-                    return fsp.rename(srcPath, destPath).catch(error => {
-                        console.warn(`Failed to move ${file}:`, error);
-                    });
-                })
+                frameFiles.map(file => fsp.unlink(path.join(dirPath, file)))
             );
 
-            console.log(`${dirName} directory quick cleared (${frameFiles.length} files moved)`);
-
-            // 백그라운드에서 백업 디렉토리 삭제
-            setTimeout(async () => {
-                try {
-                    await fsp.rm(backupDir, { recursive: true, force: true });
-                    console.log(`Backup directory cleaned: ${backupDir}`);
-                } catch (error) {
-                    console.warn(`Failed to cleanup backup directory: ${backupDir}`, error);
-                }
-            }, 1000); // 1초 후 삭제
+            if (frameFiles.length > 0) {
+                console.log(`${dirName} directory cleared (${frameFiles.length} files)`);
+            }
         } catch (error) {
             console.error(`Error managing ${dirName} directory:`, error);
             throw error;
