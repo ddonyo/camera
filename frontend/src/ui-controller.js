@@ -50,11 +50,12 @@ export class UIController {
     }
 
     // 애플리케이션 상태에 따른 UI 적용 (버튼, 프로그레스 바 등)
-    applyState(state, playing = false, direction = 1, repeatMode = false, hasFrames = false) {
+    applyState(state, playing = false, direction = 1, repeatMode = false, hasFrames = false, flipMode = false) {
         this._disableAllButtons();
         this._applyStateSpecificButtons(state, hasFrames);
         this._applyPlaybackActiveStates(state, playing, direction);
         this._applyRepeatMode(repeatMode);
+        this._applyFlipMode(flipMode);
         this._applyProgressBarState(state, hasFrames);
     }
 
@@ -86,7 +87,7 @@ export class UIController {
 
         switch (state) {
             case State.IDLE:
-                this._enableButtons(['liveBtn', 'playbackBtn']);
+                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn']);
                 if (hasFrames) {
                     this._enablePlaybackButtons();
                 }
@@ -94,7 +95,7 @@ export class UIController {
                 break;
 
             case State.LIVE:
-                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn']);
+                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn', 'flipBtn']);
                 if (hasFrames) {
                     this._enablePlaybackButtons();
                 }
@@ -103,13 +104,13 @@ export class UIController {
                 break;
 
             case State.RECORD:
-                this._enableButtons(['recordBtn']);
+                this._enableButtons(['recordBtn', 'flipBtn']);
                 this._addActiveClass('recordBtn');
                 this._toggleDelayElements(true);
                 break;
 
             case State.PLAYBACK:
-                this._enableButtons(['liveBtn', 'playbackBtn']);
+                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn']);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
                 this._toggleDelayElements(false);
@@ -135,6 +136,13 @@ export class UIController {
     _applyRepeatMode(repeatMode) {
         if (repeatMode && !this.elements.repeatBtn?.disabled) {
             this._addActiveClass('repeatBtn');
+        }
+    }
+
+    // 플립 모드 활성화 시 flipBtn에 활성 클래스 적용
+    _applyFlipMode(flipMode) {
+        if (flipMode) {
+            this._addActiveClass('flipBtn');
         }
     }
 

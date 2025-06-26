@@ -164,13 +164,13 @@ export class FrameManager {
     }
 
     // 현재 프레임을 캔버스에 그리기
-    async drawCurrentFrame(canvas) {
+    async drawCurrentFrame(canvas, options = {}) {
         const frame = this.getCurrentFrame();
         if (!frame) return false;
 
         try {
             const img = await ImageLoader.loadImage(frame.data);
-            CanvasUtils.drawImageToCanvas(canvas, img);
+            CanvasUtils.drawImageToCanvas(canvas, img, options);
             return true;
         } catch (error) {
             console.error('[FrameManager] Failed to draw frame:', error);

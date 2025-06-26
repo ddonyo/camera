@@ -199,7 +199,7 @@ export class CanvasUtils {
 
     // 이미지 캔버스에 그리기
     static drawImageToCanvas(canvas, image, options = {}) {
-        const { clearFirst = true } = options;
+        const { clearFirst = true, flip = false } = options;
 
         if (!(image instanceof HTMLImageElement)) {
             throw new Error('Image must be a valid HTMLImageElement');
@@ -215,7 +215,16 @@ export class CanvasUtils {
             this.clearCanvas(canvas);
         }
 
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        if (flip) {
+            // 좌우 플립 적용
+            ctx.save(); // 현재 상태 저장
+            ctx.scale(-1, 1); // X축 반전
+            ctx.drawImage(image, -canvas.width, 0, canvas.width, canvas.height);
+            ctx.restore(); // 상태 복원
+        } else {
+            // 일반 그리기
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        }
     }
 }
 

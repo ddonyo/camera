@@ -104,6 +104,10 @@
                     <img src="./resources/repeat_0.png" alt="" class="control-icon" aria-hidden="true">
                     <span>Repeat</span>
                 </button>
+                <button id="flipBtn" class="control-base control-btn tgl control-settings" aria-label="좌우 반전 토글">
+                    <img src="./resources/flip_0.png" alt="" class="control-icon" aria-hidden="true">
+                    <span>Flip</span>
+                </button>
             </div>
         </section>
 
@@ -132,7 +136,9 @@
                 const step = parseFloat(input.step) || 1;
 
                 if (currentValue + step <= max) {
-                    input.value = (currentValue + step).toFixed(1);
+                    const newValue = currentValue + step;
+                    // step이 있거나 소수점 입력인 경우만 소수점 처리
+                    input.value = input.hasAttribute('step') ? newValue.toFixed(1) : Math.round(newValue);
                     // input 이벤트 발생시켜 다른 코드에서 감지할 수 있도록
                     input.dispatchEvent(new Event('input', { bubbles: true }));
                     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -148,7 +154,9 @@
                 const step = parseFloat(input.step) || 1;
 
                 if (currentValue - step >= min) {
-                    input.value = (currentValue - step).toFixed(1);
+                    const newValue = currentValue - step;
+                    // step이 있거나 소수점 입력인 경우만 소수점 처리
+                    input.value = input.hasAttribute('step') ? newValue.toFixed(1) : Math.round(newValue);
                     // input 이벤트 발생시켜 다른 코드에서 감지할 수 있도록
                     input.dispatchEvent(new Event('input', { bubbles: true }));
                     input.dispatchEvent(new Event('change', { bubbles: true }));

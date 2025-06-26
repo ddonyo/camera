@@ -17,6 +17,7 @@ export class MJPEGViewer {
         this.playing = false; // 재생 상태 (PLAYBACK 모드)
         this.currentDirection = Direction.FORWARD; // 재생 방향
         this.repeatMode = false; // 반복 재생
+        this.flipMode = false; // 좌우 반전
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
         this.liveFrameCount = 0; // 라이브 프레임 카운터
         this.originalFPS = null; // 파일에서 읽어온 원본 FPS
@@ -70,6 +71,7 @@ export class MJPEGViewer {
             nextFrameBtn: () => this._handleStep(Direction.FORWARD),
             prevFrameBtn: () => this._handleStep(Direction.REVERSE),
             repeatBtn: () => this._handleRepeat(),
+            flipBtn: () => this._handleFlip(),
             progressBar: (evt) => this._handleSeek(evt)
         };
     }
@@ -148,7 +150,7 @@ export class MJPEGViewer {
             img.onload = () => {
                 try {
                     const canvas = this.uiController.elements.viewer;
-                    CanvasUtils.drawImageToCanvas(canvas, img);
+                    CanvasUtils.drawImageToCanvas(canvas, img, { flip: this.flipMode });
                     this.liveFrameCount++; // 프레임 카운터 증가
                     this._updateUI();
                     resolve();
@@ -316,6 +318,12 @@ export class MJPEGViewer {
         this._updateUI();
     }
 
+    // Flip 버튼 이벤트 핸들러
+    _handleFlip() {
+        this.flipMode = !this.flipMode;
+        this._updateUI();
+    }
+
     // 프로그레스 바 탐색(Seek) 이벤트 핸들러
     _handleSeek(event) {
         if (this.frameManager.getFrameCount() === 0) return;
@@ -435,7 +443,8 @@ export class MJPEGViewer {
             this.playing,
             this.currentDirection,
             this.repeatMode,
-            hasFrames
+            hasFrames,
+            this.flipMode
         );
 
         if (this.state === State.PLAYBACK || this.state === State.IDLE) {
@@ -460,7 +469,7 @@ export class MJPEGViewer {
 
     // 현재 프레임 표시 및 UI 업데이트
     async _updateFrameDisplay() {
-        await this.frameManager.drawCurrentFrame(this.uiController.elements.viewer);
+        await this.frameManager.drawCurrentFrame(this.uiController.elements.viewer, { flip: this.flipMode });
         this._updateUI();
     }
 
