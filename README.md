@@ -1,10 +1,10 @@
-# LG Electronics SoC MJPEG Viewer
+# Delayed Show
 
 ## 🌐 **Overview**
 
-이 Application은 연속된 JPEG Stream을 실시간으로 보고, 녹화하며, 녹화된 영상을 다양한 방식으로 재생할 수 있는 기능을 제공합니다.
+이 애플리케이션은 실시간 카메라 스트리밍에 **지연 출력** 기능을 추가한 Electron 기반 데스크톱 애플리케이션입니다.
 
-Electron 기반의 Application으로, **파일 시스템 기반**의 MJPEG 스트리밍과 **바이너리 데이터 직접 처리**를 지원합니다.
+사용자가 설정한 시간만큼 지연된 영상을 볼 수 있으며, 녹화 및 재생 기능을 제공합니다.
 
 **Dev. JIRA URL :** http://jira.lge.com/issue/browse/SICDTV-15711
 
@@ -27,6 +27,7 @@ git push -uf origin main
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
 ![Electron.js](https://img.shields.io/badge/Electron-191970?style=for-the-badge&logo=Electron&logoColor=white)
+![C](https://img.shields.io/badge/c-%2300599C.svg?style=for-the-badge&logo=c&logoColor=white)
 
 ### **Frontend**
 - **HTML5 Canvas**: 비디오 프레임 렌더링
@@ -34,16 +35,24 @@ git push -uf origin main
 - **Tailwind CSS**: User Interface / User Experience 스타일링
 
 ### **Backend**
-- **Node.js**: v18.0.0 이상
-- **Electron**: v36.2.1 - 데스크톱 애플리케이션 프레임워크
+- **Node.js**: v18.0.0+
+- **Electron**: v36.2.1 - 크로스 플랫폼 데스크톱 앱 프레임워크
 - **Chokidar**: v4.0.3 - 파일 시스템 감시
-- **Socket.IO**: v4.8.1 - 실시간 통신 (선택적)
+
+### **Native (Linux)**
+- **V4L2 API**: Linux 비디오 캡처
+- **C**: 저수준 카메라 제어
 
 ## 💻 **System Requirements**
 
+### **Operating System**
+- Linux (V4L2 카메라 지원)
+- Windows (카메라 캡처 기능 제한)
+
 ### **Software**
-- Node.js v18.0.0 이상
-- npm v8.0.0 이상
+- Node.js v18.0.0+
+- npm v8.0.0+
+- Linux: gcc, make (네이티브 모듈 빌드용)
 
 ## 📦 **Installation Instructions**
 
@@ -53,20 +62,25 @@ git clone ssh://git@source.lge.com:2222/media_bsp/apps/camera.git
 ```
 
 ### **2. Install Dependencies**
-
 ```bash
 cd camera
 npm install
 ```
 
+### **3. Native Code Build (Linux)**
+```bash
+npm run build
+```
+
 ## 🚀 **How to Run**
 
-### **Electron Application Start (Local Machine)**
+### **Linux**
 ```bash
-# Linux/Wayland 환경
 npm start
+```
 
-# Windows 환경
+### **Windows**
+```bash
 npm run start:win
 ```
 
@@ -74,431 +88,239 @@ npm run start:win
 
 ```mermaid
 graph LR
-    AA[Local Machine]
-    subgraph " "
-        subgraph "Electron Main Process"
-            A[electron/main.js<br/>메인 프로세스]
-            D[FrameHandler<br/>프레임 핸들러]
-        end
-        subgraph "Backend Services"
-            B[backend/src/preload.js<br/>프리로드 스크립트]
-            O[backend/src/frame-watcher.js<br/>파일 감시자]
-            S[backend/src/server.js<br/>서버 로직]
-        end
-    end
-    subgraph "Frontend"
-        G[frontend/public/index.html<br/>메인 HTML]
-        H[frontend/src/mjpeg-viewer.js<br/>메인 뷰어 클래스]
-        I[frontend/src/config.js<br/>설정 및 상수]
-        J[frontend/src/frame-manager.js<br/>프레임 관리]
-        K[frontend/src/ui-controller.js<br/>UI 컨트롤]
-        L[frontend/src/utils.js<br/>유틸리티 함수들]
-        M[frontend/public/styles/<br/>CSS Files<br/>스타일시트]
-        P[frontend/src/app-init.js<br/>앱 초기화]
+    subgraph "Native Layer"
+        V4L2[V4L2 Camera API]
+        CAP[capture_interface.h]
+        VCAP[v4l2_capture.c]
     end
 
-    N[(Image Files<br/>프레임 이미지들)]
+    subgraph "Backend Process"
+        MAIN[electron/main.js<br/>Main Process]
+        FH[FrameHandler<br/>프레임 처리]
+        CAPTURE[capture.js<br/>카메라 제어]
+        FW[frame-watcher.js<br/>파일 감시]
+        PRELOAD[preload.js<br/>IPC Bridge]
+    end
 
-    AA --> A
-    A --> D
-    A --> B
-    A --> O
-    A --> S
-    D --> O
-    B --> G
-    G --> P
-    P --> H
-    H --> I
-    H --> J
-    H --> K
-    H --> L
-    J --> I
-    J --> L
-    K --> I
-    K --> L
-    G --> M
+    subgraph "Frontend (Renderer)"
+        HTML[index.html]
+        APP[app-init.js]
+        VIEWER[mjpeg-viewer.js<br/>메인 컨트롤러]
+        FM[frame-manager.js<br/>프레임 관리]
+        UI[ui-controller.js<br/>UI 제어]
+        CONFIG[config.js<br/>설정]
+        UTILS[utils.js<br/>유틸리티]
+    end
 
-    A -.->|IPC| H
-    B -.->|Context Bridge| H
-    H -.->|Static Files| N
-    O -.->|File Watch| N
-    S -.->|Server Communication| H
+    subgraph "File System"
+        LIVE[(live/)]
+        RECORD[(record/)]
+    end
+
+    V4L2 --> VCAP
+    VCAP --> CAP
+    CAP --> CAPTURE
+    CAPTURE --> FH
+    FH --> FW
+    FW --> LIVE
+    FH --> RECORD
+
+    MAIN --> FH
+    MAIN --> PRELOAD
+
+    PRELOAD -.IPC.-> VIEWER
+    FW -.파일 변경 알림.-> MAIN
+    MAIN -.프레임 데이터.-> VIEWER
+
+    HTML --> APP
+    APP --> VIEWER
+    VIEWER --> FM
+    VIEWER --> UI
+    VIEWER --> CONFIG
+    VIEWER --> UTILS
+    FM --> UTILS
+    UI --> UTILS
 ```
 
 ## 🗂️ **Project Structure**
 
 ```
-    camera/
-    ├── electron/
-    │   └── main.js               # Electron 메인 프로세스 (FrameHandler 클래스 포함)
-    ├── frontend/
-    │   ├── public/               # 웹 애플리케이션 파일
-    │   │   ├── index.html        # 메인 HTML
-    │   │   ├── styles/
-    │   │   │   └── main.css      # 스타일시트
-    │   │   ├── resources/        # 리소스 파일 (아이콘 등)
-    │   │   ├── live/             # 라이브 프레임 저장 위치
-    │   │   └── record/           # 녹화 프레임 저장 위치
-    │   └── src/                  # 프론트엔드 JavaScript 모듈
-    │       ├── mjpeg-viewer.js   # 메인 뷰어 클래스
-    │       ├── frame-manager.js  # 프레임 관리
-    │       ├── ui-controller.js  # UI 제어 (애니메이션 포함)
-    │       ├── config.js         # 설정 및 상수
-    │       ├── utils.js          # 유틸리티 함수
-    │       └── app-init.js       # 애플리케이션 초기화
-    ├── backend/                  # 백엔드 디렉토리
-    │   └── src/
-    │       ├── frame-watcher.js  # 파일 시스템 감시 (Node.js 환경)
-    │       ├── server.js         # 서버 로직
-    │       └── preload.js        # Electron 프리로드 스크립트
-    ├── test/                     # 테스트 파일
-    ├── package.json              # 프로젝트 설정 및 의존성
-    └── node_install.sh           # Node.js 설치 스크립트
-```
-
-```mermaid
-mindmap
-  root((MJPEG Viewer))
-    (Entry Points)
-      package.json
-        Electron 앱 설정
-        의존성 관리
-      electron/main.js
-        Electron 메인 프로세스
-        FrameHandler 클래스
-        IPC 핸들러
-    (Frontend)
-      frontend/public/index.html
-        메인 HTML 구조
-        UI 레이아웃
-      frontend/src/
-        mjpeg-viewer.js
-          메인 애플리케이션 로직
-          상태 관리
-          이벤트 처리
-          안정적인 모드 전환
-        frame-manager.js
-          프레임 로딩
-          재생 제어
-          인덱스 관리
-          Private 필드 사용
-        ui-controller.js
-          UI 상태 업데이트
-          버튼 활성화/비활성화
-          메시지 표시
-        config.js
-          상수 정의
-          설정값 관리
-          중복 제거된 구조
-        utils.js
-          공통 유틸리티 함수
-          ValidationUtils 클래스
-          DOM/Canvas/Math 헬퍼
-        app-init.js
-          애플리케이션 초기화
-          정리된 구조
-    (Backend Services)
-      backend/src/frame-watcher.js
-        파일 시스템 감시
-        바이너리 데이터 처리
-        자동 재시작 메커니즘
-        비동기 처리
-      backend/src/server.js
-        서버 로직
-        API 엔드포인트 관리
-      backend/src/preload.js
-        Electron Context Bridge
-        IPC 통신 인터페이스
-        보안 컨텍스트 제공
-```
-
-### **주요 파일 설명**
-
-#### `electron/main.js`
-- Electron 메인 프로세스
-- **FrameHandler 클래스**: 프레임 관련 로직을 캡슐화
-  - 디렉토리 관리
-  - 프레임 복사
-  - 모드 시작/중지
-  - 자동 정리 기능
-- IPC 통신 핸들러
-- 윈도우 생성 및 관리
-
-#### `frontend/src/mjpeg-viewer.js`
-- 메인 애플리케이션 로직
-- 상태 관리 및 전환
-- 재생 제어
-- Private 상수를 통한 설정 관리
-
-#### `frontend/src/frame-manager.js`
-- 프레임 데이터 관리
-- 이미지 로딩 및 캐싱
-- 프레임 인덱스 제어
-- **Private 필드 사용**: `#currentIndex`로 캡슐화
-- 통합된 navigate 메서드
-
-#### `frontend/src/ui-controller.js`
-- UI 요소 제어
-- 캔버스 렌더링
-- 사용자 입력 처리
-- 상태 표시
-
-#### `frontend/src/config.js`
-- 애플리케이션 설정값
-- 상태 정의
-- 에러/정보 메시지
-- **중복 제거**: Messages 객체 제거, 직접적인 구조 사용
-
-#### `frontend/src/utils.js`
-- **ValidationUtils 클래스**: 통합된 매개변수 검증
-  - validateRequired
-  - validateNumber
-  - validateString
-- 기존 유틸리티 클래스들 (DOMUtils, MathUtils, ImageLoader, TimerUtils, CanvasUtils)
-- Private 메서드 사용 (#contextCache, #getContext)
-
-#### `frontend/src/app-init.js`
-- 애플리케이션 초기화 로직
-- DOM 준비 상태 확인
-- 모듈 간 의존성 설정
-
-#### `backend/src/preload.js`
-- Electron Context Bridge
-- IPC 통신 인터페이스
-- 메인 프로세스와 렌더러 프로세스 간 안전한 통신
-- 보안 컨텍스트 제공
-
-#### `backend/src/frame-watcher.js`
-- 파일 시스템 감시 (Node.js 환경에서 실행)
-- **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
-- **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
-- **비동기 함수 사용**: async/await 패턴
-- awaitWriteFinish 옵션으로 파일 쓰기 완료 대기
-- fallback 지원: 바이너리 읽기 실패 시 기존 path 방식으로 자동 전환
-
-#### `backend/src/server.js`
-- 서버 관련 로직
-- API 엔드포인트 관리
-- 네트워크 통신 처리
-
-## ➡️ **Data Flow Diagram**
-
-```mermaid
-flowchart LR
-    B[UI Controller] --> C[MJPEG Viewer]
-    C --> D{Mode}
-
-    D -->|Live| E[FrameHandler]
-    D -->|Record| F[FrameHandler]
-    D -->|Playback| G[Frame Manager]
-
-    E --> H[Frame Watcher<br/>dataType: 'bin']
-    F --> H
-    H -->|Binary Data| I[frame-data IPC]
-    H -->|Fallback| J[frame-path IPC]
-
-    F -->|Binary Save| K[(Record Frames)]
-    G --> K
-
-    I --> L[ArrayBuffer → Blob]
-    J --> M[File Path Loading]
-    L --> N[Canvas Rendering]
-    M --> N
-
-    N --> O[UI Update]
-    O --> P[Progress Bar<br/>with Animation]
-    O --> Q[Status Display]
-    O --> R[Button State]
+camera/
+├── 📁 electron/
+│   └── main.js              # Electron 메인 프로세스
+├── 📁 frontend/
+│   ├── 📁 public/
+│   │   ├── index.html       # 메인 UI
+│   │   ├── 📁 styles/       # CSS 스타일
+│   │   ├── 📁 resources/    # UI 아이콘
+│   │   ├── 📁 live/         # 라이브 프레임 임시 저장
+│   │   └── 📁 record/       # 녹화 프레임 저장
+│   └── 📁 src/
+│       ├── app-init.js      # 앱 초기화
+│       ├── mjpeg-viewer.js  # 메인 컨트롤러
+│       ├── frame-manager.js # 프레임 관리
+│       ├── ui-controller.js # UI 제어
+│       ├── config.js        # 설정 상수
+│       └── utils.js         # 유틸리티
+├── 📁 backend/
+│   └── 📁 src/
+│       ├── capture.js       # 카메라 캡처 제어
+│       ├── frame-watcher.js # 파일 시스템 감시
+│       ├── preload.js       # Electron IPC
+│       └── server.js        # 서버 (확장용)
+├── 📁 native/
+│   └── 📁 linux/
+│       ├── capture_interface.h
+│       ├── v4l2_capture.c   # V4L2 카메라 구현
+│       └── Makefile
+└── package.json
 ```
 
 ## 🔄 **State Management**
 
 애플리케이션은 4가지 주요 상태를 가집니다:
 
-### **1. IDLE (정지 상태)**
-- 초기 상태
-- 아무 작업도 수행하지 않음
-- Live 모드 시작 가능 (Record는 Live에서만 가능)
-- 녹화된 영상이 있을 경우, Playback 모드 시작 가능
-
-### **2. LIVE (라이브 모드)**
-- 실시간 스트림 표시
-- 상세 동작 프로세스:
-  1. `FrameHandler.startStreaming()` 호출
-  2. `frontend/public/live/` 디렉토리 초기화
-  3. `FrameWatcher` 시작 (최초에만)
-  4. IPC를 통해 프레임 데이터 전달
-  5. Canvas에 실시간 렌더링
-
-### **3. RECORD (녹화 모드)**
-- **Live 모드에서 진입**: Live 모드에서 스트리밍 중단 없이 녹화 시작
-- **Frame Watcher 재사용**: 기존 스트리밍 인프라를 그대로 활용
-- 녹화 중 실시간 프리뷰 (Live 모드와 동일)
-- 녹화 완료 시 자동으로 재생 모드 전환
-- **바이너리 데이터로 직접 저장**: 성능 향상 및 메모리 효율성 개선
-- **단방향 워크플로우**: Live → Record → Playback 순서로 진행
-
-### **4. PLAYBACK (재생 모드)**
-- 녹화된 프레임 시퀀스 재생
-- Record 모드 종료 시 자동 전환
-- 상세 동작 프로세스:
-  1. `FrameManager.loadAllRecordFrames()` 호출
-  2. 연속 실패 5회까지 프레임 로딩 시도
-  3. Private 필드로 관리되는 currentIndex 사용
-  4. navigate 메서드로 프레임 이동
-  5. ValidationUtils로 검증된 FPS 값으로 재생
-
-## 🔀 **State Transition Flow**
-
 ```mermaid
-flowchart LR
-    A[IDLE] --> B[LIVE]
-    B --> C[RECORD]
-    B --> A
-    C --> D[PLAYBACK]
-    D --> A
-    A --> D
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> LIVE: Live 버튼
+    LIVE --> RECORD: Record 버튼
+    LIVE --> IDLE: Live 버튼
+    RECORD --> PLAYBACK: Record 버튼
+    PLAYBACK --> IDLE: Playback 버튼
+    IDLE --> PLAYBACK: Play/Playback 버튼
 
-    style A fill:#444,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
-    style B fill:#28a745,stroke:#1e7e34,stroke-width:2px
-    style C fill:#dc3545,stroke:#bd2130,stroke-width:2px
-    style D fill:#007bff,stroke:#0056b3,stroke-width:2px
+    state IDLE {
+        [*] --> 대기중
+        대기중: 초기 상태
+    }
+
+    state LIVE {
+        [*] --> 스트리밍
+        스트리밍: 실시간 카메라 출력
+        스트리밍: 지연 시간 적용 가능
+    }
+
+    state RECORD {
+        [*] --> 녹화중
+        녹화중: 스트리밍 + 파일 저장
+    }
+
+    state PLAYBACK {
+        [*] --> 재생
+        재생: 녹화된 영상 재생
+        재생 --> 일시정지
+        일시정지 --> 재생
+    }
 ```
 
-### **State Transition Trigger**
+### **State Information**
 
-1. **IDLE → LIVE**
-   - Live 버튼 클릭
-   - Frame Watcher 시작
+#### **1. IDLE (대기)**
+- 초기 상태
+- Live 또는 Playback 모드 진입 가능
 
-2. **LIVE → RECORD**
-   - Live 모드에서 Record 버튼 클릭
-   - **Frame Watcher 유지**, 녹화 기능만 활성화
-   - 스트리밍 중단 없음
+#### **2. LIVE (라이브)**
+- 실시간 카메라 스트리밍
+- **지연 출력**: 0~10초 설정 가능
+- 프레임은 `frontend/public/live/` 디렉토리에 임시 저장
 
-3. **LIVE → IDLE**
-   - Live 모드에서 Live 버튼 재클릭
-   - Frame Watcher 완전 중지
+#### **3. RECORD (녹화)**
+- Live 모드에서 무중단 전환
+- 스트리밍 계속하면서 프레임을 `frontend/public/record/`에 저장
+- 녹화 정보를 `rec_info.json`에 기록
 
-4. **RECORD → PLAYBACK**
-   - Record 모드에서 Record 버튼 재클릭
-   - 녹화 중지 후 자동으로 재생 모드 전환
-   - Frame Watcher 완전 중지
-
-5. **IDLE → PLAYBACK**
-   - IDLE 상태에서 Playback 버튼 클릭 또는 Play/Reverse 버튼 클릭 (녹화된 프레임이 있는 경우)
-
-6. **PLAYBACK → IDLE**
-   - Playback 모드에서 Playback 버튼 재클릭
-
-## 🔑 **Key Components**
-
-### **FrameHandler**
-- **통합된 스트리밍 관리**: Live와 Record 모드를 하나의 스트리밍으로 관리
-- **Frame Watcher 재사용**: 한 번 시작된 watcher를 Live ↔ Record 전환 시 유지
-- **무중단 녹화 전환**: 스트리밍 중단 없이 녹화 기능 활성화/비활성화
-- **상태 기반 처리**: `isStreaming`, `isRecording` 플래그로 동작 제어
-- 디렉토리 관리 및 초기화
-- 바이너리 데이터 직접 저장 지원
-- 에러 처리 및 정리
-
-### **MJPEGViewer**
-- Main Controller Class
-- State Management and Transition Logic
-- Event Handling
-- Playback Loop Control
-
-### **FrameManager**
-- Frame Data Management
-- Image Loading and Caching
-- Frame Index Control
-- Integrated navigate Method
-- Preloading Optimization
-
-### **UIController**
-- DOM Element Management
-- Canvas Rendering
-- Button State Update
-- Message Display
-- FPS Control
-
-### **ValidationUtils**
-- 통합된 매개변수 검증
-- 타입 체크 및 범위 검증
-- 일관된 에러 메시지
-- 코드 중복 제거
-
-### **FrameWatcher**
-- 파일 시스템 실시간 감시 (`backend/src/frame-watcher.js`)
-- **바이너리 데이터 처리**: `dataType: 'bin'` 옵션으로 파일을 바이너리로 읽어서 직접 전송
-- **자동 재시작 메커니즘**: 에러 발생 시 최대 3회 재시작 시도
-- **비동기 함수 사용**: async/await 패턴
-- awaitWriteFinish 옵션으로 파일 쓰기 완료 대기
-- fallback 지원: 바이너리 읽기 실패 시 기존 path 방식으로 자동 전환
-
-### **PreloadScript**
-- Electron Context Bridge (`backend/src/preload.js`)
-- 메인 프로세스와 렌더러 프로세스 간 안전한 IPC 통신
-- 보안 컨텍스트 제공
-- API 노출 제한
-
-### **ServerModule**
-- 서버 관련 로직 (`backend/src/server.js`)
-- API 엔드포인트 관리
-- 네트워크 통신 처리
-- 추가 백엔드 서비스 지원
-
-### **TimerUtils**
-- Accurate Timing Control
-- FPS-based Frame Waiting
-- ValidationUtils를 활용한 검증
-
-## 🆘 **Trouble-shooting**
-
-### **Frame Loading Fail**
-- `frontend/public/live` 및 `frontend/public/record` 디렉토리 존재 확인
-- 디렉토리 쓰기 권한 확인
-- 디스크 공간 확인
-
-### **Binary Data Processing Issues**
-- Node.js 메모리 제한 확인: `node --max-old-space-size=4096`
-- 대용량 파일 처리 시 자동 fallback 동작 확인
-- 에러 로그에서 `[FrameWatcher] Error reading file as binary` 메시지 확인
-
-### **Animation Performance Issues**
-- `prefers-reduced-motion` 설정 확인 (애니메이션 자동 비활성화)
-- GPU 가속 지원 확인 (`will-change: width` CSS 속성)
-- 브라우저 성능 모니터에서 리플로우/리페인트 확인
+#### **4. PLAYBACK (재생)**
+- 녹화된 프레임 시퀀스 재생
+- 다양한 재생 제어:
+  - 정방향/역방향 재생
+  - 속도 조절 (0.2x ~ 4.0x)
+  - 프레임 단위 이동
+  - 처음/끝으로 이동
+  - 반복 재생
 
 ## ⭐ **Key Features**
 
-### **Live Mode**
-- 실시간 MJPEG 스트림 뷰어
-- 파일 시스템 기반 프레임 로딩
-- **바이너리 데이터 직접 처리**: 파일 I/O 없이 메모리에서 직접 이미지 데이터 처리
-- 자동 fallback 지원 (바이너리 처리 실패 시 기존 path 방식으로 전환)
+### **📹 Live Mode (라이브 모드)**
+- 실시간 카메라 스트리밍
+- **지연 출력 기능**: 0~10초 사이 설정
+- Linux에서 V4L2 카메라 자동 감지
 
-### **Record Mode**
-- **Live 모드에서 진입**: Live 모드에서 스트리밍 중단 없이 녹화 시작
-- **Frame Watcher 재사용**: 기존 스트리밍 인프라를 그대로 활용
-- 녹화 중 실시간 프리뷰 (Live 모드와 동일)
-- 녹화 완료 시 자동으로 재생 모드 전환
-- **바이너리 데이터로 직접 저장**: 성능 향상 및 메모리 효율성 개선
-- **단방향 워크플로우**: Live → Record → Playback 순서로 진행
+### **🔴 Record Mode (녹화 모드)**
+- Live 모드에서 즉시 녹화 시작
+- 스트리밍 중단 없이 무중단 녹화
+- JPEG 시퀀스로 저장
+- 녹화 메타데이터 자동 저장
 
-### **Playback Mode**
-- 정방향/역방향 재생
-- 프레임 단위 이동 (다음/이전 프레임)
-- 빨리감기/되감기
-- 반복 재생
-- **부드러운 프로그레스 바 애니메이션**: 상황별 최적화된 애니메이션 효과
-  - 재생 중: 부드러운 애니메이션 (0.3초)
-  - 일시정지: 빠른 응답 (0.1초)
-  - 시크: 즉시 위치 변경
-- 사용자 정의 FPS 설정 (1-60 FPS)
+### **▶️ Playback Mode (재생 모드)**
+- 녹화된 영상 재생
+- **재생 제어**:
+  - Play/Pause (재생/일시정지)
+  - Reverse (역재생)
+  - Next/Previous Frame (프레임 이동)
+  - Rewind/Fast Forward (처음/끝)
+- **재생 옵션**:
+  - Speed: 0.2x ~ 4.0x (0.2 단위)
+  - Repeat: 반복 재생
+  - Flip: 좌우 반전
+- 프로그레스 바로 특정 위치 이동
+
+## 🔑 **Key Components**
+
+### **Backend Components**
+
+#### **FrameHandler** (`electron/main.js`)
+- 카메라 캡처 프로세스 관리
+- Live/Record 모드 전환 제어
+- 프레임 파일 관리 및 정리
+
+#### **Capture Device** (`backend/src/capture.js`)
+- V4L2 카메라와 통신
+- Unix Socket 기반 IPC
+- 카메라 설정 및 제어
+
+#### **FrameWatcher** (`backend/src/frame-watcher.js`)
+- Chokidar 기반 파일 감시
+- 새 프레임 감지 및 전달
+- 자동 재시작 메커니즘 (최대 3회)
+
+### **Frontend Components**
+
+#### **MJPEGViewer** (`frontend/src/mjpeg-viewer.js`)
+- 메인 애플리케이션 컨트롤러
+- 상태 관리 및 전환 로직
+- 사용자 입력 처리
+
+#### **FrameManager** (`frontend/src/frame-manager.js`)
+- 프레임 데이터 관리
+- 이미지 로딩 및 캐싱
+- 프레임 탐색 및 인덱싱
+
+#### **UIController** (`frontend/src/ui-controller.js`)
+- DOM 요소 제어
+- Canvas 렌더링
+- 버튼 상태 업데이트
+- 애니메이션 효과
+
+### **Camera Settings**
+```javascript
+// electron/main.js - FrameHandler.startCapture()
+const device = new capture.Device({
+    width: 640,      // 해상도 너비
+    height: 360,     // 해상도 높이
+    fps: 24,         // 초당 프레임
+    numFiles: 28     // 버퍼 파일 수 (fps * delay + 4)
+});
+```
 
 ## 📜 **License**
 
-이 프로젝트는 현재 POC 단계로 배포되지 않습니다.
+이 프로젝트는 LG Electronics Inc. CTO SoC Center 내부 프로젝트로 아직 배포되지 않습니다.
 
-**jaehong.oh@lge.com**
+## 📞 **지원**
+
+**개발팀**: LG Electronics SoC Media BSP Task
+
+**이메일**: mbtask-all@lge.com
+
+**JIRA**: http://jira.lge.com/issue/browse/SICDTV-15711
