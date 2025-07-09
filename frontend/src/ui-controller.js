@@ -96,9 +96,6 @@ export class UIController {
 
             case State.LIVE:
                 this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
-                if (hasFrames) {
-                    this._enablePlaybackButtons();
-                }
                 this._addActiveClass('liveBtn');
                 this._toggleDelayElements(true);
                 break;

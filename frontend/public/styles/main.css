@@ -135,14 +135,15 @@ body {
     left: 0 !important;
     right: 0 !important;
     height: 80px !important;
-    background-color: rgba(18, 18, 18, 1) !important;
+    background-color: rgba(18, 18, 18, 0.5) !important; /* 반투명 배경 */
+    backdrop-filter: blur(10px) !important;
     padding: var(--spacing-sm) var(--spacing-md) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     gap: var(--spacing-md) !important;
     z-index: 10 !important; /* 캔버스보다 위에 표시 */
-    transition: opacity 0.2s ease !important;
+    transition: opacity var(--transition-slow) !important; /* transform 제거 */
     opacity: 1 !important; /* 기본 보이는 상태 */
 }
 
@@ -155,9 +156,9 @@ body {
     height: 4px !important;
     z-index: 11 !important; /* 컨트롤 영역보다 위에 표시 */
     border-radius: 0 !important;
-    transition: opacity 0.2s ease !important;
-    opacity: 1 !important;
-    background-color: rgba(28, 28, 28, 1) !important;
+    transition: opacity var(--transition-slow) !important;
+    opacity: 0.8 !important; /* 반투명 */
+    background-color: rgba(28, 28, 28, 0.5) !important; /* 반투명 배경 */
 }
 
 /* 전체화면 모드에서 상태 표시 숨김 */
@@ -191,7 +192,39 @@ body {
 /* 전체화면 모드에서 number input 너비 확장 */
 .fullscreen-mode input[type="number"] {
     min-width: 3.6rem !important;
+    /* 3rem에서 4rem으로 확장 */
     width: 3.6rem !important;
+}
+
+/* 전체화면 모드 진입/종료 애니메이션 */
+.fullscreen-entering {
+    animation: enterFullscreen 0.3s ease-out forwards;
+}
+
+.fullscreen-exiting {
+    animation: exitFullscreen 0.3s ease-out forwards;
+}
+
+@keyframes enterFullscreen {
+    from {
+        transform: scale(1);
+        border-radius: 0.75rem;
+    }
+    to {
+        transform: scale(1);
+        border-radius: 0;
+    }
+}
+
+@keyframes exitFullscreen {
+    from {
+        transform: scale(1);
+        border-radius: 0;
+    }
+    to {
+        transform: scale(1);
+        border-radius: 0.75rem;
+    }
 }
 
 /* 전체화면 버튼 활성화 상태 */
@@ -207,24 +240,23 @@ body {
     transform: none !important;
 }
 
-/* 커서 자동 숨김 (전체화면에서 마우스 비활성화 시) */
-.fullscreen-mode.hide-cursor {
-    cursor: none;
-}
-
-.fullscreen-mode.hide-cursor * {
-    cursor: none !important;
-}
-
 /* 컨트롤 숨김 상태 */
 .fullscreen-mode.hide-controls .control-area {
     opacity: 0 !important; /* 완전 투명 */
     pointer-events: none !important; /* 클릭 방지 */
+    transition-delay: 0.5s !important; /* 숨김 지연 */
 }
 
 .fullscreen-mode.hide-controls .progress-bar {
     opacity: 0 !important; /* 완전 투명 */
     pointer-events: none !important; /* 클릭 방지 */
+    transition-delay: 0.5s !important; /* 숨김 지연 */
+}
+
+/* 컨트롤 표시 시 즉시 반응 */
+.fullscreen-mode:not(.hide-controls) .control-area,
+.fullscreen-mode:not(.hide-controls) .progress-bar {
+    transition-delay: 0s !important;
 }
 
 /* ================================================
