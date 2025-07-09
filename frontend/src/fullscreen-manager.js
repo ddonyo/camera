@@ -152,7 +152,6 @@ export class FullscreenManager {
             // 애니메이션 단순화
             this.mainContainer.classList.remove('fullscreen-mode');
             this.mainContainer.classList.remove('hide-controls');
-            this.mainContainer.classList.remove('hide-cursor');
             this.isFullscreen = false;
 
             // 버튼 상태 업데이트
@@ -176,7 +175,6 @@ export class FullscreenManager {
     _showControls() {
         if (!this.isFullscreen) return;
 
-        this.mainContainer.classList.remove('hide-cursor');
         this.mainContainer.classList.remove('hide-controls');
     }
 
@@ -196,7 +194,6 @@ export class FullscreenManager {
         if (!this.isFullscreen || !this.mainContainer) return;
 
         try {
-            this.mainContainer.classList.add('hide-cursor');
             this.mainContainer.classList.add('hide-controls');
         } catch (error) {
             console.warn('Failed to hide controls:', error);
