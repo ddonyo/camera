@@ -322,6 +322,10 @@ export class MJPEGViewer {
     _handleFlip() {
         this.flipMode = !this.flipMode;
         this._updateUI();
+
+        if (this.state === State.PLAYBACK && !this.playing) {
+            this._updateFrameDisplay();
+        }
     }
 
     // 프로그레스 바 탐색(Seek) 이벤트 핸들러
