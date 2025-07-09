@@ -15,7 +15,7 @@
 
 <body class="font-bold font-mono min-h-screen flex flex-col items-center bg-primary text-primary p-md" role="main">
     <!-- 메인 콘텐츠 영역 -->
-    <main class="w-full max-w-5xl rounded-xl shadow-xl space-y-2 bg-secondary border border-primary p-md" role="main">
+    <main id="mainContainer" class="w-full max-w-5xl rounded-xl shadow-xl space-y-2 bg-secondary border border-primary p-md" role="main">
 
         <!-- MJPEG 이미지를 표시할 캔버스 -->
         <canvas
@@ -33,7 +33,7 @@
         </div>
 
         <!-- 제어 버튼들과 설정 영역 -->
-        <section class="grid grid-cols-3 items-center gap-md text-base" aria-label="비디오 제어 패널">
+        <section class="grid grid-cols-3 items-center gap-md text-base control-area" aria-label="비디오 제어 패널">
 
             <!-- 왼쪽: 모드 제어 버튼 그룹 -->
             <div class="control-group justify-start" role="group" aria-label="모드 제어">
@@ -107,6 +107,13 @@
                 <button id="flipBtn" class="control-base control-btn tgl control-settings" aria-label="좌우 반전 토글">
                     <img src="./resources/flip_0.png" alt="" class="control-icon" aria-hidden="true">
                     <span>Flip</span>
+                </button>
+                <!-- 전체화면 모드 토글 버튼 -->
+                <button id="fullscreenBtn" class="control-base control-btn tgl control-settings" aria-label="전체화면 모드 토글" title="전체화면 (F11)">
+                    <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                    </svg>
+                    <span>Full</span>
                 </button>
             </div>
         </section>

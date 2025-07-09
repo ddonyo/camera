@@ -118,7 +118,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     on: registerListener, // 이벤트 수신 함수
     emit: emitEvent, // 이벤트 송신 함수
     isSocketIOEnabled: () => CONFIG.USE_SOCKET_IO, // Socket.IO 활성화 상태 확인
-    getValidChannels: () => [...CONFIG.VALID_CHANNELS] // 유효 채널 목록 반환 (복사본)
+    getValidChannels: () => [...CONFIG.VALID_CHANNELS], // 유효 채널 목록 반환 (복사본)
+
+    // 전체화면 관련 API
+    setFullscreen: (fullscreen) => ipcRenderer.invoke('set-fullscreen', fullscreen),
+    getFullscreen: () => ipcRenderer.invoke('get-fullscreen'),
+    toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen')
 });
 
 console.log(`${CONFIG.LOG_PREFIX} Electron API exposed to renderer process`);

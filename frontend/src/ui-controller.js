@@ -87,7 +87,7 @@ export class UIController {
 
         switch (state) {
             case State.IDLE:
-                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn']);
+                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
                 if (hasFrames) {
                     this._enablePlaybackButtons();
                 }
@@ -95,7 +95,7 @@ export class UIController {
                 break;
 
             case State.LIVE:
-                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn', 'flipBtn']);
+                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
                 if (hasFrames) {
                     this._enablePlaybackButtons();
                 }
@@ -104,13 +104,13 @@ export class UIController {
                 break;
 
             case State.RECORD:
-                this._enableButtons(['recordBtn', 'flipBtn']);
+                this._enableButtons(['recordBtn', 'flipBtn', 'fullscreenBtn']);
                 this._addActiveClass('recordBtn');
                 this._toggleDelayElements(true);
                 break;
 
             case State.PLAYBACK:
-                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn']);
+                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
                 this._toggleDelayElements(false);

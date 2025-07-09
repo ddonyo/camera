@@ -329,6 +329,23 @@ function setupIpcHandlers(win) {
     Object.entries(handlers).forEach(([event, handler]) => {
         ipcMain.on(event, handler);
     });
+
+    // 전체화면 관련 IPC 핸들러들 (handle 방식으로 추가)
+    ipcMain.handle('set-fullscreen', async (event, fullscreen) => {
+        console.log('IPC: set-fullscreen called with:', fullscreen);
+        win.setFullScreen(fullscreen);
+        return true;
+    });
+
+    ipcMain.handle('get-fullscreen', async () => {
+        return win.isFullScreen();
+    });
+
+    ipcMain.handle('toggle-fullscreen', async () => {
+        const isFullscreen = win.isFullScreen();
+        win.setFullScreen(!isFullscreen);
+        return !isFullscreen;
+    });
 }
 
 // 메인 창 생성 및 설정
@@ -338,7 +355,7 @@ function createWindow() {
         height: WINDOW_CONFIG.height,
         frame: true,
         resizable: true,
-        fullscreenable: false,
+        fullscreenable: true,
         webPreferences: {
             contextIsolation: true,
             enableRemoteModule: false,
