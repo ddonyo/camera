@@ -115,25 +115,23 @@ export class FullscreenManager {
                 await this.#electronAPI.setFullscreen(true);
             }
 
-            // CSS 클래스 적용
-            this.mainContainer.classList.add('fullscreen-entering');
+            // 애니메이션
+            this.mainContainer.classList.add('fullscreen-mode');
+            this.isFullscreen = true;
 
-            // 애니메이션 완료 후 전체화면 클래스 적용
+            // 버튼 상태 업데이트
+            if (this.fullscreenBtn) {
+                this.fullscreenBtn.classList.add('active');
+            }
+
+            // 컨트롤 자동 숨김 시작
             setTimeout(() => {
-                this.mainContainer.classList.remove('fullscreen-entering');
-                this.mainContainer.classList.add('fullscreen-mode');
-                this.isFullscreen = true;
-
-                // 버튼 상태 업데이트
-                if (this.fullscreenBtn) {
-                    this.fullscreenBtn.classList.add('active');
+                if (this.isFullscreen) {
+                    this._scheduleHideControls();
                 }
+            }, 100);
 
-                // 컨트롤 자동 숨김 시작
-                this._scheduleHideControls();
-
-                console.log('Fullscreen mode activated');
-            }, 300);
+            console.log('Fullscreen mode activated');
 
         } catch (error) {
             console.error('Failed to enter fullscreen:', error);
@@ -151,23 +149,18 @@ export class FullscreenManager {
             this._showControls();
             this._cancelHideControls();
 
-            // CSS 클래스 제거
+            // 애니메이션 단순화
             this.mainContainer.classList.remove('fullscreen-mode');
             this.mainContainer.classList.remove('hide-controls');
-            this.mainContainer.classList.add('fullscreen-exiting');
+            this.mainContainer.classList.remove('hide-cursor');
+            this.isFullscreen = false;
 
-            // 애니메이션 완료 후 정리
-            setTimeout(() => {
-                this.mainContainer.classList.remove('fullscreen-exiting');
-                this.isFullscreen = false;
+            // 버튼 상태 업데이트
+            if (this.fullscreenBtn) {
+                this.fullscreenBtn.classList.remove('active');
+            }
 
-                // 버튼 상태 업데이트
-                if (this.fullscreenBtn) {
-                    this.fullscreenBtn.classList.remove('active');
-                }
-
-                console.log('Fullscreen mode deactivated');
-            }, 300);
+            console.log('Fullscreen mode deactivated');
 
             // Electron 창 전체화면 해제
             if (this.#electronAPI) {
@@ -192,16 +185,22 @@ export class FullscreenManager {
         this._cancelHideControls();
 
         this.hideControlsTimeout = setTimeout(() => {
-            this._hideControls();
-        }, 1500); // 몇초후 숨기는지
+            if (this.isFullscreen) { // 상태 재확인
+                this._hideControls();
+            }
+        }, 1200); // 몇초후 숨기는지
     }
 
     // 컨트롤 숨김
     _hideControls() {
-        if (!this.isFullscreen) return;
+        if (!this.isFullscreen || !this.mainContainer) return;
 
-        this.mainContainer.classList.add('hide-cursor');
-        this.mainContainer.classList.add('hide-controls');
+        try {
+            this.mainContainer.classList.add('hide-cursor');
+            this.mainContainer.classList.add('hide-controls');
+        } catch (error) {
+            console.warn('Failed to hide controls:', error);
+        }
     }
 
     // 컨트롤 숨김 취소
