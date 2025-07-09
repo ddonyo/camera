@@ -161,8 +161,8 @@ body {
     background-color: rgba(28, 28, 28, 0.5) !important; /* 반투명 배경 */
 }
 
-/* 전체화면 모드에서 상태 표시 숨김 */
-.fullscreen-mode #status {
+/* 전체화면 모드에서 인라인 status는 표시 */
+.fullscreen-mode #status:not(.inline-status) {
     display: none !important;
 }
 
@@ -448,6 +448,50 @@ body {
     border: 1px solid var(--color-border-primary);
     color: var(--color-text-secondary);
     border-radius: var(--border-radius-md);
+}
+
+/* 인라인 상태 표시 (Control 내부용) */
+.inline-status {
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-primary);
+    color: var(--color-text-secondary);
+    border-radius: var(--border-radius-sm);
+    padding: 0.4rem 0.6rem;
+    font-size: 0.7rem;
+    margin-left: 0rem;
+    display: flex;
+    align-items: center;
+    min-width: 150px;
+    max-width: 240px;
+    height: 4rem;
+    overflow: hidden;
+}
+
+.inline-status .status-text {
+    font-size: 0.7rem;
+    line-height: 1.3;
+    margin: 0;
+    white-space: pre-wrap;
+    overflow: hidden;
+    width: 100%;
+    display: -webkit-box;
+    line-clamp: 2;
+}
+
+/* 전체화면 모드에서 인라인 상태 표시 스타일 */
+.fullscreen-mode .inline-status {
+    background-color: rgba(28, 28, 28, 0.8) !important; /* 더 진한 반투명 배경 */
+    backdrop-filter: blur(5px) !important;
+    font-size: 0.75rem !important; /* 전체화면에서 약간 더 큰 폰트 */
+    height: 3.5rem !important; /* 전체화면에서 두 줄에 맞는 높이 */
+    padding: 0.3rem 0.5rem !important;
+    min-width: 160px !important;
+    max-width: 220px !important;
+}
+
+.fullscreen-mode .inline-status .status-text {
+    font-size: 0.75rem !important;
+    line-height: 1.2 !important;
 }
 
 /* 캔버스 스타일 */

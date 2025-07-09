@@ -10,7 +10,7 @@ const debugLevel = 0;
 // 윈도우 설정
 const WINDOW_CONFIG = {
     width: 1080,
-    height: 900
+    height: 840
 };
 
 // 경로 설정

@@ -49,6 +49,10 @@
                     <img src="./resources/playback_0.png" alt="" class="control-icon" aria-hidden="true">
                     <span>Play</span>
                 </button>
+                <!-- 상태 표시 영역 -->
+                <div id="status" class="inline-status" role="status" aria-live="polite">
+                    <pre id="statusText" class="status-text normal" aria-label="현재 파일 정보">File Path:<br>File Name:<br>Frame:</pre>
+                </div>
             </div>
 
             <!-- 중앙: 재생 제어 버튼 그룹 -->
@@ -118,10 +122,6 @@
             </div>
         </section>
 
-        <!-- 현재 상태와 파일 정보를 표시하는 영역 -->
-        <div id="status" class="text-xs p-3 whitespace-pre-wrap flex justify-between items-start bg-tertiary border border-primary text-secondary" role="status" aria-live="polite">
-            <pre id="statusText" class="whitespace-pre-wrap status-text normal" aria-label="현재 파일 정보">File Path:<br>File Name:<br>Frame:</pre>
-        </div>
     </main>
 
     <!-- 페이지 하단 저작권 정보 -->

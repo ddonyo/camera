@@ -185,7 +185,12 @@ export class UIController {
         const frameText = statusInfo.frame ? `Frame: ${statusInfo.frame}` : 'Frame: ';
 
         if (this.elements.statusText) {
-            this.elements.statusText.textContent = `${pathText}\n${frameText}`;
+            // 두 줄로 표시 - 첫 번째 줄: 파일명 또는 상태, 두 번째 줄: Frame 정보
+            const fileName = statusInfo.path ? statusInfo.path.split('/').pop() : '';
+            const firstLine = fileName || pathText || 'Status: ';
+            const twoLineText = `${firstLine}\n${frameText}`;
+
+            this.elements.statusText.textContent = twoLineText;
             this._applyStatusTextColor();
         }
     }
@@ -314,9 +319,10 @@ export class UIController {
     // 상태 정보로부터 경로 텍스트 생성
     _getPathText(statusInfo) {
         if (this.currentMessage) {
-            return `Status: [${this.messageType.toUpperCase()}] ${this.currentMessage}`;
+            // 메시지도 컴팩트하게 표시
+            return `[${this.messageType.toUpperCase()}] ${this.currentMessage}`;
         }
-        return statusInfo.path ? `Status: ${statusInfo.path}` : 'Status: ';
+        return statusInfo.path ? statusInfo.path : '';
     }
 
     // 메시지 타임아웃 클리어
