@@ -158,6 +158,7 @@ class FrameHandler {
             // Frame Watcher 시작 (최초에만)
             if (!this.watcher) {
                 let lastWatcherTime = null;
+                let numWaitFrames = 0;
                 this.watcher = await watcher.start(async (type, data, frameNumber) => {
                     const currentTime = Date.now();
                     if (!lastWatcherTime) lastWatcherTime = currentTime;
@@ -166,24 +167,43 @@ class FrameHandler {
 
                     let item = { type: type, number: frameNumber, data: data };
 
-                    if (this.numDelayedFrames > 0) {
-                        // 라이브 지연인 경우 첫장은 출력
-                        if (this.delayedFrames.length == 0) {
-                            this.sendFrame(win, item);
-                        }
+                    if (frameNumber > 0) { // 첫장은 무조건 출력 후 처리
 
-                        this.delayedFrames.push(item);
-                        if (this.delayedFrames.length <= this.numDelayedFrames) {
-                            console.log(`Waiting capture frames ${this.delayedFrames.length}/${this.numDelayedFrames}`);
-                            return;
-                        }
+                        if (this.numDelayedFrames > 0) { // Delay 모드인 경우
+                            this.delayedFrames.push(item);
+                            const numAvailFrames = this.delayedFrames.length - this.numDelayedFrames;
 
-                        // Delay 값 변경에 의하여 큐에 존재하는 프레임은 버림
-                        do {
-                            item = this.delayedFrames.shift();
-                        } while (this.delayedFrames.length > this.numDelayedFrames);
-                    } else if (this.delayedFrames.length > 0) {
-                        this.delayedFrames.length = 0;
+                            if (numAvailFrames <= 0) {
+                                const waitTime = Math.floor(-numAvailFrames / this.fps);
+                                if (numWaitFrames <= waitTime) {
+                                    numWaitFrames++;
+                                    console.log(`Waiting capture frames ${this.delayedFrames.length}/${this.numDelayedFrames}`);
+                                    return;
+                                }
+                                numWaitFrames = 0;
+                                item = this.delayedFrames.shift();
+                            } else {
+                                // Delay 값이 작아지면서 큐에 존재하는 프레임이 여러개인 경우 처리
+                                if (numAvailFrames > 1) {
+                                    const count = Math.ceil(numAvailFrames / this.fps);
+                                    this.delayedFrames.splice(0, count);
+                                }
+                                item = this.delayedFrames.shift();
+                            }
+                        } else {
+                            if (this.delayedFrames.length > 0) { // Delay에서 Live로 전환된 경우
+                                this.delayedFrames.push(item);
+
+                                const count = Math.ceil(this.delayedFrames.length / this.fps);
+                                this.delayedFrames.splice(0, count);
+
+                                item = this.delayedFrames.shift();
+
+                                if (this.delayedFrames.length == 0) {
+                                    console.log('Delay To Live Transition');
+                                }
+                            }
+                        }
                     }
 
                     if (debugLevel > 0)
