@@ -27,6 +27,7 @@ export const IPCCommands = Object.freeze({
     // 스트리밍
     START_STREAMING: 'start-live',   // 스트리밍 시작
     STOP_STREAMING: 'stop-live',     // 스트리밍 중지
+    SET_DELAY: 'set-delay',          // 지연값 변경
 
     // 녹화
     START_RECORDING: 'start-record', // 녹화 시작

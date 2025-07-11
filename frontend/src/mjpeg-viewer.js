@@ -39,6 +39,7 @@ export class MJPEGViewer {
         console.log('Binding events...');
 
         const buttonHandlers = this._createButtonHandlers();
+        const inputHandlers = this._createInputHandlers();
         const elements = this.uiController.elements;
 
         // 필수 요소 검증
@@ -51,6 +52,13 @@ export class MJPEGViewer {
             const element = elements[elementKey];
             if (element) {
                 element.addEventListener('click', handler);
+            }
+        });
+
+        Object.entries(inputHandlers).forEach(([elementKey, handler]) => {
+            const element = elements[elementKey];
+            if (element) {
+                element.addEventListener('change', handler);
             }
         });
 
@@ -73,6 +81,13 @@ export class MJPEGViewer {
             repeatBtn: () => this._handleRepeat(),
             flipBtn: () => this._handleFlip(),
             progressBar: (evt) => this._handleSeek(evt)
+        };
+    }
+
+    // Input 핸들러 맵 생성
+    _createInputHandlers() {
+        return {
+            delayInput: () => this._handleDelay(),
         };
     }
 
@@ -209,6 +224,12 @@ export class MJPEGViewer {
         } catch (error) {
             this._handleError(error, 'Live mode error');
         }
+    }
+
+    // Delay 값 변경 이벤트 핸들러
+    _handleDelay() {
+        const delay = this.uiController.getDelay();
+        this._emitToElectron(IPCCommands.SET_DELAY, delay);
     }
 
     // Live에서 Record로 전환 (무중단)

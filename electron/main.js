@@ -6,6 +6,7 @@ const watcher = require('../backend/src/frame-watcher');
 const capture = require('../backend/src/capture');
 
 const debugLevel = 0;
+const maxDelay = 10;
 
 // 윈도우 설정
 const WINDOW_CONFIG = {
@@ -26,6 +27,7 @@ class FrameHandler {
     constructor() {
         this.captureDevice = null;
         this.captureInfo = null;
+        this.fps = 24;
         this.numDelayedFrames = 0;
         this.delayedFrames = [];
         this.watcher = null; // 프레임 감지기
@@ -71,22 +73,21 @@ class FrameHandler {
 
         if (!this.captureDevice) {
             const { delay = 0 } = options;
-            const fps = 24;
 
-            this.numDelayedFrames = fps * delay;
+            this.numDelayedFrames = this.fps * delay;
             this.delayedFrames = [];
 
-            const numFiles = this.numDelayedFrames + 4;
+            const numFiles = this.fps * maxDelay + 4;
 
-            console.log(`Starting capture with fps: ${fps}, delay: ${delay}, numFiles: ${numFiles}`);
+            console.log(`Starting capture with fps: ${this.fps}, delay: ${delay}, numFiles: ${numFiles}`);
 
             const device = new capture.Device({
                 saveDir: PATHS.LIVE_DIR,
                 fileFmt: 'frame%d.jpg',
-                width: 1280,
-                height: 720,
+                width: 1920,
+                height: 1080,
                 numFiles: numFiles,
-                fps: fps,
+                fps: this.fps,
                 //useStdout: true, // 카메라 데몬 로그 출력
                 //debugLevel: 1,
             });
@@ -134,6 +135,12 @@ class FrameHandler {
         }
     }
 
+    setDelay(delay) {
+        if (delay > maxDelay) delay = maxDelay;
+        this.numDelayedFrames = this.fps * delay;
+        console.log(`Set Delay=${delay}, Frames=${this.numDelayedFrames}`);
+    }
+
     // 스트리밍 시작
     async startStreaming(win, options = {}) {
         if (this.isStreaming) {
@@ -170,7 +177,13 @@ class FrameHandler {
                             console.log(`Waiting capture frames ${this.delayedFrames.length}/${this.numDelayedFrames}`);
                             return;
                         }
-                        item = this.delayedFrames.shift();
+
+                        // Delay 값 변경에 의하여 큐에 존재하는 프레임은 버림
+                        do {
+                            item = this.delayedFrames.shift();
+                        } while (this.delayedFrames.length > this.numDelayedFrames);
+                    } else if (this.delayedFrames.length > 0) {
+                        this.delayedFrames.length = 0;
                     }
 
                     if (debugLevel > 0)
@@ -321,6 +334,7 @@ function setupIpcHandlers(win) {
     const handlers = {
         'start-live': (event, options = {}) => frameHandler.startStreaming(win, options),
         'stop-live': () => frameHandler.stopStreaming(),
+        'set-delay': (event, delay) => frameHandler.setDelay(delay),
         'start-record': () => frameHandler.enableRecording(),
         'stop-record': () => frameHandler.disableRecording(),
         'log-message': (event, message) => console.log('APP: ' + message)

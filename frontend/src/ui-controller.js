@@ -97,7 +97,7 @@ export class UIController {
             case State.LIVE:
                 this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
                 this._addActiveClass('liveBtn');
-                this._toggleDelayElements(true);
+                this._toggleDelayElements(false);
                 break;
 
             case State.RECORD:
@@ -110,7 +110,7 @@ export class UIController {
                 this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
-                this._toggleDelayElements(false);
+                this._toggleDelayElements(true);
                 break;
         }
     }
