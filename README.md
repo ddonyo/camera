@@ -134,6 +134,7 @@ graph LR
 
     HTML --> APP
     APP --> VIEWER
+    APP --> FULLSCREEN[fullscreen-manager.js<br/>전체화면 관리]
     VIEWER --> FM
     VIEWER --> UI
     VIEWER --> CONFIG
@@ -156,12 +157,13 @@ camera/
 │   │   ├── 📁 live/         # 라이브 프레임 임시 저장
 │   │   └── 📁 record/       # 녹화 프레임 저장
 │   └── 📁 src/
-│       ├── app-init.js      # 앱 초기화
-│       ├── mjpeg-viewer.js  # 메인 컨트롤러
-│       ├── frame-manager.js # 프레임 관리
-│       ├── ui-controller.js # UI 제어
-│       ├── config.js        # 설정 상수
-│       └── utils.js         # 유틸리티
+│       ├── app-init.js          # 앱 초기화
+│       ├── mjpeg-viewer.js      # 메인 컨트롤러
+│       ├── frame-manager.js     # 프레임 관리
+│       ├── ui-controller.js     # UI 제어
+│       ├── fullscreen-manager.js # 전체화면 모드 관리
+│       ├── config.js            # 설정 상수
+│       └── utils.js             # 유틸리티
 ├── 📁 backend/
 │   └── 📁 src/
 │       ├── capture.js       # 카메라 캡처 제어
@@ -223,6 +225,7 @@ stateDiagram-v2
 #### **2. LIVE (라이브)**
 - 실시간 카메라 스트리밍
 - **지연 출력**: 0~10초 설정 가능
+- **실시간 지연 변경**: 스트리밍 중단 없이 Delay 값 조절 가능
 - 프레임은 `frontend/public/live/` 디렉토리에 임시 저장
 
 #### **3. RECORD (녹화)**
@@ -244,6 +247,7 @@ stateDiagram-v2
 ### **📹 Live Mode (라이브 모드)**
 - 실시간 카메라 스트리밍
 - **지연 출력 기능**: 0~10초 사이 설정
+- **실시간 Delay 변경**: 스트리밍 중에도 지연 시간 조절 가능
 - Linux에서 V4L2 카메라 자동 감지
 
 ### **🔴 Record Mode (녹화 모드)**
@@ -264,6 +268,18 @@ stateDiagram-v2
   - Repeat: 반복 재생
   - Flip: 좌우 반전
 - 프로그레스 바로 특정 위치 이동
+
+### **🖥️ Fullscreen Mode (전체화면 모드)**
+- **F11 키** 또는 **Full 버튼**으로 전체화면 전환
+- 전체화면에서 Escape 키로 종료
+- **자동 컨트롤 숨김**: 마우스 정지 시 자동으로 컨트롤 영역 숨김
+- **마우스 호버 감지**: 화면 하단 100px 이내로 마우스 이동 시 컨트롤 표시
+- 모든 모드(Live, Record, Playback)에서 사용 가능
+
+### **⏱️ Live Delay Control (실시간 지연 제어)**
+- **Live 모드 중 지연 시간 변경 가능**
+- Delay 값 변경 시 자동으로 스트리밍 재시작
+- 0~10초 범위에서 실시간 조절
 
 ## 🔑 **Key Components**
 
@@ -301,6 +317,12 @@ stateDiagram-v2
 - Canvas 렌더링
 - 버튼 상태 업데이트
 - 애니메이션 효과
+
+#### **FullscreenManager** (`frontend/src/fullscreen-manager.js`)
+- 전체화면 모드 전환 관리
+- F11 키 및 버튼 이벤트 처리
+- 자동 컨트롤 숨김/표시
+- 마우스 움직임 감지
 
 ### **Camera Settings**
 ```javascript

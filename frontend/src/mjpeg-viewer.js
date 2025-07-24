@@ -227,9 +227,23 @@ export class MJPEGViewer {
     }
 
     // Delay 값 변경 이벤트 핸들러
-    _handleDelay() {
+    async _handleDelay() {
         const delay = this.uiController.getDelay();
-        this._emitToElectron(IPCCommands.SET_DELAY, delay);
+
+        if (this.state === State.LIVE) {
+            console.log(`[Live] Delay changed to ${delay}, restarting stream...`);
+
+            this._emitToElectron(IPCCommands.STOP_STREAMING);
+
+            await this._delay(100);
+
+            const options = { delay };
+            this._emitToElectron(IPCCommands.START_STREAMING, options);
+
+            console.log(`[Live] Stream restarted with new delay: ${delay}`);
+        } else {
+            this._emitToElectron(IPCCommands.SET_DELAY, delay);
+        }
     }
 
     // Live에서 Record로 전환 (무중단)
