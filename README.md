@@ -6,6 +6,8 @@
 
 사용자가 설정한 시간만큼 지연된 영상을 볼 수 있으며, 녹화 및 재생 기능을 제공합니다.
 
+![Delayed Show Demo](delayed_show.gif)
+
 **Dev. JIRA URL :** http://jira.lge.com/issue/browse/SICDTV-15711
 
 ### **Clone Repository**
