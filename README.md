@@ -58,6 +58,11 @@ git push -uf origin main
 
 ## 📦 **Installation Instructions**
 
+### **0. Preparation for the TV Board**
+- O24 or O26 보드에서 전체 화면을 지원하기 위해서는 다음 다음 patch 를 반영하여 bulssi 빌드
+  - http://source.lge.com/dsw/c/DTV/bsp/kdriver/+/179165
+
+
 ### **1. Clone Repository**
 ```bash
 git clone ssh://git@source.lge.com:2222/media_bsp/apps/camera.git
@@ -68,6 +73,7 @@ git clone ssh://git@source.lge.com:2222/media_bsp/apps/camera.git
 cd camera
 npm install
 ```
+보드상에서는 bulssi_install.sh 를 수행하여 추가 패키지 자동 설치
 
 ### **3. Native Code Build (Linux)**
 ```bash
@@ -77,6 +83,7 @@ npm run build
 ## 🚀 **How to Run**
 
 ### **Linux**
+보드상에서는 부팅 후 bulssi_init.sh 먼저 수행
 ```bash
 npm start
 ```
