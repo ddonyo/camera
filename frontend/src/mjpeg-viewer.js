@@ -386,6 +386,10 @@ export class MJPEGViewer {
             this.uiController.setSpeed(Config.SPEED.DEFAULT);
             console.log(`[Playback] Set original FPS to ${recordedFPS} from rec_info.json`);
 
+            this._setState(State.PLAYBACK);
+            this.playing = true;
+            this.currentDirection = direction;
+
             const frameCount = await this._loadFramesWithProgress();
 
             if (frameCount === 0) {
@@ -394,8 +398,6 @@ export class MJPEGViewer {
             }
 
             this._initializePlaybackPosition(direction);
-            this._setState(State.PLAYBACK);
-            this._play(direction);
         } catch (error) {
             this._handleError(error, ErrorMessages.LOAD_RECORDED_FRAMES_FAILED);
         }
@@ -403,16 +405,49 @@ export class MJPEGViewer {
 
     // 녹화 프레임 로드 (UI 진행 표시)
     async _loadFramesWithProgress() {
-        return await this.frameManager.loadAllRecordFrames(
-            (message) => {
-                if (message) {
-                    this.uiController.setMessage(message, MessageType.LOADING, false);
-                } else {
-                    this.uiController.clearMessage();
-                }
-                this._updateUI();
+        try {
+            this.uiController.setMessage('Counting total frames...', MessageType.LOADING, false);
+            const totalFrameCount = await FileUtils.getTotalFrameCount();
+
+            if (totalFrameCount === 0) {
+                return 0;
             }
-        );
+
+            // 순차적 로딩 방식 사용
+            const frameCount = await this.frameManager.loadRecordFramesSequentially(
+                this.uiController.elements.viewer,
+                (frameIndex, loadedFrames, totalFrames) => {
+                    // 프레임 로드 UI 업데이트
+                    const progress = totalFrames ? (loadedFrames / totalFrames) * 100 : 0;
+                    this.uiController.setMessage(`Loading frame ${frameIndex + 1}/${totalFrames || '?'}...`, MessageType.LOADING, false);
+                    this.uiController.updateProgress(progress, 'fast');
+
+                    // status 정보 업데이트
+                    const statusInfo = {
+                        path: 'Loading Frames',
+                        name: '',
+                        frame: `${loadedFrames}/${totalFrames || '?'}`
+                    };
+                    this.uiController.updateStatus(statusInfo);
+                },
+                {
+                    flip: this.flipMode,
+                    effectiveFPS: this._getEffectiveFPS(),
+                    totalFrameCount: totalFrameCount
+                }
+            );
+
+            this.playing = false;
+            this.uiController.clearMessage();
+            this._updateUI();
+
+            return frameCount;
+        } catch (error) {
+            this.playing = false;
+            this.uiController.clearMessage();
+            this._updateUI();
+            throw error;
+        }
     }
 
     // 현재 프레임 처리 (방향 기반)

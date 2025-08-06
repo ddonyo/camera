@@ -106,6 +106,60 @@ export class FrameManager {
         return this.frames.length;
     }
 
+    // 순차적 프레임 로드 및 즉시 렌더링
+    async loadRecordFramesSequentially(canvas, onFrameLoaded = null, options = {}) {
+        this.clear();
+        let frameIndex = 0;
+        let consecutiveFailures = 0;
+        const maxConsecutiveFailures = 5;
+        const { effectiveFPS = null, totalFrameCount = null, ...renderOptions } = options;
+
+        console.log('[FrameManager] Starting sequential frame loading...');
+
+        while (consecutiveFailures < maxConsecutiveFailures) {
+            try {
+                // 파일 존재 확인 및 로드
+                const frameInfo = ImageLoader.createFrameInfo(frameIndex, Config.PATHS.RECORD_FRAME);
+                const img = await ImageLoader.loadImage(frameInfo.path);
+
+                // 프레임 정보를 배열에 추가
+                this.frames.push(frameInfo);
+
+                // 즉시 캔버스에 렌더링
+                CanvasUtils.drawImageToCanvas(canvas, img, renderOptions);
+
+                // 콜백 호출
+                if (onFrameLoaded) {
+                    onFrameLoaded(frameIndex, this.frames.length, totalFrameCount);
+                }
+
+                frameIndex++;
+                consecutiveFailures = 0;
+
+                console.log(`[FrameManager] Loaded and rendered frame ${frameIndex - 1}`);
+
+                // 속도 제한을 위한 지연 (effectiveFPS가 제공된 경우)
+                if (effectiveFPS && effectiveFPS > 0) {
+                    const delay = 1000 / effectiveFPS;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+
+            } catch (error) {
+                consecutiveFailures++;
+                console.warn(`[FrameManager] Failed to load frame ${frameIndex}, consecutive failures: ${consecutiveFailures}`);
+
+                if (consecutiveFailures >= maxConsecutiveFailures) {
+                    console.log(`[FrameManager] Stopping sequential loading after ${maxConsecutiveFailures} consecutive failures`);
+                    break;
+                }
+                frameIndex++;
+            }
+        }
+
+        console.log(`[FrameManager] Sequential loading completed. Total frames: ${this.frames.length}`);
+        return this.frames.length;
+    }
+
     // 프레임 탐색 (방향, 순환, 스텝 크기 지정)
     navigate(direction, options = {}) {
         const { circular = false, step = 1 } = options;

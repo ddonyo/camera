@@ -284,4 +284,55 @@ export class FileUtils {
             return false;
         }
     }
+
+    // 특정 프레임 파일 존재 여부 확인
+    static async frameExists(index) {
+        try {
+            const frameInfo = ImageLoader.createFrameInfo(index, Config.PATHS.RECORD_FRAME);
+            const response = await fetch(frameInfo.path, {
+                method: 'HEAD' // HEAD 요청으로 파일 존재만 확인
+            });
+            return response.ok;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // 전체 프레임 파일 개수 계산
+    static async getTotalFrameCount() {
+        try {
+            // 먼저 첫 번째 프레임이 존재하는지 확인
+            const hasFirstFrame = await this.frameExists(0);
+            if (!hasFirstFrame) {
+                console.log('[FileUtils] No frames found');
+                return 0;
+            }
+
+            let left = 0;
+            let right = 131072; // 충분히 큰 수로 시작 (24fps 약 91분 | 120fps 약 18분)
+            let lastExistingIndex = 0;
+
+            console.log('[FileUtils] Starting binary search for total frame count...');
+
+            while (left <= right) {
+                const mid = Math.floor((left + right) / 2);
+                const exists = await this.frameExists(mid);
+
+                if (exists) {
+                    lastExistingIndex = mid;
+                    left = mid + 1;
+                } else {
+                    right = mid - 1;
+                }
+            }
+
+            const totalCount = lastExistingIndex + 1;
+            console.log(`[FileUtils] Found ${totalCount} total frames (frame0 to frame${lastExistingIndex})`);
+            return totalCount;
+
+        } catch (error) {
+            console.error('[FileUtils] Error counting total frames:', error);
+            return 0;
+        }
+    }
 }
