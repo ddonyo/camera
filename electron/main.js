@@ -1,5 +1,5 @@
 // Electron 애플리케이션 메인 프로세스
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, session } = require('electron'); // [추가] session
 const path = require('path');
 const fsp = require('fs').promises;
 const watcher = require('../backend/src/frame-watcher');
@@ -8,10 +8,12 @@ const capture = require('../backend/src/capture');
 const debugLevel = 0;
 const maxDelay = 10;
 
+const IS_WIN = process.platform === 'win32'; // [추가] 윈도우 감지
+
 // 윈도우 설정
 const WINDOW_CONFIG = {
-    width: 1080,
-    height: 840
+    width: 2160,
+    height: 1300
 };
 
 // 경로 설정
@@ -67,7 +69,7 @@ class FrameHandler {
     }
 
     async startCapture(options = {}) {
-
+        // 윈도우에서는 V4L2 캡처가 동작하지 않으므로 바로 리턴 (기존 로직 유지)
         if (process.platform != 'linux')
             return;
 
@@ -168,7 +170,6 @@ class FrameHandler {
                     let item = { type: type, number: frameNumber, data: data };
 
                     if (frameNumber > 0) { // 첫장은 무조건 출력 후 처리
-
                         if (this.numDelayedFrames > 0) { // Delay 모드인 경우
                             this.delayedFrames.push(item);
                             const numAvailFrames = this.delayedFrames.length - this.numDelayedFrames;
@@ -410,9 +411,30 @@ function createWindow() {
     win.setMenuBarVisibility(false);
     win.loadFile(PATHS.INDEX);
 
-    // 개발 모드일 때 개발자 도구 열기
-    if (process.env.NODE_ENV === 'development') {
-        win.webContents.openDevTools();
+    // [추가] Windows 전용: 페이지 로드 후 wincam-viewer.js 주입
+    if (IS_WIN) {
+        win.webContents.once('did-finish-load', () => {
+            const inject = `
+                (function(){
+                    // 컨테이너 보장
+                    if (!document.getElementById('video-root')) {
+                        const root = document.createElement('div');
+                        root.id = 'video-root';
+                        root.style.cssText = 'position:relative;width:100%;height:100%;';
+                        document.body.appendChild(root);
+                    }
+                    // 중복 주입 방지
+                    if (!window.__WINCAM_LOADED__) {
+                        const s = document.createElement('script');
+                        s.type = 'module';
+                        s.src = '../src/wincam-viewer.js'; // frontend/src/wincam-viewer.js
+                        document.body.appendChild(s);
+                        window.__WINCAM_LOADED__ = true;
+                    }
+                })();
+            `;
+            win.webContents.executeJavaScript(inject).catch(console.error);
+        });
     }
 
     setupIpcHandlers(win);
@@ -425,8 +447,14 @@ function cleanupApp() {
     frameHandler.stopStreaming();
 }
 
-// 앱 준비 완료 시 창 생성
-app.whenReady().then(createWindow);
+// [추가] 카메라 권한 허용(Windows 환경에서 getUserMedia 원활)
+app.whenReady().then(() => {
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        if (permission === 'media') return callback(true);
+        callback(false);
+    });
+    createWindow();
+});
 
 // 모든 창 종료 시 앱 종료 (macOS 예외)
 app.on('window-all-closed', () => {

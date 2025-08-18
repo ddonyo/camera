@@ -11,117 +11,197 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 커스텀 CSS 로드 -->
     <link rel="stylesheet" href="./styles/main.css">
+
+    <style>
+    /* Windows에서 웹캠 모드: 왼쪽 패널의 viewer 캔버스는 숨기고 video-root만 보이게 */
+    .win-webcam #viewer { display: none !important; }
+    .win-webcam #video-root { display: block !important; }
+    </style>
 </head>
 
 <body class="font-bold font-mono min-h-screen flex flex-col items-center bg-primary text-primary p-md" role="main">
     <!-- 메인 콘텐츠 영역 -->
-    <main id="mainContainer" class="w-full max-w-5xl rounded-xl shadow-xl space-y-2 bg-secondary border border-primary p-md" role="main">
+    <main id="mainContainer" class="w-full max-w-[3840px] mx-auto flex flex-col shadow-xl space-y-2 bg-secondary border border-primary p-md" role="main">
 
-        <!-- MJPEG 이미지를 표시할 캔버스 -->
-        <canvas
-            id="viewer"
-            width="1280"
-            height="720"
-            class="w-full viewer-canvas"
-            aria-label="MJPEG 비디오 스트림 표시 영역"
-            role="img">
-        </canvas>
+        <!-- 상단 2분할: 좌 (카메라/웹캠), 우 (결과 + 배너) -->
+        <section class="grid grid-cols-1 lg:grid-cols-10 gap-3 flex-1">
 
-        <!-- 재생 진행률을 표시하는 프로그레스 바 -->
+            <!-- LEFT: 카메라(리눅스 MJPEG 또는 윈도우 캠) -->
+            <div class="relative rounded-xl overflow-hidden bg-black aspect-video col-span-7">
+            <!-- Windows 전용: 웹캠 비디오가 붙는 컨테이너 (기본 숨김) -->
+            <div id="video-root" class="absolute inset-0 hidden"></div>
+
+            <!-- MJPEG 캔버스 (기존 ID 유지) -->
+            <canvas
+                id="viewer"
+                width="1280"
+                height="720"
+                class="absolute inset-0 w-full h-full viewer-canvas"
+                aria-label="MJPEG 비디오 스트림 표시 영역"
+                role="img">
+            </canvas>
+
+            <!-- 라벨(선택) -->
+            <div class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white">Camera</div>
+            </div>
+
+            <!-- RIGHT: 결과 영역(렌더 캔버스) + 진행 배너 -->
+            <div class="relative rounded-xl overflow-hidden bg-black h-full col-span-3">
+            <canvas id="resultView"
+                    width="1280" height="720"
+                    class="absolute inset-0 w-full h-full"
+                    aria-label="Result preview (Right)"></canvas>
+
+            <div id="genBanner"
+                class="absolute left-1/2 -translate-x-1/2 bottom-6 text-base px-4 py-2 rounded-2xl bg-black/60 text-white backdrop-blur hidden">
+                Runway video generating...
+            </div>
+
+            <div class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white">VTON Result</div>
+            </div>
+        </section>
+
+        <!-- 재생 진행률 바: 2분할 아래(전체 폭) -->
         <div id="progressBar" class="w-full h-3 rounded progress-bar overflow-hidden bg-primary" role="progressbar" aria-label="재생 진행률">
             <div id="progress" class="h-full bg-blue-500"></div>
         </div>
 
-        <!-- 제어 버튼들과 설정 영역 -->
+        <!-- 기존 카메라 컨트롤: 2분할 아래(전체 폭) -->
         <section class="grid grid-cols-3 items-center gap-md text-base control-area" aria-label="비디오 제어 패널">
 
             <!-- 왼쪽: 모드 제어 버튼 그룹 -->
             <div class="control-group justify-start" role="group" aria-label="모드 제어">
-                <button id="liveBtn" class="control-btn tgl" aria-label="라이브 모드 토글">
-                    <img src="./resources/live_0.png" alt="" class="control-icon" aria-hidden="true">
-                    <span>Live</span>
-                </button>
-                <button id="recordBtn" class="control-btn tgl" aria-label="녹화 모드 토글">
-                    <img src="./resources/record_0.png" alt="" class="control-icon" aria-hidden="true">
-                    <span>Rec</span>
-                </button>
-                <button id="playbackBtn" class="control-btn tgl" aria-label="재생 모드 진입">
-                    <img src="./resources/playback_0.png" alt="" class="control-icon" aria-hidden="true">
-                    <span>Play</span>
-                </button>
-                <!-- 상태 표시 영역 -->
-                <div id="status" class="inline-status" role="status" aria-live="polite">
-                    <pre id="statusText" class="status-text normal" aria-label="현재 파일 정보">File Path:<br>File Name:<br>Frame:</pre>
-                </div>
+            <button id="liveBtn" class="control-btn tgl" aria-label="라이브 모드 토글">
+                <img src="./resources/live_0.png" alt="" class="control-icon" aria-hidden="true">
+                <span>Live</span>
+            </button>
+            <button id="recordBtn" class="control-btn tgl" aria-label="녹화 모드 토글">
+                <img src="./resources/record_0.png" alt="" class="control-icon" aria-hidden="true">
+                <span>Rec</span>
+            </button>
+            <button id="playbackBtn" class="control-btn tgl" aria-label="재생 모드 진입">
+                <img src="./resources/playback_0.png" alt="" class="control-icon" aria-hidden="true">
+                <span>Play</span>
+            </button>
+            <div id="status" class="inline-status" role="status" aria-live="polite">
+                <pre id="statusText" class="status-text normal" aria-label="현재 파일 정보">File Path:<br>File Name:<br>Frame:</pre>
+            </div>
             </div>
 
             <!-- 중앙: 재생 제어 버튼 그룹 -->
             <div class="flex gap-0 justify-center" role="group" aria-label="재생 제어">
-                <button id="rewindBtn" disabled class="control-btn btn" aria-label="처음으로 되감기">
-                    <img src="./resources/rewind_0.png" alt="" class="control-icon" aria-hidden="true">
-                </button>
-                <button id="prevFrameBtn" disabled class="control-btn btn" aria-label="이전 프레임">
-                    <img src="./resources/prevframe_0.png" alt="" class="control-icon" aria-hidden="true">
-                </button>
-                <button id="reverseBtn" disabled class="control-btn tgl" aria-label="역재생">
-                    <img src="./resources/reverse_0.png" alt="" class="control-icon" aria-hidden="true">
-                </button>
-                <button id="pauseBtn" disabled class="control-btn tgl" aria-label="일시정지">
-                    <img src="./resources/pause_0.png" alt="" class="control-icon" aria-hidden="true">
-                </button>
-                <button id="playBtn" disabled class="control-btn tgl" aria-label="재생">
-                    <img src="./resources/play_0.png" alt="" class="control-icon" aria-hidden="true">
-                </button>
-                <button id="nextFrameBtn" disabled class="control-btn btn" aria-label="다음 프레임">
-                    <img src="./resources/nextframe_0.png" alt="" class="control-icon" aria-hidden="true">
-                </button>
-                <button id="fastForwardBtn" disabled class="control-btn btn" aria-label="마지막으로 빨리감기">
-                    <img src="./resources/fastforward_0.png" alt="" class="control-icon" aria-hidden="true">
-                </button>
+            <button id="rewindBtn" disabled class="control-btn btn" aria-label="처음으로 되감기">
+                <img src="./resources/rewind_0.png" alt="" class="control-icon" aria-hidden="true">
+            </button>
+            <button id="prevFrameBtn" disabled class="control-btn btn" aria-label="이전 프레임">
+                <img src="./resources/prevframe_0.png" alt="" class="control-icon" aria-hidden="true">
+            </button>
+            <button id="reverseBtn" disabled class="control-btn tgl" aria-label="역재생">
+                <img src="./resources/reverse_0.png" alt="" class="control-icon" aria-hidden="true">
+            </button>
+            <button id="pauseBtn" disabled class="control-btn tgl" aria-label="일시정지">
+                <img src="./resources/pause_0.png" alt="" class="control-icon" aria-hidden="true">
+            </button>
+            <button id="playBtn" disabled class="control-btn tgl" aria-label="재생">
+                <img src="./resources/play_0.png" alt="" class="control-icon" aria-hidden="true">
+            </button>
+            <button id="nextFrameBtn" disabled class="control-btn btn" aria-label="다음 프레임">
+                <img src="./resources/nextframe_0.png" alt="" class="control-icon" aria-hidden="true">
+            </button>
+            <button id="fastForwardBtn" disabled class="control-btn btn" aria-label="마지막으로 빨리감기">
+                <img src="./resources/fastforward_0.png" alt="" class="control-icon" aria-hidden="true">
+            </button>
             </div>
 
             <!-- 오른쪽: 설정 제어 그룹 -->
             <div class="control-group justify-end" role="group" aria-label="재생 설정">
-                <label class="number-input-label control-settings" for="delayInput">
-                    <div class="number-input-wrapper">
-                        <input type="number" id="delayInput" name="delay" value="0" min="0" max="10" disabled
-                            aria-label="딜레이 시간 설정">
-                        <div class="number-input-buttons">
-                            <button type="button" class="number-input-btn up" onclick="incrementValue('delayInput')" aria-label="딜레이 증가"></button>
-                            <button type="button" class="number-input-btn down" onclick="decrementValue('delayInput')" aria-label="딜레이 감소"></button>
-                        </div>
-                    </div>
-                    <span>Delay</span>
-                </label>
-                <label class="number-input-label control-settings" for="speedInput">
-                    <div class="number-input-wrapper">
-                        <input type="number" id="speedInput" name="speed" value="1.0" min="0.2" max="4.0" step="0.2" disabled
-                            aria-label="재생 속도 설정">
-                        <div class="number-input-buttons">
-                            <button type="button" class="number-input-btn up" onclick="incrementValue('speedInput')" aria-label="속도 증가"></button>
-                            <button type="button" class="number-input-btn down" onclick="decrementValue('speedInput')" aria-label="속도 감소"></button>
-                        </div>
-                    </div>
-                    <span>Speed</span>
-                </label>
-                <button id="repeatBtn" disabled class="control-base control-btn tgl control-settings" aria-label="반복 재생 토글">
-                    <img src="./resources/repeat_0.png" alt="" class="control-icon" aria-hidden="true">
-                    <span>Repeat</span>
-                </button>
-                <button id="flipBtn" class="control-base control-btn tgl control-settings" aria-label="좌우 반전 토글">
-                    <img src="./resources/flip_0.png" alt="" class="control-icon" aria-hidden="true">
-                    <span>Flip</span>
-                </button>
-                <!-- 전체화면 모드 토글 버튼 -->
-                <button id="fullscreenBtn" class="control-base control-btn tgl control-settings" aria-label="전체화면 모드 토글" title="전체화면 (F11)">
-                    <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-                    </svg>
-                    <span>Full</span>
-                </button>
+            <label class="number-input-label control-settings" for="delayInput">
+                <div class="number-input-wrapper">
+                <input type="number" id="delayInput" name="delay" value="0" min="0" max="10" disabled aria-label="딜레이 시간 설정">
+                <div class="number-input-buttons">
+                    <button type="button" class="number-input-btn up" onclick="incrementValue('delayInput')" aria-label="딜레이 증가"></button>
+                    <button type="button" class="number-input-btn down" onclick="decrementValue('delayInput')" aria-label="딜레이 감소"></button>
+                </div>
+                </div>
+                <span>Delay</span>
+            </label>
+            <label class="number-input-label control-settings" for="speedInput">
+                <div class="number-input-wrapper">
+                <input type="number" id="speedInput" name="speed" value="1.0" min="0.2" max="4.0" step="0.2" disabled aria-label="재생 속도 설정">
+                <div class="number-input-buttons">
+                    <button type="button" class="number-input-btn up" onclick="incrementValue('speedInput')" aria-label="속도 증가"></button>
+                    <button type="button" class="number-input-btn down" onclick="decrementValue('speedInput')" aria-label="속도 감소"></button>
+                </div>
+                </div>
+                <span>Speed</span>
+            </label>
+            <button id="repeatBtn" disabled class="control-base control-btn tgl control-settings" aria-label="반복 재생 토글">
+                <img src="./resources/repeat_0.png" alt="" class="control-icon" aria-hidden="true">
+                <span>Repeat</span>
+            </button>
+            <button id="flipBtn" class="control-base control-btn tgl control-settings" aria-label="좌우 반전 토글">
+                <img src="./resources/flip_0.png" alt="" class="control-icon" aria-hidden="true">
+                <span>Flip</span>
+            </button>
+            <button id="fullscreenBtn" class="control-base control-btn tgl control-settings" aria-label="전체화면 모드 토글" title="전체화면 (F11)">
+                <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                </svg>
+                <span>Full</span>
+            </button>
             </div>
         </section>
 
+        <!-- 하단: Wardrobe 가로 스크롤 -->
+        <section aria-label="Wardrobe" class="space-y-2">
+            <h2 class="text-xl">Wardrobe</h2>
+            <div id="wardrobeStrip" class="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/denim-jacket.png" alt="Denim jacket" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Denim Jacket</div>
+            </button>                                                
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/blue_suit_jacket.jpg" alt="Denim jacket" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Blue Jacket</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/green_suit.webp" alt="Denim jacket" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Green Suit</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/party_suit.jpg" alt="Denim jacket" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Party Suit</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="red-top">
+                <img src="./resources/wardrobe/yellow-polo-shirt.png" alt="Yellow Polo Shirt" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Yellow Polo Shirt</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="floral-dress">
+                <img src="./resources/wardrobe/green_polo_shirt.webp" alt="Green Polo Shirt" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Green Polo Shirt</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/white-shirt.webp" alt="White Shirt" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">White Shirt</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/blue_shirt.jpg" alt="Blue Shirt" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Blue Shirt</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/beige_knit.webp" alt="Beige Knit" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Beige Knit</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/beige_pants.webp" alt="Beige Pants" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Beige Pants</div>
+            </button>
+            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment="denim-jacket">
+                <img src="./resources/wardrobe/denim_pants.jpg" alt="Beige Knit" class="w-full h-36 object-contain rounded-lg mb-2">
+                <div class="text-sm text-zinc-200 text-left">Denim Pants</div>
+            </button>
+            </div>
+        </section>
     </main>
 
     <!-- 페이지 하단 저작권 정보 -->
