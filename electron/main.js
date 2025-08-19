@@ -12,8 +12,8 @@ const IS_WIN = process.platform === 'win32'; // [추가] 윈도우 감지
 
 // 윈도우 설정
 const WINDOW_CONFIG = {
-    width: 2160,
-    height: 1300
+    width: 1920,
+    height: 1080
 };
 
 // 경로 설정
@@ -388,7 +388,7 @@ function createWindow() {
     const win = new BrowserWindow({
         width: WINDOW_CONFIG.width,
         height: WINDOW_CONFIG.height,
-        frame: true,
+        fullscreen: true,
         resizable: true,
         fullscreenable: true,
         webPreferences: {
