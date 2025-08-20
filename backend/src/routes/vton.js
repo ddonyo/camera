@@ -111,7 +111,8 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
 
         console.log('[VTON] → FASHN /v1/run (sending)', {
             url: 'https://api.fashn.ai/v1/run',
-            mode, bodyBytes: JSON.stringify(payload).length
+            mode,
+            bodyBytes: JSON.stringify(payload).length
         });
 
         const runResp = await fetchWithTimeout(
