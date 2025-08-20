@@ -13,15 +13,22 @@
     <link rel="stylesheet" href="./styles/main.css">
 
     <style>
-    /* Windows에서 웹캠 모드: 왼쪽 패널의 viewer 캔버스는 숨기고 video-root만 보이게 */
-    .win-webcam #viewer { display: none !important; }
-    .win-webcam #video-root { display: block !important; }
+        /* Windows에서 웹캠 모드: 왼쪽 패널의 viewer 캔버스는 숨기고 video-root만 보이게 */
+        .win-webcam #viewer {
+            display: none !important;
+        }
+
+        .win-webcam #video-root {
+            display: block !important;
+        }
     </style>
 </head>
 
 <body class="font-bold font-mono min-h-screen flex flex-col items-center bg-primary text-primary p-md" role="main">
     <!-- 메인 콘텐츠 영역 -->
-    <main id="mainContainer" class="w-full max-w-[1920px] max-h-[1080px] mx-auto flex flex-col shadow-xl space-y-2 bg-secondary border border-primary p-md" role="main">
+    <main id="mainContainer"
+        class="w-full max-w-[1920px] max-h-[1080px] mx-auto flex flex-col shadow-xl space-y-2 bg-secondary border border-primary p-md"
+        role="main">
 
         <!-- 상단 2분할: 좌 (카메라/웹캠), 우 (결과 + 배너) -->
         <section class="grid grid-cols-1 lg:grid-cols-10 gap-3 flex-1">
@@ -29,26 +36,22 @@
             <!-- LEFT: 카메라(리눅스 MJPEG 또는 윈도우 캠) -->
             <div class="relative rounded-xl overflow-hidden bg-black aspect-video col-span-7">
 
-            <!-- Windows 전용: 웹캠 비디오가 붙는 컨테이너 (기본 숨김) -->
-            <div id="video-root" class="absolute inset-0 hidden"></div>
+                <!-- Windows 전용: 웹캠 비디오가 붙는 컨테이너 (기본 숨김) -->
+                <div id="video-root" class="absolute inset-0 hidden"></div>
 
-            <!-- MJPEG 캔버스 (기존 ID 유지) -->
-            <canvas
-                id="viewer"
-                width="1280"
-                height="720"
-                class="absolute inset-0 w-full h-full viewer-canvas"
-                aria-label="MJPEG 비디오 스트림 표시 영역"
-                role="img">
-            </canvas>
+                <!-- MJPEG 캔버스 (기존 ID 유지) -->
+                <canvas id="viewer" width="1280" height="720" class="absolute inset-0 w-full h-full viewer-canvas"
+                    aria-label="MJPEG 비디오 스트림 표시 영역" role="img">
+                </canvas>
 
-            <!-- 라벨(선택) -->
-            <div class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white">Camera</div>
+                <!-- 라벨(선택) -->
+                <div class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white">Camera</div>
             </div>
 
             <!-- RIGHT: 결과 영역(렌더 캔버스) + 진행 배너 -->
             <div id="vton-panel" class="rounded-xl bg-black h-full col-span-3">
-                <img id="vtonResult" src="./resources/vton/placeholder.jpg" alt="VTON Result" class="w-full h-full object-contain select-none">
+                <img id="vtonResult" src="./resources/vton/placeholder.jpg" alt="VTON Result"
+                    class="w-full h-full object-contain select-none">
 
                 <!-- 로딩 오버레이 -->
                 <div id="vtonLoading" class="hidden absolute inset-0 grid place-items-center bg-black/60">
@@ -62,17 +65,19 @@
                 </div>
 
                 <!-- 에러 배지 -->
-                <div id="vtonError" class="hidden absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
+                <div id="vtonError"
+                    class="hidden absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
                     Failed to generate. Try again.
                 </div>
 
-            <!-- 라벨 -->
-            <div class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white">VTON Result</div>
+                <!-- 라벨 -->
+                <div class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white">VTON Result</div>
             </div>
         </section>
 
         <!-- 재생 진행률 바: 2분할 아래(전체 폭) -->
-        <div id="progressBar" class="w-full h-3 rounded progress-bar overflow-hidden bg-primary" role="progressbar" aria-label="재생 진행률">
+        <div id="progressBar" class="w-full h-3 rounded progress-bar overflow-hidden bg-primary" role="progressbar"
+            aria-label="재생 진행률">
             <div id="progress" class="h-full bg-blue-500"></div>
         </div>
 
@@ -81,84 +86,93 @@
 
             <!-- 왼쪽: 모드 제어 버튼 그룹 -->
             <div class="control-group justify-start" role="group" aria-label="모드 제어">
-            <button id="liveBtn" class="control-btn tgl" aria-label="라이브 모드 토글">
-                <img src="./resources/live_0.png" alt="" class="control-icon" aria-hidden="true">
-                <span>Live</span>
-            </button>
-            <button id="recordBtn" class="control-btn tgl" aria-label="녹화 모드 토글">
-                <img src="./resources/record_0.png" alt="" class="control-icon" aria-hidden="true">
-                <span>Rec</span>
-            </button>
-            <button id="playbackBtn" class="control-btn tgl" aria-label="재생 모드 진입">
-                <img src="./resources/playback_0.png" alt="" class="control-icon" aria-hidden="true">
-                <span>Play</span>
-            </button>
-            <div id="status" class="inline-status" role="status" aria-live="polite">
-                <pre id="statusText" class="status-text normal" aria-label="현재 파일 정보">File Path:<br>File Name:<br>Frame:</pre>
-            </div>
+                <button id="liveBtn" class="control-btn tgl" aria-label="라이브 모드 토글">
+                    <img src="./resources/live_0.png" alt="" class="control-icon" aria-hidden="true">
+                    <span>Live</span>
+                </button>
+                <button id="recordBtn" class="control-btn tgl" aria-label="녹화 모드 토글">
+                    <img src="./resources/record_0.png" alt="" class="control-icon" aria-hidden="true">
+                    <span>Rec</span>
+                </button>
+                <button id="playbackBtn" class="control-btn tgl" aria-label="재생 모드 진입">
+                    <img src="./resources/playback_0.png" alt="" class="control-icon" aria-hidden="true">
+                    <span>Play</span>
+                </button>
+                <div id="status" class="inline-status" role="status" aria-live="polite">
+                    <pre id="statusText" class="status-text normal"
+                        aria-label="현재 파일 정보">File Path:<br>File Name:<br>Frame:</pre>
+                </div>
             </div>
 
             <!-- 중앙: 재생 제어 버튼 그룹 -->
             <div class="flex gap-0 justify-center" role="group" aria-label="재생 제어">
-            <button id="rewindBtn" disabled class="control-btn btn" aria-label="처음으로 되감기">
-                <img src="./resources/rewind_0.png" alt="" class="control-icon" aria-hidden="true">
-            </button>
-            <button id="prevFrameBtn" disabled class="control-btn btn" aria-label="이전 프레임">
-                <img src="./resources/prevframe_0.png" alt="" class="control-icon" aria-hidden="true">
-            </button>
-            <button id="reverseBtn" disabled class="control-btn tgl" aria-label="역재생">
-                <img src="./resources/reverse_0.png" alt="" class="control-icon" aria-hidden="true">
-            </button>
-            <button id="pauseBtn" disabled class="control-btn tgl" aria-label="일시정지">
-                <img src="./resources/pause_0.png" alt="" class="control-icon" aria-hidden="true">
-            </button>
-            <button id="playBtn" disabled class="control-btn tgl" aria-label="재생">
-                <img src="./resources/play_0.png" alt="" class="control-icon" aria-hidden="true">
-            </button>
-            <button id="nextFrameBtn" disabled class="control-btn btn" aria-label="다음 프레임">
-                <img src="./resources/nextframe_0.png" alt="" class="control-icon" aria-hidden="true">
-            </button>
-            <button id="fastForwardBtn" disabled class="control-btn btn" aria-label="마지막으로 빨리감기">
-                <img src="./resources/fastforward_0.png" alt="" class="control-icon" aria-hidden="true">
-            </button>
+                <button id="rewindBtn" disabled class="control-btn btn" aria-label="처음으로 되감기">
+                    <img src="./resources/rewind_0.png" alt="" class="control-icon" aria-hidden="true">
+                </button>
+                <button id="prevFrameBtn" disabled class="control-btn btn" aria-label="이전 프레임">
+                    <img src="./resources/prevframe_0.png" alt="" class="control-icon" aria-hidden="true">
+                </button>
+                <button id="reverseBtn" disabled class="control-btn tgl" aria-label="역재생">
+                    <img src="./resources/reverse_0.png" alt="" class="control-icon" aria-hidden="true">
+                </button>
+                <button id="pauseBtn" disabled class="control-btn tgl" aria-label="일시정지">
+                    <img src="./resources/pause_0.png" alt="" class="control-icon" aria-hidden="true">
+                </button>
+                <button id="playBtn" disabled class="control-btn tgl" aria-label="재생">
+                    <img src="./resources/play_0.png" alt="" class="control-icon" aria-hidden="true">
+                </button>
+                <button id="nextFrameBtn" disabled class="control-btn btn" aria-label="다음 프레임">
+                    <img src="./resources/nextframe_0.png" alt="" class="control-icon" aria-hidden="true">
+                </button>
+                <button id="fastForwardBtn" disabled class="control-btn btn" aria-label="마지막으로 빨리감기">
+                    <img src="./resources/fastforward_0.png" alt="" class="control-icon" aria-hidden="true">
+                </button>
             </div>
 
             <!-- 오른쪽: 설정 제어 그룹 -->
             <div class="control-group justify-end" role="group" aria-label="재생 설정">
-            <label class="number-input-label control-settings" for="delayInput">
-                <div class="number-input-wrapper">
-                <input type="number" id="delayInput" name="delay" value="0" min="0" max="10" disabled aria-label="딜레이 시간 설정">
-                <div class="number-input-buttons">
-                    <button type="button" class="number-input-btn up" onclick="incrementValue('delayInput')" aria-label="딜레이 증가"></button>
-                    <button type="button" class="number-input-btn down" onclick="decrementValue('delayInput')" aria-label="딜레이 감소"></button>
-                </div>
-                </div>
-                <span>Delay</span>
-            </label>
-            <label class="number-input-label control-settings" for="speedInput">
-                <div class="number-input-wrapper">
-                <input type="number" id="speedInput" name="speed" value="1.0" min="0.2" max="4.0" step="0.2" disabled aria-label="재생 속도 설정">
-                <div class="number-input-buttons">
-                    <button type="button" class="number-input-btn up" onclick="incrementValue('speedInput')" aria-label="속도 증가"></button>
-                    <button type="button" class="number-input-btn down" onclick="decrementValue('speedInput')" aria-label="속도 감소"></button>
-                </div>
-                </div>
-                <span>Speed</span>
-            </label>
-            <button id="repeatBtn" disabled class="control-base control-btn tgl control-settings" aria-label="반복 재생 토글">
-                <img src="./resources/repeat_0.png" alt="" class="control-icon" aria-hidden="true">
-                <span>Repeat</span>
-            </button>
-            <button id="flipBtn" class="control-base control-btn tgl control-settings" aria-label="좌우 반전 토글">
-                <img src="./resources/flip_0.png" alt="" class="control-icon" aria-hidden="true">
-                <span>Flip</span>
-            </button>
-            <button id="fullscreenBtn" class="control-base control-btn tgl control-settings" aria-label="전체화면 모드 토글" title="전체화면 (F11)">
-                <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-                </svg>
-                <span>Full</span>
-            </button>
+                <label class="number-input-label control-settings" for="delayInput">
+                    <div class="number-input-wrapper">
+                        <input type="number" id="delayInput" name="delay" value="0" min="0" max="10" disabled
+                            aria-label="딜레이 시간 설정">
+                        <div class="number-input-buttons">
+                            <button type="button" class="number-input-btn up" onclick="incrementValue('delayInput')"
+                                aria-label="딜레이 증가"></button>
+                            <button type="button" class="number-input-btn down" onclick="decrementValue('delayInput')"
+                                aria-label="딜레이 감소"></button>
+                        </div>
+                    </div>
+                    <span>Delay</span>
+                </label>
+                <label class="number-input-label control-settings" for="speedInput">
+                    <div class="number-input-wrapper">
+                        <input type="number" id="speedInput" name="speed" value="1.0" min="0.2" max="4.0" step="0.2"
+                            disabled aria-label="재생 속도 설정">
+                        <div class="number-input-buttons">
+                            <button type="button" class="number-input-btn up" onclick="incrementValue('speedInput')"
+                                aria-label="속도 증가"></button>
+                            <button type="button" class="number-input-btn down" onclick="decrementValue('speedInput')"
+                                aria-label="속도 감소"></button>
+                        </div>
+                    </div>
+                    <span>Speed</span>
+                </label>
+                <button id="repeatBtn" disabled class="control-base control-btn tgl control-settings"
+                    aria-label="반복 재생 토글">
+                    <img src="./resources/repeat_0.png" alt="" class="control-icon" aria-hidden="true">
+                    <span>Repeat</span>
+                </button>
+                <button id="flipBtn" class="control-base control-btn tgl control-settings" aria-label="좌우 반전 토글">
+                    <img src="./resources/flip_0.png" alt="" class="control-icon" aria-hidden="true">
+                    <span>Flip</span>
+                </button>
+                <button id="fullscreenBtn" class="control-base control-btn tgl control-settings" aria-label="전체화면 모드 토글"
+                    title="전체화면 (F11)">
+                    <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                    </svg>
+                    <span>Full</span>
+                </button>
             </div>
         </section>
 
@@ -166,50 +180,83 @@
         <section aria-label="Wardrobe" class="space-y-2">
             <h2 class="text-xl">Wardrobe</h2>
             <div id="wardrobeGrid" class="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="denim-jacket">
-                <img src="./resources/wardrobe/denim_jacket.png" alt="Denim jacket" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Denim Jacket</div>
-            </button>                                                
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="blue-jacket">
-                <img src="./resources/wardrobe/blue_jacket.jpg" alt="Blue Jacket" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Blue Jacket</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="green-suit">
-                <img src="./resources/wardrobe/green_suit.webp" alt="Green Shuit" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Green Suit</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="party-suit">
-                <img src="./resources/wardrobe/party_suit.jpg" alt="Denim jacket" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Party Suit</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="yello-shirt">
-                <img src="./resources/wardrobe/yellow_polo_shirt.png" alt="Yellow Polo Shirt" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Yellow Polo Shirt</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="green-shirt">
-                <img src="./resources/wardrobe/green_polo_shirt.webp" alt="Green Polo Shirt" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Green Polo Shirt</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="white-shirt">
-                <img src="./resources/wardrobe/white_shirt.webp" alt="White Shirt" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">White Shirt</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="blue-shirt">
-                <img src="./resources/wardrobe/blue_shirt.jpg" alt="Blue Shirt" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Blue Shirt</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="beige-knit">
-                <img src="./resources/wardrobe/beige_knit.webp" alt="Beige Knit" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Beige Knit</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="beige-pants">
-                <img src="./resources/wardrobe/beige_pants.webp" alt="Beige Pants" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Beige Pants</div>
-            </button>
-            <button class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item" data-garment-id="denim-pants">
-                <img src="./resources/wardrobe/denim_pants.jpg" alt="Beige Knit" class="w-full h-36 object-contain rounded-lg mb-2">
-                <div class="text-sm text-zinc-200 text-left">Denim Pants</div>
-            </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="denim-jacket">
+                    <img src="./resources/wardrobe/denim_jacket.png" alt="Denim jacket"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Denim Jacket</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="blue-jacket">
+                    <img src="./resources/wardrobe/blue_jacket.jpg" alt="Blue Jacket"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Blue Jacket</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="green-suit">
+                    <img src="./resources/wardrobe/green_suit.webp" alt="Green Shuit"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Green Suit</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="party-suit">
+                    <img src="./resources/wardrobe/party_suit.jpg" alt="Denim jacket"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Party Suit</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="yellow-shirt">
+                    <img src="./resources/wardrobe/yellow_polo_shirt.png" alt="Yellow Polo Shirt"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Yellow Polo Shirt</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="green-shirt">
+                    <img src="./resources/wardrobe/green_polo_shirt.webp" alt="Green Polo Shirt"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Green Polo Shirt</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="white-shirt">
+                    <img src="./resources/wardrobe/white_shirt.webp" alt="White Shirt"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">White Shirt</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="blue-shirt">
+                    <img src="./resources/wardrobe/blue_shirt.jpg" alt="Blue Shirt"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Blue Shirt</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="beige-knit">
+                    <img src="./resources/wardrobe/beige_knit.webp" alt="Beige Knit"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Beige Knit</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="beige-pants">
+                    <img src="./resources/wardrobe/beige_pants.webp" alt="Beige Pants"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Beige Pants</div>
+                </button>
+                <button
+                    class="snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 wardrobe-item"
+                    data-garment-id="denim-pants">
+                    <img src="./resources/wardrobe/denim_pants.jpg" alt="Beige Knit"
+                        class="w-full h-36 object-contain rounded-lg mb-2">
+                    <div class="text-sm text-zinc-200 text-left">Denim Pants</div>
+                </button>
             </div>
         </section>
     </main>
@@ -217,13 +264,21 @@
     <!-- 페이지 하단 저작권 정보 -->
     <footer class="mt-2 text-center text-secondary text-base" role="contentinfo">
         <p>Copyright &copy; 2025 LG Electronics Inc. All rights reserved.</p>
-        <p>Support: <a href="mailto:mbtask-all@lge.com" class="hover:text-blue-400 transition-colors">mbtask-all@lge.com</a></p>
+        <p>Support: <a href="mailto:mbtask-all@lge.com"
+                class="hover:text-blue-400 transition-colors">mbtask-all@lge.com</a></p>
     </footer>
 
     <style>
-        html, body { height: 100%; margin: 0; }
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
         /* 하단 (워드로브/푸터 등)에 남겨둘 여유 공간. 필요시 숫자만 조절 */
-        :root { --resreve-bottom: 160px; }
+        :root {
+            --resreve-bottom: 160px;
+        }
 
         /* VTON 패널 자체를 뷰포트 높이 내로 제한 */
         #vton-panel {
@@ -231,22 +286,27 @@
             overflow: hidden;
             /* 창 높이 - 하단 여유(워드로브 등) 만큼만 허용 */
             max-height: calc(100vh - var(--resreve-bottom));
-            min-height: 0; /* frid/flex 내부 축소 이슈 방지 */
+            min-height: 0;
+            /* frid/flex 내부 축소 이슈 방지 */
         }
 
         /* 패널 내부 미디어(IMG/VIDEO)를 영역에 딱 맞게 */
-        #vton-panel > img,
-        #vton-panel > video {
+        #vton-panel>img,
+        #vton-panel>video {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
-            object-fit: contain; /* 자르지 말고 맞추기 */
-            display: block; /* baseline 공백 제거 */
+            object-fit: contain;
+            /* 자르지 말고 맞추기 */
+            display: block;
+            /* baseline 공백 제거 */
         }
 
         /* 상위 grid/flex 컨테니어가 있다면 이거 하나로 넘침 방지 */
-        .min-h-0 { min-height: 0; }
+        .min-h-0 {
+            min-height: 0;
+        }
     </style>
 
     <!-- 애플리케이션 초기화 스크립트 -->
@@ -305,7 +365,7 @@
             function start() {
                 show(err, false);
                 show(loading, true);
-                setProgress(0, 'Queued...');                
+                setProgress(0, 'Queued...');
             }
             function setProgress(p, label) {
                 if (typeof p == 'number') {
@@ -343,15 +403,15 @@
               * @param {(p:number, stage:string)=>void} onProgress
               * @returns {Promise<{status:'succeeded'|'failed', resultUrl?:string, error?:string}>}
               */
-             run(personRef, garmentId, options, onProgress) {
+            run(personRef, garmentId, options, onProgress) {
                 const min = 1800, max = 4200;
-                const totalMs = Math.floor(Math.random()*(max-min)+min);
+                const totalMs = Math.floor(Math.random() * (max - min) + min);
                 const stages = [
                     { t: 0.10, label: 'Preparing assets...' },
-                    { t: 0.35, label: 'Body parsing...'},
-                    { t: 0.65, label: 'Fitting garment...'},
-                    { t: 0.85, label: 'Compositing...'},
-                    { t: 1.00, label: 'Finalizing...'},
+                    { t: 0.35, label: 'Body parsing...' },
+                    { t: 0.65, label: 'Fitting garment...' },
+                    { t: 0.85, label: 'Compositing...' },
+                    { t: 1.00, label: 'Finalizing...' },
                 ];
                 return new Promise((resolve) => {
                     const start = performance.now();
@@ -360,33 +420,135 @@
                         const now = performance.now();
                         const p = Math.min(1, (now - start) / totalMs);
                         if (i < stages.length && p >= stages[i].t) i++;
-                        onProgress?.(p, stages[Math.min(i, stages.length-1)].label);
+                        onProgress?.(p, stages[Math.min(i, stages.length - 1)].label);
                         if (p >= 1) {
-                            resolve({ status: 'succeeded', resultUrl: MOCK_RESULT_MAP[garmentId] || './resources/vton/placeholder.jpg'});
+                            resolve({ status: 'succeeded', resultUrl: MOCK_RESULT_MAP[garmentId] || './resources/vton/placeholder.jpg' });
                         } else {
                             requestAnimationFrame(tick);
                         }
                     };
                     requestAnimationFrame(tick);
                 });
-             }
+            }
         };
 
-        // ====== TODO: Replacement VTON API ======
+        // ====== REAL VTON API ======
+        const API_BASE = location.origin.startsWith('file') ? 'http://localhost:3000' : '';
+        const VTON_ENDPOINT = {
+            create: `${API_BASE}/api/v1/vton/jobs`, // POST multipart/form-data
+            status: (jobId) => `${API_BASE}/api/v1/vton/jobs/${encodeURIComponent(jobId)}`, // GET
+        };
+
         async function createJob({ personRef, garmentId, options }) {
-            // const res = await fetch('/api/v1/vton/jobs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringfy({ person_ref: personRef, garment_id: garmentId, options }) });
-            // return res.json(); // { job_id, ... }
-            throw new Error('real API not wired');            
+            if (!(personRef && personRef.blob)) throw new Error('personRef.blob is required');
+
+            const fd = new FormData();
+            fd.append('garment_id', garmentId);
+            fd.append('face_lock', String(!!options?.face_lock)); // 서버에선 아직 안쓰지만 추후 확장용
+            fd.append('person_image', personRef.blob, 'person.jpg');
+
+            const res = await fetch(VTON_ENDPOINT.create, { method: 'POST', body: fd });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json(); // { job_id, status: 'submitted' }
+            if (!data.job_id) throw new Error('No job_id');
+            return data;
         }
-        async function pollJob(jobId, onProgress) {
-            // while(true) {                
-            //  const r = await fetch('/api/v1/vton/jobs/${jobId}');
-            //  const j = await r.json();
-            //  if (j.progress != null) onProgress(j.progress, 'Rendering...');
-            //  if (['succeeded', 'failed', 'canceled'].includes(j.status)) return j;
-            //  await new Promise(r => setTimeout(r, 1200));
-            // }
-            throw new Error('real API not wired');
+
+        async function pollJob(jobId, onProgress, { intervalMs = 1200, timeoutMs = 120000 } = {}) {
+            const started = Date.now();
+            while (true) {
+                if (Date.now() - started > timeoutMs) throw new Error('poll timeout');
+                const r = await fetch(VTON_ENDPOINT.status(jobId));
+                if (!r.ok) throw new Error(await r.text());
+                const j = await r.json();
+
+                if (j.status === 'running') {
+                    onProgress?.(undefined, j.stage || 'Rendering...');
+                    await new Promise((r) => setTimeout(r, intervalMs));
+                    continue;
+                }
+                // 백엔드 응답 키 표준화
+                if (j.status === 'succeeded' || j.status === 'success' || j.status === 'completed') {
+                    const b64 =
+                        j.result_base64 ||
+                        j.image_base64 || // ← 새로 추가
+                        j.output?.image_base64 ||
+                        j.data?.output?.image_base64 ||
+                        j.output?.[0]?.image_base64 ||
+                        j.data?.output?.[0]?.image_base64;
+                    const url = j.result_url || j.output_url || j.output?.url;
+                    return { status: 'succeeded', result_base64: b64, result_url: url };
+                }
+                if (j.status === 'failed' || j.status === 'canceled') {
+                    return { status: 'failed', error: j.error || j.message || 'failed' };
+                }
+                return j;
+            }
+        }
+
+
+        // ====== Helper ======
+        function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+        async function safeText(res) { try { return await res.text(); } catch { return ''; } }
+
+        // ====== Try Real API -> Fallback to Mock ======
+        async function runVTONWithFallback({ personRef, garmentId, options, onProgress }) {
+            try {
+                // 1) 실제 API 시도
+                onProgress?.(0.08, 'Submitting job...');
+                console.log('[VTON] POST', VTON_ENDPOINT.create, 'garment=', garmentId);
+                const createRes = await createJob({ personRef, garmentId, options });
+                // 서버가 즉시 결과를 주는 타입
+                if (createRes.status && ['succeeded', 'failed', 'canceled'].includes(createRes.status)) {
+                    return createRes;
+                }
+                // image_base64만 바로 주는 백엔드(동기 완료)도 처리
+                if (createRes.ok && createRes.image_base64) {
+                    return { status: 'succeeded', result_base64: createRes.image_base64 };
+                }
+                // 2) 폴링
+                const jobId = createRes.job_id;
+                if (!jobId) throw new Error('No job_id from server');
+                console.log('[VTON] GET', VTON_ENDPOINT.status(jobId));
+                const result = await pollJob(jobId, (p, stage) => {
+                    // p가 0~1 이라고 가정; 없으면 stage만 업데이트
+                    if (typeof p === 'number') {
+                        onProgress?.(Math.max(0.12, Math.min(0.98, p)), stage || 'Rendering...');
+                    } else {
+                        onProgress?.(undefined, stage || 'Rendering...');
+                    }
+                });
+                return result; // {status, result_url?, error?}
+            } catch (err) {
+                console.warn('Real VTON failed, fallback to Mock:', err);
+                // 3) 실패 시 Mock 사용
+                return await MockVTON.run(personRef, garmentId, options, (p, stage) => {
+                    onProgress?.(p, stage);
+                });
+            }
+        }
+
+        // ====== Capture Helper (WIN_CAM -> viewer canvas fallback) ======
+        async function captureCurrentFrame({ maxWidth = 1080, maxHeight = 1080, mirror = false } = {}) {
+            // 1) Windows 웹캠 (wincam-viewer.js 가 window.WIN_CAM 노출)
+            if (window.WIN_CAM?.capture) {
+                try {
+                    await window.WIN_CAM.ready; // 준비 대기
+                    const snap = await window.WIN_CAM.capture({ maxWidth, maxHeight, mirror });
+                    // blob과 dataUrl 둘 다 사용 가능
+                    return { ok: true, blob: snap.blob, dataUrl: snap.dataUrl, width: snap.width, height: snap.height, source: 'webcam' };
+                } catch (e) {
+                    console.warn('WIN_CAM capture failed, fallback to canvas:', e);
+                }
+            }
+            // 2) Linux MJPEG (viewer 캔버스에서 바로 프레임 뽑기)
+            const canvas = document.getElementById('viewer');
+            if (canvas && canvas.width && canvas.height) {
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                const blob = await (await fetch(dataUrl)).blob(); // dataURL -> Blob
+                return { ok: true, blob, dataUrl, width: canvas.width, height: canvas.height, source: 'canvas' };
+            }
+            return { ok: false, error: 'No camera source available' };
         }
 
         // ====== 클릭 핸들러: Wardrobe -> VTON ======
@@ -406,25 +568,50 @@
                 // 비활성화(중복 클릭 방지)
                 grid.style.pointerEvents = 'none';
                 VtonUI.start();
+                VtonUI.setProgress(0.05, 'Capturing current frame...');
 
-                // personRef는 현재 사진 경로/URL로 설정 (지금은 placeholder)
-                const personRef = { type: 'image_url', url: './resources/vton/placeholder.jpg' };
+                // 1) 현재 frame 캡처 (WIN_CAM 있으면 웹캠, 없으면 viewer 캔버스)
+                const shot = await captureCurrentFrame({ maxWidth: 1080, maxHeight: 1080, mirror: false });
+                if (!shot.ok) {
+                    VtonUI.fail(shot.error || 'No camera frame');
+                    grid.style.pointerEvents = '';
+                    return;
+                }
+                // 2) 캡처한 이미지를 바로 오른쪽 패널에 먼저 보여주기
+                document.getElementById('vtonResult').src = shot.dataUrl;
+
+                // 3) VTON 입력 참조 생성
+                //  - MockVTON은 지금 personRef를 안쓰지만, 실제 API 전환 시 blob을 FormData로 넣으면 됨.
+                //  - 미리보기/디버깅용으로 dataUrl도 보유
+                const personRef = { type: 'file', blob: shot.blob, previewUrl: shot.dataUrl, meta: { w: shot.width, h: shot.height, source: shot.source } };
                 const options = { face_lock: true };
 
+                // 4) VTON 진행
                 try {
-                    // ---- 지금은 Mockup 사용 ----
-                    const mock = await MockVTON.run(personRef, garmentId, options, (p, stage) => {
-                        VtonUI.setProgress(p, stage);
+                    const result = await runVTONWithFallback({
+                        personRef,
+                        garmentId,
+                        options,
+                        onProgress: (p, stage) => VtonUI.setProgress(typeof p === 'number' ? p : undefined, stage),
                     });
-                    if (mock.status === 'succeeded') VtonUI.succeed(mock.resultUrl);
-                    else VtonUI.fail(mock.error || 'Failed');
 
-                    // ---- TODO: 실제 API 사용 시 변경 ----
-                    // const { job_id } = await createJob({ personRef, garmentId, options });
-                    // const result = await pollJob(job_id, (p) => VtonUI.setProgress(p, 'Rendering...'));
-                    // if (result.status === 'succeeded') VtonUI.succeed(result.result_url);
-                    // else VtonUI.fail(result.error || 'Failed');
-
+                    if (result.status === 'succeeded') {
+                        // 서버가 URL을 주는 경우
+                        if (result.result_url) {
+                            VtonUI.succeed(result.result_url);
+                        } else if (result.result_base64) {
+                            const url = `data:image/png;base64,${result.result_base64}`;
+                            VtonUI.succeed(url);
+                        } else if (result.image_base64) {
+                            const url = `data:image/png;base64,${result.image_base64}`;
+                            VtonUI.succeed(url);
+                        } else {
+                            // 결과 경로 정보가 없는 경우: 캡처 이미지 유지
+                            VtonUI.succeed(personRef.previewUrl);
+                        }
+                    } else {
+                        VtonUI.fail(result.error || 'Failed');
+                    }
                 } catch (err) {
                     VtonUI.fail(err.message);
                 } finally {

@@ -4,6 +4,13 @@ const path = require('path');
 const fsp = require('fs').promises;
 const watcher = require('../backend/src/frame-watcher');
 const capture = require('../backend/src/capture');
+const { fork } = require('child_process');
+const http = require('http');
+
+let __backendProc = null;
+const BACKEND_PORT = process.env.PORT || 3000;
+const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
+const HEALTH_URL = `${BACKEND_URL}/health`;
 
 const debugLevel = 0;
 const maxDelay = 10;
@@ -388,7 +395,8 @@ function createWindow() {
     const win = new BrowserWindow({
         width: WINDOW_CONFIG.width,
         height: WINDOW_CONFIG.height,
-        fullscreen: true,
+        frame: IS_WIN,
+        fullscreen: !IS_WIN,
         resizable: true,
         fullscreenable: true,
         webPreferences: {
@@ -447,12 +455,52 @@ function cleanupApp() {
     frameHandler.stopStreaming();
 }
 
+function startBackendOnce() {
+    if (__backendProc) return;
+    const entry = path.join(__dirname, '../backend/src/server.js');
+
+    __backendProc = fork(entry, [], {
+        cwd: path.join(__dirname, '..'),
+        env: { ...process.env, PORT: String(BACKEND_PORT) },
+        stdio: 'inherit',
+    });
+
+    __backendProc.on('exit', (code, signal) => {
+        console.log(`[backend] exit code=${code}, signal=${signal}`);
+        __backendProc = null;
+    });
+}
+
+function waitForBackend(timeoutMs = 15000, intervalMs = 300) {
+    const deadline = Date.now() + timeoutMs;
+    return new Promise((resolve, reject) => {
+        const tick = () => {
+            const req = http.get(HEALTH_URL, (res) => {
+                if (res.statusCode === 200) {
+                    res.resume();
+                    return resolve(true);
+                }
+                res.resume();
+                if (Date.now() > deadline) return reject(new Error('Backend health timeout'));
+                setTimeout(tick, intervalMs);
+            });
+            req.on('error', () => {
+                if (Date.now() > deadline) return reject(new Error('Backend health timeout'));
+                setTimeout(tick, intervalMs);
+            });
+        };
+        tick();
+    });
+}
+
 // [추가] 카메라 권한 허용(Windows 환경에서 getUserMedia 원활)
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
         if (permission === 'media') return callback(true);
         callback(false);
     });
+    startBackendOnce();
+    try { await waitForBackend(); } catch (e) { console.error('[electron] backend not ready:', e); }
     createWindow();
 });
 
@@ -473,4 +521,10 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
     cleanupApp();
     process.exit(0);
+});
+
+app.on('before-quit', () => {
+    if (__backendProc && !__backendProc.killed) {
+        try { __backendProc.kill('SIGINT'); } catch (_) { }
+    }
 });

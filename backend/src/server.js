@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
+const vtonRouter = require('./routes/vton');
 
 // 상수 정의
 const CONFIG = {
@@ -17,6 +19,9 @@ const MESSAGES = {
 
 const app = express();
 const port = process.env.PORT || CONFIG.DEFAULT_PORT;
+
+app.use(express.json({ limit: '20mb' }));
+app.use(cors());
 
 // 유틸리티 함수들
 const utils = {
@@ -66,6 +71,11 @@ function setupMiddleware() {
 
 // API 라우트 설정
 function setupRoutes() {
+    // 헬스체크 (Electron이 이걸 기다렸다가 창을 염)
+    app.get('/health', (req, res) => {
+        res.json({ ok: true, time: utils.getTimestamp(), mode: utils.isDevelopment() ? 'development' : 'production' });
+    });
+
     // 환경 정보 API
     app.get('/api/env', (req, res) => {
         const isDev = utils.isDevelopment();
@@ -74,6 +84,14 @@ function setupRoutes() {
             mode: isDev ? 'development' : 'production'
         });
     });
+
+    app.use('/api/v1/vton', (req, _res, next) => {
+        console.log(`[VTON] hit -> ${req.method} ${req.originalUrl}`);
+        next();
+    });
+
+    // VTON 프록시 라우터
+    app.use('/api/v1/vton', vtonRouter);
 
     // 404 핸들러 (마지막에 등록)
     app.use((req, res) => {

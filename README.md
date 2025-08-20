@@ -162,23 +162,32 @@ camera/
 │   ├── 📁 public/
 │   │   ├── index.html       # 메인 UI
 │   │   ├── 📁 styles/       # CSS 스타일
-│   │   ├── 📁 resources/    # UI 아이콘
+│   │   │   └── main.css
+│   │   ├── 📁 resources/    # UI 아이콘, wardrobe
 │   │   ├── 📁 live/         # 라이브 프레임 임시 저장
 │   │   └── 📁 record/       # 녹화 프레임 저장
 │   └── 📁 src/
-│       ├── app-init.js          # 앱 초기화
-│       ├── mjpeg-viewer.js      # 메인 컨트롤러
-│       ├── frame-manager.js     # 프레임 관리
-│       ├── ui-controller.js     # UI 제어
-│       ├── fullscreen-manager.js # 전체화면 모드 관리
-│       ├── config.js            # 설정 상수
-│       └── utils.js             # 유틸리티
+│       ├── app-init.js             # 앱 초기화
+│       ├── mjpeg-viewer.js         # 메인 컨트롤러
+│       ├── frame-manager.js        # 프레임 관리
+│       ├── ui-controller.js        # UI 제어
+│       ├── fullscreen-manager.js   # 전체화면 모드 관리
+│       ├── config.js               # 설정 상수
+│       ├── utils.js                # 유틸리티
+│       ├── dom.js                  # $, on, show, wait 등 DOM 유틸
+│       ├── number-input.js         # Delay/Speed 스피너 바인딩
+│       ├── capture-helper.js       # 현재 프레임 캡처(webcam/mjpeg)
+│       ├── vton-ui.js              # 로딩/프로그레스/에러 UI
+│       ├── vton-service.js         # 실제 API + 폴백(Mock) 통합
+│       └── wardrobe-controller.js  # 워드로브 클릭 → VTON 실행
 ├── 📁 backend/
 │   └── 📁 src/
 │       ├── capture.js       # 카메라 캡처 제어
 │       ├── frame-watcher.js # 파일 시스템 감시
 │       ├── preload.js       # Electron IPC
-│       └── server.js        # 서버 (확장용)
+│       ├── server.js        # 서버 (확장용)
+│       └── 📁 routes/
+│           └── vton.js      # /api/v1/vton/jobs
 ├── 📁 native/
 │   └── 📁 linux/
 │       ├── capture_interface.h
