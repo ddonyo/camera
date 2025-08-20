@@ -15,7 +15,7 @@
         class="w-full max-w-[1920px] max-h-[1080px] mx-auto flex flex-col shadow-xl space-y-2 bg-secondary border border-primary p-md"
         role="main">
 
-        <!-- 상단 2분할 -->
+        <!-- 상단 2분할 + 하단 두 구역(좌: 컨트롤/진행바, 우: 배너) -->
         <section class="grid grid-cols-1 lg:grid-cols-10 gap-3 flex-1">
             <!-- LEFT: 카메라 -->
             <div class="relative rounded-xl overflow-hidden bg-black aspect-video col-span-7">
@@ -48,99 +48,119 @@
 
                 <div class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white">VTON Result</div>
             </div>
-        </section>
 
-        <!-- 진행 바 -->
-        <div id="progressBar" class="w-full h-3 rounded progress-bar overflow-hidden bg-primary" role="progressbar"
-            aria-label="재생 진행률">
-            <div id="progress" class="h-full bg-blue-500"></div>
-        </div>
-
-        <!-- 컨트롤 -->
-        <section class="grid grid-cols-3 items-center gap-md text-base control-area" aria-label="비디오 제어 패널">
-            <div class="control-group justify-start" role="group" aria-label="모드 제어">
-                <button id="liveBtn" class="control-btn tgl" aria-label="라이브 모드 토글">
-                    <img src="./resources/live_0.png" alt="" class="control-icon" aria-hidden="true" /><span>Live</span>
-                </button>
-                <button id="recordBtn" class="control-btn tgl" aria-label="녹화 모드 토글">
-                    <img src="./resources/record_0.png" alt="" class="control-icon"
-                        aria-hidden="true" /><span>Rec</span>
-                </button>
-                <button id="playbackBtn" class="control-btn tgl" aria-label="재생 모드 진입">
-                    <img src="./resources/playback_0.png" alt="" class="control-icon"
-                        aria-hidden="true" /><span>Play</span>
-                </button>
-                <div id="status" class="inline-status" role="status" aria-live="polite">
-                    <pre id="statusText" class="status-text normal">File Path:<br/>File Name:<br/>Frame:</pre>
+            <!-- LEFT-BOTTOM: (좌측 패널 아래) 진행바 + 컨트롤 전용 영역 -->
+            <div class="col-span-1 lg:col-span-7 space-y-3">
+                <!-- 진행 바 -->
+                <div id="progressBar" class="w-full h-3 rounded progress-bar overflow-hidden bg-primary"
+                    role="progressbar" aria-label="재생 진행률">
+                    <div id="progress" class="h-full bg-blue-500"></div>
                 </div>
-            </div>
 
-            <div class="flex gap-0 justify-center" role="group" aria-label="재생 제어">
-                <button id="rewindBtn" disabled class="control-btn btn" aria-label="처음으로 되감기">
-                    <img src="./resources/rewind_0.png" alt="" class="control-icon" />
-                </button>
-                <button id="prevFrameBtn" disabled class="control-btn btn" aria-label="이전 프레임">
-                    <img src="./resources/prevframe_0.png" alt="" class="control-icon" />
-                </button>
-                <button id="reverseBtn" disabled class="control-btn tgl" aria-label="역재생">
-                    <img src="./resources/reverse_0.png" alt="" class="control-icon" />
-                </button>
-                <button id="pauseBtn" disabled class="control-btn tgl" aria-label="일시정지">
-                    <img src="./resources/pause_0.png" alt="" class="control-icon" />
-                </button>
-                <button id="playBtn" disabled class="control-btn tgl" aria-label="재생">
-                    <img src="./resources/play_0.png" alt="" class="control-icon" />
-                </button>
-                <button id="nextFrameBtn" disabled class="control-btn btn" aria-label="다음 프레임">
-                    <img src="./resources/nextframe_0.png" alt="" class="control-icon" />
-                </button>
-                <button id="fastForwardBtn" disabled class="control-btn btn" aria-label="마지막으로 빨리감기">
-                    <img src="./resources/fastforward_0.png" alt="" class="control-icon" />
-                </button>
-            </div>
-
-            <div class="control-group justify-end" role="group" aria-label="재생 설정">
-                <!-- onclick 제거, data-attr로 JS가 바인딩 -->
-                <label class="number-input-label control-settings">
-                    <div class="number-input-wrapper" data-number-input="delayInput" data-step="1" data-min="0"
-                        data-max="10">
-                        <input type="number" id="delayInput" name="delay" value="0" min="0" max="10" disabled
-                            aria-label="딜레이 시간 설정" />
-                        <div class="number-input-buttons">
-                            <button type="button" class="number-input-btn up" aria-label="딜레이 증가"></button>
-                            <button type="button" class="number-input-btn down" aria-label="딜레이 감소"></button>
+                <!-- 컨트롤 -->
+                <section class="grid grid-cols-3 items-center gap-md text-base control-area" aria-label="비디오 제어 패널">
+                    <div class="control-group justify-start" role="group" aria-label="모드 제어">
+                        <button id="liveBtn" class="control-btn tgl" aria-label="라이브 모드 토글">
+                            <img src="./resources/live_0.png" alt="" class="control-icon"
+                                aria-hidden="true" /><span>Live</span>
+                        </button>
+                        <button id="recordBtn" class="control-btn tgl" aria-label="녹화 모드 토글">
+                            <img src="./resources/record_0.png" alt="" class="control-icon"
+                                aria-hidden="true" /><span>Rec</span>
+                        </button>
+                        <button id="playbackBtn" class="control-btn tgl" aria-label="재생 모드 진입">
+                            <img src="./resources/playback_0.png" alt="" class="control-icon"
+                                aria-hidden="true" /><span>Play</span>
+                        </button>
+                        <div id="status" class="inline-status" role="status" aria-live="polite">
+                            <pre id="statusText" class="status-text normal">File Path:<br/>File Name:<br/>Frame:</pre>
                         </div>
                     </div>
-                    <span>Delay</span>
-                </label>
 
-                <label class="number-input-label control-settings">
-                    <div class="number-input-wrapper" data-number-input="speedInput" data-step="0.2" data-min="0.2"
-                        data-max="4.0">
-                        <input type="number" id="speedInput" name="speed" value="1.0" min="0.2" max="4.0" step="0.2"
-                            disabled aria-label="재생 속도 설정" />
-                        <div class="number-input-buttons">
-                            <button type="button" class="number-input-btn up" aria-label="속도 증가"></button>
-                            <button type="button" class="number-input-btn down" aria-label="속도 감소"></button>
-                        </div>
+                    <div class="flex gap-0 justify-center" role="group" aria-label="재생 제어">
+                        <button id="rewindBtn" disabled class="control-btn btn" aria-label="처음으로 되감기">
+                            <img src="./resources/rewind_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button id="prevFrameBtn" disabled class="control-btn btn" aria-label="이전 프레임">
+                            <img src="./resources/prevframe_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button id="reverseBtn" disabled class="control-btn tgl" aria-label="역재생">
+                            <img src="./resources/reverse_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button id="pauseBtn" disabled class="control-btn tgl" aria-label="일시정지">
+                            <img src="./resources/pause_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button id="playBtn" disabled class="control-btn tgl" aria-label="재생">
+                            <img src="./resources/play_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button id="nextFrameBtn" disabled class="control-btn btn" aria-label="다음 프레임">
+                            <img src="./resources/nextframe_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button id="fastForwardBtn" disabled class="control-btn btn" aria-label="마지막으로 빨리감기">
+                            <img src="./resources/fastforward_0.png" alt="" class="control-icon" />
+                        </button>
                     </div>
-                    <span>Speed</span>
-                </label>
 
-                <button id="repeatBtn" disabled class="control-base control-btn tgl control-settings"
-                    aria-label="반복 재생 토글">
-                    <img src="./resources/repeat_0.png" alt="" class="control-icon" /><span>Repeat</span>
-                </button>
-                <button id="flipBtn" class="control-base control-btn tgl control-settings" aria-label="좌우 반전 토글">
-                    <img src="./resources/flip_0.png" alt="" class="control-icon" /><span>Flip</span>
-                </button>
-                <button id="fullscreenBtn" class="control-base control-btn tgl control-settings" aria-label="전체화면 모드 토글"
-                    title="전체화면 (F11)">
-                    <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                    <div class="control-group justify-end" role="group" aria-label="재생 설정">
+                        <!-- onclick 제거, data-attr로 JS가 바인딩 -->
+                        <label class="number-input-label control-settings">
+                            <div class="number-input-wrapper" data-number-input="delayInput" data-step="1" data-min="0"
+                                data-max="10">
+                                <input type="number" id="delayInput" name="delay" value="0" min="0" max="10" disabled
+                                    aria-label="딜레이 시간 설정" />
+                                <div class="number-input-buttons">
+                                    <button type="button" class="number-input-btn up" aria-label="딜레이 증가"></button>
+                                    <button type="button" class="number-input-btn down" aria-label="딜레이 감소"></button>
+                                </div>
+                            </div>
+                            <span>Delay</span>
+                        </label>
+
+                        <label class="number-input-label control-settings">
+                            <div class="number-input-wrapper" data-number-input="speedInput" data-step="0.2"
+                                data-min="0.2" data-max="4.0">
+                                <input type="number" id="speedInput" name="speed" value="1.0" min="0.2" max="4.0"
+                                    step="0.2" disabled aria-label="재생 속도 설정" />
+                                <div class="number-input-buttons">
+                                    <button type="button" class="number-input-btn up" aria-label="속도 증가"></button>
+                                    <button type="button" class="number-input-btn down" aria-label="속도 감소"></button>
+                                </div>
+                            </div>
+                            <span>Speed</span>
+                        </label>
+
+                        <button id="repeatBtn" disabled class="control-base control-btn tgl control-settings"
+                            aria-label="반복 재생 토글">
+                            <img src="./resources/repeat_0.png" alt="" class="control-icon" /><span>Repeat</span>
+                        </button>
+                        <button id="flipBtn" class="control-base control-btn tgl control-settings"
+                            aria-label="좌우 반전 토글">
+                            <img src="./resources/flip_0.png" alt="" class="control-icon" /><span>Flip</span>
+                        </button>
+                        <button id="fullscreenBtn" class="control-base control-btn tgl control-settings"
+                            aria-label="전체화면 모드 토글" title="전체화면 (F11)">
+                            <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                            </svg>
+                            <span>Full</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- RIGHT-BOTTOM: (우측 패널 하단) 비움 + 배너 자리 -->
+            <div class="col-span-1 lg:col-span-3">
+                <div id="runwayBanner"
+                    class="hidden w-full rounded-xl border-2 border-dashed border-neutral-700 bg-neutral-900/60 px-4 py-3 flex items-center justify-center">
+                    <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" d="M4 12a8 8 0 018-8v4" stroke="currentColor" stroke-width="4"
+                            stroke-linecap="round"></path>
                     </svg>
-                    <span>Full</span>
-                </button>
+                    <span class="text-sm font-medium text-neutral-200">Runway video is being created…</span>
+                </div>
             </div>
         </section>
 
