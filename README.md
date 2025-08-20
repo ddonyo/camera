@@ -2,13 +2,27 @@
 
 ## 🌐 **Overview**
 
-이 애플리케이션은 실시간 카메라 스트리밍에 **지연 출력** 기능을 추가한 Electron 기반 데스크톱 애플리케이션입니다.
+---
 
+### ✨ v1 : Delayed Camera Show
+이 애플리케이션은 실시간 카메라 스트리밍에 **지연 출력** 기능을 추가한 Electron 기반 데스크톱 애플리케이션입니다.
 사용자가 설정한 시간만큼 지연된 영상을 볼 수 있으며, 녹화 및 재생 기능을 제공합니다.
 
 ![Delayed Show Demo](delayed_show.gif)
 
 **Dev. JIRA URL :** http://jira.lge.com/issue/browse/SICDTV-15711
+
+---
+
+### 👗 v2 : Virtual Try-On + Runway Mode
+실시간 카메라 스트리밍에 **VTON(가상 피팅)** 기능을 결합하여, 사용자가 옷장에서 옷을 선택하면 자동으로 가상 착장이 적용됩니다.
+착장된 인물은 **런웨이 영상**으로 생성되어, 더욱 몰입감 있는 패션 체험을 제공합니다.
+
+![Delayed Show V2 Demo](delayed_show_v2.gif)
+
+**Collab URL :** http://collab.lge.com/main/pages/viewpage.action?pageId=3252629699
+
+---
 
 ### **Clone Repository**
 ```bash
