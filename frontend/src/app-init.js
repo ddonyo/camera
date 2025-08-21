@@ -45,15 +45,23 @@ function cleanupApp() {
 
 // DOM 로드 완료 시 앱 초기화
 window.addEventListener('DOMContentLoaded', () => {
+    // 1) 숫자 입력 / 워드로브 / VTON 컨트롤러
     bindNumberInputs();
     const grid = document.getElementById('wardrobeGrid');
     renderWardrobeGrid(grid);
     initWardrobeController();
+
+    // 2) 카메라 / MJPEG 뷰어 초기화
+    try {
+        initializeApp();
+    } catch (e) {
+        console.error('[init] initializeApp failed: ', e);
+    }
+
+    // 3) 윈도우 웹캠 UI 토글 (WIN_CAM 브릿지 노출 시)
+    if (window.WIN_CAM) {
+        document.body.classList.add('win-webcam');
+    }
 });
 // 페이지 언로드 직전 앱 정리
 window.addEventListener('beforeunload', cleanupApp);
-
-// WIN_CAM 존재 시 바디 클래스 토글 (웹캠 UI 전환)
-if (window.WIN_CAM) {
-    document.body.classList.add('win-webcam');
-}
