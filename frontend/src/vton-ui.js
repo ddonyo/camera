@@ -42,7 +42,7 @@ export function createVtonUI() {
             const timestamp = now.toISOString().replace(/[:\-T]/g, '').slice(0, 14);
             const filename = `result_${timestamp}.png`;
 
-            return window.vtonAPI.saveImage(url, filename)
+            return window.electronAPI.saveVtonImage(url, filename)
                 .then((savePath) => {
                     console.log(`Image saved as: ${savePath}`);
                 })
