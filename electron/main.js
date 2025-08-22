@@ -4,7 +4,10 @@ const path = require('path');
 const fs = require('fs'); // fs 모듈 명시적 임포트
 const fsp = require('fs').promises; // 비동기 메서드용
 const watcher = require('../backend/src/frame-watcher');
-const capture = require('../backend/src/capture');
+// 플랫폼별 캡처 모듈 동적 로드
+const capture = process.platform === 'linux'
+    ? require('../backend/src/capture')
+    : require('../backend/src/win-capture');
 const { fork } = require('child_process');
 const http = require('http');
 
@@ -78,9 +81,6 @@ class FrameHandler {
     }
 
     async startCapture(options = {}) {
-        // 윈도우에서는 V4L2 캡처가 동작하지 않으므로 바로 리턴 (기존 로직 유지)
-        if (process.platform !== 'linux') return;
-
         if (!this.captureDevice) {
             const { delay = 0 } = options;
 
@@ -106,6 +106,11 @@ class FrameHandler {
                 console.log('Device connected');
                 //device.send(capture.CAP_MSG_TYPE_REQ_INFO);
             });
+
+            // Windows에서는 메인 윈도우 참조를 캡처 디바이스에 전달
+            if (process.platform !== 'linux' && this.currentWindow) {
+                device.setMainWindow(this.currentWindow);
+            }
 
             device.on('data', (msg) => {
                 if (msg.type === capture.CAP_MSG_TYPE_CAM_INFO) {
@@ -438,31 +443,6 @@ function createWindow() {
     win.setMenuBarVisibility(false);
     win.loadFile(PATHS.INDEX);
 
-    // [추가] Windows 전용: 페이지 로드 후 wincam-viewer.js 주입
-    if (IS_WIN) {
-        win.webContents.once('did-finish-load', () => {
-            const inject = `
-                (function(){
-                    // 컨테이너 보장
-                    if (!document.getElementById('video-root')) {
-                        const root = document.createElement('div');
-                        root.id = 'video-root';
-                        root.style.cssText = 'position:relative;width:100%;height:100%;';
-                        document.body.appendChild(root);
-                    }
-                    // 중복 주입 방지
-                    if (!window.__WINCAM_LOADED__) {
-                        const s = document.createElement('script');
-                        s.type = 'module';
-                        s.src = '../src/wincam-viewer.js'; // frontend/src/wincam-viewer.js
-                        document.body.appendChild(s);
-                        window.__WINCAM_LOADED__ = true;
-                    }
-                })();
-            `;
-            win.webContents.executeJavaScript(inject).catch(console.error);
-        });
-    }
 
     setupIpcHandlers(win);
     return win;
