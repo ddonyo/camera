@@ -20,7 +20,7 @@ export function createVtonUI() {
         }
         if (label) txt.textContent = label;
     }
-    function succeed(url) {
+    function succeed(url, save = true) {
         if (url) img.src = url;
         show(loading, false);
     }

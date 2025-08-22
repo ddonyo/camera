@@ -50,9 +50,9 @@ function assertFile(rel) {
 }
 
 const GARMENT_MAP = {
-    'denim-jacket': assertFile('denim_jacket.png'),
-    'blue-jacket': assertFile('blue_jacket.jpg'),
-    'green-suit': assertFile('green_suit.webp'),
+    'denim-jacket': assertFile('denim_jacket.webp'),
+    'blue-suit': assertFile('blue_suit.jpg'),
+    'navy-suit': assertFile('navy_suit.jpg'),
     'party-suit': assertFile('party_suit.jpg'),
     'yellow-shirt': assertFile('yellow_polo_shirt.png'),
     'green-shirt': assertFile('green_polo_shirt.webp'),

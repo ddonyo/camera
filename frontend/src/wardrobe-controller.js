@@ -30,7 +30,7 @@ export function initWardrobeController() {
             grid.style.pointerEvents = '';
             return;
         }
-        ui.succeed(shot.dataUrl); // 먼저 캡처 미리보기
+        ui.succeed(shot.dataUrl, false); // 먼저 캡처 미리보기
 
         const personRef = { type: 'file', blob: shot.blob, previewUrl: shot.dataUrl, meta: { w: shot.width, h: shot.height, source: shot.source } };
         const options = { face_lock: true };
