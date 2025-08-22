@@ -1,7 +1,8 @@
 // Electron 애플리케이션 메인 프로세스
 const { app, BrowserWindow, ipcMain, session } = require('electron'); // [추가] session
 const path = require('path');
-const fsp = require('fs').promises;
+const fs = require('fs'); // fs 모듈 명시적 임포트
+const fsp = require('fs').promises; // 비동기 메서드용
 const watcher = require('../backend/src/frame-watcher');
 const capture = require('../backend/src/capture');
 const { fork } = require('child_process');
@@ -28,7 +29,8 @@ const PATHS = {
     LIVE_DIR: path.join(__dirname, '../frontend/public/live'), // 라이브 프레임 저장 경로
     RECORD_DIR: path.join(__dirname, '../frontend/public/record'), // 녹화 프레임 저장 경로
     PRELOAD: path.join(__dirname, '../backend/src/preload.js'), // Preload 스크립트
-    INDEX: path.join(__dirname, '../frontend/public/index.html') // 메인 HTML
+    INDEX: path.join(__dirname, '../frontend/public/index.html'), // 메인 HTML
+    VTON_SAVE_DIR: path.join(__dirname, '../frontend/public/vton') // vton 이미지 저장 경로 (선택적)
 };
 
 // 프레임 처리 및 관리 클래스
@@ -77,8 +79,7 @@ class FrameHandler {
 
     async startCapture(options = {}) {
         // 윈도우에서는 V4L2 캡처가 동작하지 않으므로 바로 리턴 (기존 로직 유지)
-        if (process.platform != 'linux')
-            return;
+        if (process.platform !== 'linux') return;
 
         if (!this.captureDevice) {
             const { delay = 0 } = options;
@@ -107,7 +108,7 @@ class FrameHandler {
             });
 
             device.on('data', (msg) => {
-                if (msg.type == capture.CAP_MSG_TYPE_CAM_INFO) {
+                if (msg.type === capture.CAP_MSG_TYPE_CAM_INFO) {
                     const info = msg.payload;
                     console.log(`Cam Info(${info.format}, ${info.width}x${info.height}, ${info.fps}fps)`);
                     this.captureInfo = info;
@@ -207,7 +208,7 @@ class FrameHandler {
 
                                 item = this.delayedFrames.shift();
 
-                                if (this.delayedFrames.length == 0) {
+                                if (this.delayedFrames.length === 0) {
                                     console.log('Delay To Live Transition');
                                 }
                             }
@@ -388,6 +389,24 @@ function setupIpcHandlers(win) {
         win.setFullScreen(!isFullscreen);
         return !isFullscreen;
     });
+
+    // vton 이미지 저장 IPC 핸들러
+    ipcMain.handle('save-vton-image', async (event, { url, filename }) => {
+        return new Promise((resolve, reject) => {
+            const base64Data = url.split(',')[1];
+            const buffer = Buffer.from(base64Data, 'base64');
+            const savePath = path.join(PATHS.VTON_SAVE_DIR, filename);
+            const dir = path.dirname(savePath);
+
+            // 동기 메서드 사용 (fs.existsSync)
+            if (!fs.existsSync(dir)) {
+                fsp.mkdir(dir, { recursive: true }).catch((err) => reject(err));
+            }
+            fsp.writeFile(savePath, buffer)
+                .then(() => resolve(savePath))
+                .catch((err) => reject(err));
+        });
+    });
 }
 
 // 메인 창 생성 및 설정
@@ -400,7 +419,7 @@ function createWindow() {
         resizable: true,
         fullscreenable: true,
         webPreferences: {
-            contextIsolation: true,
+            nodeIntegration: true, // contextIsolation 제거 반영
             enableRemoteModule: false,
             preload: PATHS.PRELOAD,
             webSecurity: false
@@ -496,6 +515,7 @@ function waitForBackend(timeoutMs = 15000, intervalMs = 300) {
 // [추가] 카메라 권한 허용(Windows 환경에서 getUserMedia 원활)
 app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        console.log(`Permission requested: ${permission}`);
         if (permission === 'media') return callback(true);
         callback(false);
     });

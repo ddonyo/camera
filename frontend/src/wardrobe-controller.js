@@ -20,7 +20,7 @@ export function initWardrobeController() {
         btn.classList.add('ring-2', 'ring-blue-500');
 
         grid.style.pointerEvents = 'none';
-        ui.start();
+        ui.start(); // loading 시작
         ui.setProgress(0.05, 'Capturing current frame...');
 
         // 캡처
@@ -30,7 +30,7 @@ export function initWardrobeController() {
             grid.style.pointerEvents = '';
             return;
         }
-        ui.succeed(shot.dataUrl, false); // 먼저 캡처 미리보기
+        ui.setPreview(shot.dataUrl); // 미리보기 설정 (loading 유지)
 
         const personRef = { type: 'file', blob: shot.blob, previewUrl: shot.dataUrl, meta: { w: shot.width, h: shot.height, source: shot.source } };
         const options = { face_lock: true };
@@ -38,7 +38,9 @@ export function initWardrobeController() {
         try {
             const result = await runVTONWithFallback({
                 personRef, garmentId, options,
-                onProgress: (p, stage) => ui.setProgress(typeof p === 'number' ? p : undefined, stage),
+                onProgress: (p, stage) => {
+                    ui.setProgress(typeof p === 'number' ? p : undefined, stage); // 진행률 업데이트
+                },
             });
 
             if (result.status === 'succeeded') {

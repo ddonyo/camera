@@ -42,7 +42,7 @@ const MockVTON = {
     }
 };
 
-async function createJob({ personRef, garmentId, options }) {
+async function createJob({ personRef, garmentId, options }, onProgress) {
     if (!(personRef && personRef.blob)) throw new Error('personRef.blob is required');
     const fd = new FormData();
     fd.append('garment_id', garmentId);
@@ -53,11 +53,13 @@ async function createJob({ personRef, garmentId, options }) {
     if (!res.ok) throw new Error(await safeText(res));
     const data = await res.json();
     if (!data.job_id && !data.status && !data.image_base64) throw new Error('Invalid response');
+    onProgress?.(0.2, 'Job submitted'); // POST 성공 시 20%
     return data;
 }
 
 async function pollJob(jobId, onProgress, { intervalMs = 1200, timeoutMs = 120000 } = {}) {
     const started = Date.now();
+    let progressStep = 0.2; // 초기 20%에서 시작
     while (true) {
         if (Date.now() - started > timeoutMs) throw new Error('poll timeout');
         const r = await fetch(VTON_ENDPOINT.status(jobId));
@@ -65,11 +67,14 @@ async function pollJob(jobId, onProgress, { intervalMs = 1200, timeoutMs = 12000
         const j = await r.json();
 
         if (j.status === 'running') {
-            onProgress?.(undefined, j.stage || 'Rendering...');
+            progressStep += 0.2; // running마다 20% 증가
+            progressStep = Math.min(0.8, progressStep); // 최대 80%
+            onProgress?.(progressStep, j.stage || 'Rendering...');
             await wait(intervalMs);
             continue;
         }
         if (['succeeded', 'success', 'completed'].includes(j.status)) {
+            onProgress?.(1.0, 'Completed'); // 완료 시 100%
             const b64 = j.result_base64 || j.image_base64 || j.output?.image_base64 || j.data?.output?.image_base64 ||
                 j.output?.[0]?.image_base64 || j.data?.output?.[0]?.image_base64;
             const url = j.result_url || j.output_url || j.output?.url;
@@ -84,8 +89,8 @@ async function pollJob(jobId, onProgress, { intervalMs = 1200, timeoutMs = 12000
 
 export async function runVTONWithFallback({ personRef, garmentId, options, onProgress }) {
     try {
-        onProgress?.(0.08, 'Submitting job...');
-        const createRes = await createJob({ personRef, garmentId, options });
+        onProgress?.(0.08, 'Submitting job...'); // 초기 진행률
+        const createRes = await createJob({ personRef, garmentId, options }, onProgress);
 
         if (createRes.status && ['succeeded', 'failed', 'canceled'].includes(createRes.status))
             return createRes;
@@ -97,12 +102,8 @@ export async function runVTONWithFallback({ personRef, garmentId, options, onPro
         if (!jobId) throw new Error('No job_id from server');
 
         const result = await pollJob(jobId, (p, stage) => {
-            if (typeof p === 'number') {
-                onProgress?.(Math.max(0.12, Math.min(0.98, p)), stage || 'Rendering...');
-            } else {
-                onProgress?.(undefined, stage || 'Rendering...');
-            }
-        });
+            onProgress?.(p, stage); // pollJob에서 전달된 진행률 반영
+        }, { intervalMs: 1200, timeoutMs: 120000 });
         return result;
     } catch (err) {
         console.warn('Real VTON failed, fallback to Mock:', err);

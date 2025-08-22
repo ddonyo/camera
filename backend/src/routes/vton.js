@@ -105,6 +105,7 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
                 model_image: personDataURL,
                 garment_image: garmentDataURL,
                 mode,
+                moderation_level: 'conservative',
                 return_base64: true, // ← 먼저 base64로 받아서 네트워크 문제 분리
             },
         };

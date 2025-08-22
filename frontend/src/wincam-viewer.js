@@ -94,38 +94,65 @@
     },
   };
 
-  // getUserMedia
-  navigator.mediaDevices
-    .getUserMedia({ video: true, audio: false })
-    .then((stream) => {
-      console.log("Webcam stream started");
-      video.srcObject = stream;
+  // getUserMedia (하드웨어 웹캠 자동 선택)
+  (async () => {
+    // 장치 목록 가져오기
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === "videoinput");
+    console.log("Available video devices:", videoDevices);
 
-      // 메타데이터/프레임 준비 확인
-      const markReady = () => {
-        // 일부 브라우저는 videoWidth/Height가 0일 수 있으므로 재시도
-        if (video.videoWidth > 0 && video.videoHeight > 0) {
-          document.body.classList.add("win-webcam");
-          root.appendChild(video);
-          _readyResolve();
-        } else {
-          // requestVideoFrameCallback이 있으면 다음 프레임 때 확인
-          if (video.requestVideoFrameCallback) {
-            video.requestVideoFrameCallback(() => markReady());
-          } else {
-            setTimeout(markReady, 50);
-          }
-        }
-      };
+    // 하드웨어 웹캠 필터링 (Virtual이 포함되지 않은 장치)
+    const hardwareCameras = videoDevices.filter(device => !device.label.toLowerCase().includes("virtual"));
+    console.log("Hardware cameras:", hardwareCameras);
 
-      // 다양한 이벤트로 준비 감지
-      video.addEventListener("loadedmetadata", markReady, { once: true });
-      video.addEventListener("canplay", markReady, { once: true });
+    let selectedDevice;
+    if (hardwareCameras.length > 0) {
+      // 하드웨어 웹캠이 있으면 첫 번째 장치를 선택
+      selectedDevice = hardwareCameras[0];
+      console.log("Selected hardware camera:", selectedDevice.label, "deviceId:", selectedDevice.deviceId);
+    } else {
+      // 하드웨어 웹캠이 없으면 모든 장치 중 첫 번째를 선택
+      selectedDevice = videoDevices[0];
+      console.log("No hardware camera found, using default:", selectedDevice.label, "deviceId:", selectedDevice.deviceId);
+    }
 
-      // 혹시 이벤트가 안 오는 경우 대비
-      setTimeout(markReady, 200);
-    })
-    .catch((err) => {
-      console.error("Webcam access error:", err);
-    });
+    if (selectedDevice) {
+      // 선택된 장치로 getUserMedia 호출
+      navigator.mediaDevices
+        .getUserMedia({ video: { deviceId: { exact: selectedDevice.deviceId } }, audio: false })
+        .then((stream) => {
+          console.log("Webcam stream started");
+          video.srcObject = stream;
+
+          // 메타데이터/프레임 준비 확인
+          const markReady = () => {
+            // 일부 브라우저는 videoWidth/Height가 0일 수 있으므로 재시도
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              document.body.classList.add("win-webcam");
+              root.appendChild(video);
+              _readyResolve();
+            } else {
+              // requestVideoFrameCallback이 있으면 다음 프레임 때 확인
+              if (video.requestVideoFrameCallback) {
+                video.requestVideoFrameCallback(() => markReady());
+              } else {
+                setTimeout(markReady, 50);
+              }
+            }
+          };
+
+          // 다양한 이벤트로 준비 감지
+          video.addEventListener("loadedmetadata", markReady, { once: true });
+          video.addEventListener("canplay", markReady, { once: true });
+
+          // 혹시 이벤트가 안 오는 경우 대비
+          setTimeout(markReady, 200);
+        })
+        .catch((err) => {
+          console.error("Webcam access error:", err);
+        });
+    } else {
+      console.error("No video devices available");
+    }
+  })();
 })();

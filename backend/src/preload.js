@@ -1,4 +1,4 @@
-// Electron 렌더러 프로세스용 Preload 스크립트
+// backend/src/preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
 // Preload 스크립트 설정
@@ -112,19 +112,23 @@ function emitEvent(event, data) {
     }
 }
 
-// `electronAPI`를 렌더러 프로세스의 `window` 객체에 노출
+// vtonAPI: 메인 프로세스로 파일 저장 요청
+const vtonAPI = {
+    saveImage: (url, filename) => {
+        return ipcRenderer.invoke('save-vton-image', { url, filename });
+    }
+};
+
+// `electronAPI`와 `vtonAPI`를 렌더러 프로세스의 `window` 객체에 노출
 contextBridge.exposeInMainWorld('electronAPI', {
     log: logMessage, // 로그 함수
     on: registerListener, // 이벤트 수신 함수
     emit: emitEvent, // 이벤트 송신 함수
     isSocketIOEnabled: () => CONFIG.USE_SOCKET_IO, // Socket.IO 활성화 상태 확인
-    getValidChannels: () => [...CONFIG.VALID_CHANNELS], // 유효 채널 목록 반환 (복사본)
-
-    // 전체화면 관련 API
-    setFullscreen: (fullscreen) => ipcRenderer.invoke('set-fullscreen', fullscreen),
-    getFullscreen: () => ipcRenderer.invoke('get-fullscreen'),
-    toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen')
+    getValidChannels: () => [...CONFIG.VALID_CHANNELS] // 유효 채널 목록 반환 (복사본)
 });
+
+contextBridge.exposeInMainWorld('vtonAPI', vtonAPI); // vtonAPI 추가 노출
 
 console.log(`${CONFIG.LOG_PREFIX} Electron API exposed to renderer process`);
 console.log(`${CONFIG.LOG_PREFIX} Socket.IO enabled: ${CONFIG.USE_SOCKET_IO}`);
