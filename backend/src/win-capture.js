@@ -128,14 +128,24 @@ class WinDevice extends EventEmitter {
                             window.__captureVideo.muted = true;
                             window.__captureVideo.playsInline = true;
 
-                            await Promise.race([
-                                new Promise((resolve) => {
-                                    window.__captureVideo.addEventListener('loadedmetadata', resolve, { once: true });
-                                }),
-                                new Promise((_, reject) => {
-                                    setTimeout(() => reject(new Error('Video load timeout')), 5000);
-                                })
-                            ]);
+                            // 비디오 메타데이터 로딩을 기다리되, 타임아웃 시간을 늘리고 더 상세한 에러 처리
+                            try {
+                                await Promise.race([
+                                    new Promise((resolve) => {
+                                        window.__captureVideo.addEventListener('loadedmetadata', resolve, { once: true });
+                                    }),
+                                    new Promise((resolve) => {
+                                        window.__captureVideo.addEventListener('canplay', resolve, { once: true });
+                                    }),
+                                    new Promise((_, reject) => {
+                                        setTimeout(() => reject(new Error('Video load timeout - camera may be disconnected')), 10000);
+                                    })
+                                ]);
+                                console.log('[WinCapture] Video metadata loaded successfully');
+                            } catch (loadError) {
+                                console.error('[WinCapture] Video loading failed:', loadError.message);
+                                throw new Error('Camera connection failed: ' + loadError.message);
+                            }
 
                             const track = window.__winCaptureStream.getVideoTracks()[0];
                             const settings = track.getSettings();
@@ -148,7 +158,9 @@ class WinDevice extends EventEmitter {
                         const canvas = window.__captureCanvas;
 
                         if (video.readyState < 2) {
-                            throw new Error('Video not ready');
+                            // 비디오가 준비되지 않았으면 잠시 기다렸다가 다시 시도
+                            console.warn('[WinCapture] Video not ready, skipping frame');
+                            return { success: false, error: 'Video not ready - camera may be disconnected' };
                         }
 
                         const ctx = canvas.getContext('2d', { willReadFrequently: false });
