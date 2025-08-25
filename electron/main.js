@@ -408,7 +408,10 @@ function setupIpcHandlers(win) {
                 fsp.mkdir(dir, { recursive: true }).catch((err) => reject(err));
             }
             fsp.writeFile(savePath, buffer)
-                .then(() => resolve(savePath))
+                .then(() => {
+                    console.log(`result saved as ${filename}`);
+                    resolve(savePath);
+                })
                 .catch((err) => reject(err));
         });
     });

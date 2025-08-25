@@ -18,6 +18,9 @@ export class MJPEGViewer {
         this.currentDirection = Direction.FORWARD; // 재생 방향
         this.repeatMode = false; // 반복 재생
         this.flipMode = false; // 좌우 반전
+        this.cropMode = false; // 중앙 크롭
+        this.rembgMode = false; // 배경 제거
+        this.fullMode = false; // 풀스크린 모드
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
         this.liveFrameCount = 0; // 라이브 프레임 카운터
         this.originalFPS = null; // 파일에서 읽어온 원본 FPS
@@ -80,6 +83,9 @@ export class MJPEGViewer {
             prevFrameBtn: () => this._handleStep(Direction.REVERSE),
             repeatBtn: () => this._handleRepeat(),
             flipBtn: () => this._handleFlip(),
+            rembgBtn: () => this._handleRembg(),
+            cropBtn: () => this._handleCrop(),
+            fullBtn: () => this._handleFull(),
             progressBar: (evt) => this._handleSeek(evt)
         };
     }
@@ -165,7 +171,7 @@ export class MJPEGViewer {
             img.onload = () => {
                 try {
                     const canvas = this.uiController.elements.viewer;
-                    CanvasUtils.drawImageToCanvas(canvas, img, { flip: this.flipMode });
+                    CanvasUtils.drawImageToCanvas(canvas, img, { flip: this.flipMode, crop: this.cropMode });
                     this.liveFrameCount++; // 프레임 카운터 증가
                     this._updateUI();
                     resolve();
@@ -363,6 +369,283 @@ export class MJPEGViewer {
         }
     }
 
+    // RemBG 버튼 이벤트 핸들러
+    _handleRembg() {
+        this.rembgMode = !this.rembgMode;
+        
+        // Body에 rembg-mode 클래스 추가/제거하여 CSS 스타일 적용
+        const body = document.body;
+        if (this.rembgMode) {
+            body.classList.add('rembg-mode');
+        } else {
+            body.classList.remove('rembg-mode');
+        }
+        
+        this._updateUI();
+
+        if (this.state === State.PLAYBACK && !this.playing) {
+            this._updateFrameDisplay();
+        }
+    }
+
+    // Crop 버튼 이벤트 핸들러
+    _handleCrop() {
+        this.cropMode = !this.cropMode;
+        
+        // Body에 crop-mode 클래스 추가/제거하여 CSS 스타일 적용
+        const body = document.body;
+        if (this.cropMode) {
+            body.classList.add('crop-mode');
+        } else {
+            body.classList.remove('crop-mode');
+        }
+        
+        this._updateUI();
+
+        if (this.state === State.PLAYBACK && !this.playing) {
+            this._updateFrameDisplay();
+        }
+    }
+
+    // Full 버튼 이벤트 핸들러
+    _handleFull() {
+        this.fullMode = !this.fullMode;
+        console.log('[Full] Full mode toggled:', this.fullMode);
+        
+        const mainContainer = document.getElementById('mainContainer');
+        const mainGridSection = document.querySelector('.main-grid-section');
+        const cameraColumn = document.querySelector('.col-span-7');
+        const vtonPanel = document.getElementById('vton-panel');
+        const wardrobe = document.querySelector('.wardrobe-section');
+        const controlPanel = document.querySelector('.control-panel');
+        
+        if (this.fullMode) {
+            console.log('[Full] Entering Full mode');
+            
+            // VTON 패널과 Wardrobe 숨기기
+            if (vtonPanel) {
+                vtonPanel.style.display = 'none';
+                console.log('[Full] Hidden vton-panel');
+            }
+            
+            if (wardrobe) {
+                wardrobe.style.display = 'none';
+                console.log('[Full] Hidden wardrobe-section');
+            }
+            
+            // 프로그레스 바만 숨기기 (컨트롤 패널은 유지)
+            const progressBar = document.querySelector('.progress-bar');
+            if (progressBar) {
+                progressBar.style.display = 'none';
+                console.log('[Full] Hidden progress-bar only');
+            }
+            
+            // main-grid-section을 flex로 변경하고 카메라 영역을 전체로 확장
+            if (mainGridSection) {
+                mainGridSection.style.display = 'flex';
+                mainGridSection.style.gridTemplateColumns = 'none';
+                console.log('[Full] Changed main-grid-section to flex');
+            }
+            
+            // 카메라 컬럼을 전체 너비로 확장하되 높이는 워드로브 하단까지
+            if (cameraColumn) {
+                cameraColumn.style.width = '100%';
+                cameraColumn.style.flex = 'none'; // flex 제거
+                cameraColumn.style.height = 'calc(100vh - 100px)'; // 카메라 높이 더 증가
+                console.log('[Full] Expanded camera column with increased height');
+            }
+            
+            // 카메라 컨테이너 높이를 워드로브 하단까지
+            const cameraContainer = document.querySelector('.camera-container');
+            if (cameraContainer) {
+                cameraContainer.style.height = 'calc(100vh - 140px)'; // 카메라 컨테이너 높이 증가
+                cameraContainer.style.flex = 'none';
+                cameraContainer.style.display = 'flex';
+                cameraContainer.style.alignItems = 'center'; // 수직 중앙 배치
+                cameraContainer.style.justifyContent = 'center'; // 수평 중앙 배치
+                console.log('[Full] Expanded camera container with center alignment');
+            }
+            
+            // 카메라 캔버스 비율 유지하며 최대 크기로 확장
+            const cameraCanvas = document.querySelector('.camera-container canvas');
+            if (cameraCanvas) {
+                cameraCanvas.style.position = 'static'; // position 초기화
+                cameraCanvas.style.width = '100%'; // 너비를 100%로 설정
+                cameraCanvas.style.height = '100%'; // 높이를 100%로 설정
+                cameraCanvas.style.objectFit = 'contain'; // 비율 유지하며 맞춤
+                cameraCanvas.style.display = 'block'; // block 표시
+                console.log('[Full] Set camera canvas to fill container while maintaining aspect ratio');
+            }
+            
+            // 컨트롤 패널에 충분한 높이 확보 및 명확한 배경 적용
+            if (controlPanel) {
+                controlPanel.style.minHeight = '120px'; // 컨트롤 패널 최소 높이 더 증가
+                controlPanel.style.paddingBottom = '30px'; // 하단 패딩 더 증가
+                controlPanel.style.marginBottom = '30px'; // 하단 마진 더 증가
+                controlPanel.style.backgroundColor = '#374151'; // 명확한 회색 배경 (gray-700)
+                controlPanel.style.borderRadius = '12px'; // 모서리 둥글게
+                controlPanel.style.padding = '16px'; // 전체 패딩 적용
+                console.log('[Full] Set control panel with solid background color');
+            }
+            
+            // Control area 배경 강제 설정
+            const controlArea = document.querySelector('.control-area');
+            if (controlArea) {
+                controlArea.style.minHeight = '80px'; // control-area 최소 높이 설정
+                controlArea.style.paddingTop = '10px';
+                controlArea.style.paddingBottom = '10px';
+                controlArea.style.backgroundColor = '#374151 !important'; // 강제 배경 설정
+                controlArea.style.borderRadius = '8px';
+                console.log('[Full] Forced control-area background');
+            }
+            
+            // Status 영역 배경 강제 설정
+            const statusElement = document.getElementById('status');
+            if (statusElement) {
+                statusElement.style.minHeight = '60px'; // status 영역 높이 확보
+                statusElement.style.display = 'flex';
+                statusElement.style.alignItems = 'flex-start'; // 상단 정렬
+                statusElement.style.backgroundColor = '#374151 !important'; // 강제 배경 설정
+                statusElement.style.borderRadius = '8px'; // 모서리 둥글게
+                statusElement.style.padding = '8px'; // 내부 패딩
+                console.log('[Full] Forced status area background');
+            }
+            
+            // 모든 control-group 요소들 배경 통일
+            const controlGroups = document.querySelectorAll('.control-group');
+            controlGroups.forEach(group => {
+                group.style.backgroundColor = '#374151 !important';
+                group.style.borderRadius = '8px';
+                group.style.padding = '8px';
+            });
+            
+            // 모든 control-btn 요소들 배경 처리
+            const controlBtns = document.querySelectorAll('.control-btn');
+            controlBtns.forEach(btn => {
+                // 버튼 자체는 원래 스타일 유지, 부모만 통일
+            });
+            
+            // Footer를 아래로 더 내리기
+            const footer = document.querySelector('footer');
+            if (footer) {
+                footer.style.marginTop = '50px'; // 상단 마진 더 증가
+                console.log('[Full] Increased footer margin more');
+            }
+            
+        } else {
+            console.log('[Full] Exiting Full mode');
+            
+            // VTON 패널과 Wardrobe 표시
+            if (vtonPanel) {
+                vtonPanel.style.display = '';
+                console.log('[Full] Shown vton-panel');
+            }
+            
+            if (wardrobe) {
+                wardrobe.style.display = '';
+                console.log('[Full] Shown wardrobe-section');
+            }
+            
+            // 프로그레스 바 다시 표시
+            const progressBar = document.querySelector('.progress-bar');
+            if (progressBar) {
+                progressBar.style.display = '';
+                console.log('[Full] Shown progress-bar');
+            }
+            
+            // main-grid-section을 원래 grid로 복원
+            if (mainGridSection) {
+                mainGridSection.style.display = '';
+                mainGridSection.style.gridTemplateColumns = '';
+                console.log('[Full] Restored main-grid-section to grid');
+            }
+            
+            // 카메라 컬럼 크기 복원
+            if (cameraColumn) {
+                cameraColumn.style.width = '';
+                cameraColumn.style.flex = '';
+                cameraColumn.style.height = '';
+                console.log('[Full] Restored camera column size');
+            }
+            
+            // 카메라 컨테이너 크기도 복원
+            const cameraContainer = document.querySelector('.camera-container');
+            if (cameraContainer) {
+                cameraContainer.style.height = '';
+                cameraContainer.style.flex = '';
+                cameraContainer.style.display = '';
+                cameraContainer.style.alignItems = '';
+                cameraContainer.style.justifyContent = '';
+                console.log('[Full] Restored camera container size and alignment');
+            }
+            
+            // 카메라 캔버스 스타일 복원
+            const cameraCanvas = document.querySelector('.camera-container canvas');
+            if (cameraCanvas) {
+                cameraCanvas.style.position = '';
+                cameraCanvas.style.width = '';
+                cameraCanvas.style.height = '';
+                cameraCanvas.style.objectFit = '';
+                cameraCanvas.style.display = '';
+                console.log('[Full] Restored camera canvas styling');
+            }
+            
+            // 컨트롤 패널 스타일 복원
+            if (controlPanel) {
+                controlPanel.style.minHeight = '';
+                controlPanel.style.paddingBottom = '';
+                controlPanel.style.marginBottom = '';
+                controlPanel.style.backgroundColor = '';
+                controlPanel.style.borderRadius = '';
+                controlPanel.style.padding = '';
+                console.log('[Full] Restored control panel styling');
+            }
+            
+            // Control area 스타일 복원
+            const controlArea = document.querySelector('.control-area');
+            if (controlArea) {
+                controlArea.style.minHeight = '';
+                controlArea.style.paddingTop = '';
+                controlArea.style.paddingBottom = '';
+                controlArea.style.backgroundColor = '';
+                console.log('[Full] Restored control-area styling');
+            }
+            
+            // Status 영역 스타일 복원
+            const statusElement = document.getElementById('status');
+            if (statusElement) {
+                statusElement.style.minHeight = '';
+                statusElement.style.display = '';
+                statusElement.style.alignItems = '';
+                statusElement.style.backgroundColor = '';
+                statusElement.style.borderRadius = '';
+                statusElement.style.padding = '';
+                console.log('[Full] Restored status area styling');
+            }
+            
+            // Control groups 스타일 복원
+            const controlGroups = document.querySelectorAll('.control-group');
+            controlGroups.forEach(group => {
+                group.style.backgroundColor = '';
+                group.style.borderRadius = '';
+                group.style.padding = '';
+            });
+            
+            // Footer 마진 복원
+            const footer = document.querySelector('footer');
+            if (footer) {
+                footer.style.marginTop = '';
+                console.log('[Full] Restored footer margin');
+            }
+        }
+        
+        this._updateUI();
+
+        if (this.state === State.PLAYBACK && !this.playing) {
+            this._updateFrameDisplay();
+        }
+    }
+
     // 프로그레스 바 탐색(Seek) 이벤트 핸들러
     _handleSeek(event) {
         if (this.frameManager.getFrameCount() === 0) return;
@@ -432,6 +715,7 @@ export class MJPEGViewer {
                 },
                 {
                     flip: this.flipMode,
+                    crop: this.cropMode,
                     effectiveFPS: this._getEffectiveFPS(),
                     totalFrameCount: totalFrameCount
                 }
@@ -518,7 +802,10 @@ export class MJPEGViewer {
             this.currentDirection,
             this.repeatMode,
             hasFrames,
-            this.flipMode
+            this.flipMode,
+            this.cropMode,
+            this.rembgMode,
+            this.fullMode
         );
 
         if (this.state === State.PLAYBACK || this.state === State.IDLE) {
@@ -543,7 +830,7 @@ export class MJPEGViewer {
 
     // 현재 프레임 표시 및 UI 업데이트
     async _updateFrameDisplay() {
-        await this.frameManager.drawCurrentFrame(this.uiController.elements.viewer, { flip: this.flipMode });
+        await this.frameManager.drawCurrentFrame(this.uiController.elements.viewer, { flip: this.flipMode, crop: this.cropMode });
         this._updateUI();
     }
 

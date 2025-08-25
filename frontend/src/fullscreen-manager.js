@@ -31,13 +31,14 @@ export class FullscreenManager {
     // DOM 요소 초기화
     _initializeElements() {
         this.mainContainer = document.getElementById('mainContainer');
-        this.fullscreenBtn = document.getElementById('fullscreenBtn');
+        // fullBtn은 카메라 풀뷰용이므로 실제 전체화면은 다른 버튼을 찾음
+        this.fullscreenBtn = document.getElementById('electronFullscreenBtn');
 
         if (this.fullscreenBtn) {
             this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
-            console.log('Fullscreen button event listener attached');
+            console.log('Electron fullscreen button event listener attached');
         } else {
-            console.warn('Fullscreen button not found');
+            console.log('Electron fullscreen button not found - using F11 key only');
         }
 
 

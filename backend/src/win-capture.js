@@ -282,7 +282,7 @@ class WinDevice extends EventEmitter {
         }
 
         // 웹캠 스트림 중지 요청
-        if (this.mainWindow) {
+        if (this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.webContents && !this.mainWindow.webContents.isDestroyed()) {
             try {
                 await this.mainWindow.webContents.executeJavaScript(`
                     if (window.__winCaptureStream) {
@@ -299,6 +299,8 @@ class WinDevice extends EventEmitter {
             } catch (error) {
                 console.error('[WinCapture] Error stopping webcam:', error);
             }
+        } else {
+            console.log('[WinCapture] Skipping webcam cleanup - window/webContents already destroyed');
         }
 
         console.log('[WinCapture] Capture stopped');
@@ -314,8 +316,23 @@ class WinDevice extends EventEmitter {
 
     // 소멸자 (Linux capture와 동일한 인터페이스)
     async destroy() {
-        await this.stop();
-        this.mainWindow = null;
+        try {
+            if (this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.webContents && !this.mainWindow.webContents.isDestroyed()) {
+                await this.stop();
+            } else {
+                // 윈도우가 이미 파괴된 경우 캡쳐 인터벌만 정리
+                if (this.captureInterval) {
+                    clearInterval(this.captureInterval);
+                    this.captureInterval = null;
+                    console.log('[WinCapture] Cleaned up capture interval only');
+                }
+            }
+        } catch (error) {
+            console.error('[WinCapture] Error during destroy:', error);
+        } finally {
+            this.mainWindow = null;
+            console.log('[WinCapture] Device destroyed');
+        }
     }
 }
 

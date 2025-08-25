@@ -50,12 +50,15 @@ export class UIController {
     }
 
     // 애플리케이션 상태에 따른 UI 적용 (버튼, 프로그레스 바 등)
-    applyState(state, playing = false, direction = 1, repeatMode = false, hasFrames = false, flipMode = false) {
+    applyState(state, playing = false, direction = 1, repeatMode = false, hasFrames = false, flipMode = false, cropMode = false, rembgMode = false, fullMode = false) {
         this._disableAllButtons();
         this._applyStateSpecificButtons(state, hasFrames);
         this._applyPlaybackActiveStates(state, playing, direction);
         this._applyRepeatMode(repeatMode);
         this._applyFlipMode(flipMode);
+        this._applyCropMode(cropMode);
+        this._applyRembgMode(rembgMode);
+        this._applyFullMode(fullMode);
         this._applyProgressBarState(state, hasFrames);
     }
 
@@ -87,7 +90,7 @@ export class UIController {
 
         switch (state) {
             case State.IDLE:
-                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
+                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
                 if (hasFrames) {
                     this._enablePlaybackButtons();
                 }
@@ -95,19 +98,19 @@ export class UIController {
                 break;
 
             case State.LIVE:
-                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
+                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
                 this._addActiveClass('liveBtn');
                 this._toggleDelayElements(false);
                 break;
 
             case State.RECORD:
-                this._enableButtons(['recordBtn', 'flipBtn', 'fullscreenBtn']);
+                this._enableButtons(['recordBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
                 this._addActiveClass('recordBtn');
                 this._toggleDelayElements(true);
                 break;
 
             case State.PLAYBACK:
-                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'fullscreenBtn']);
+                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
                 this._toggleDelayElements(true);
@@ -140,6 +143,27 @@ export class UIController {
     _applyFlipMode(flipMode) {
         if (flipMode) {
             this._addActiveClass('flipBtn');
+        }
+    }
+
+    // 크롭 모드 활성화 시 cropBtn에 활성 클래스 적용
+    _applyCropMode(cropMode) {
+        if (cropMode) {
+            this._addActiveClass('cropBtn');
+        }
+    }
+
+    // RemBG 모드 활성화 시 rembgBtn에 활성 클래스 적용
+    _applyRembgMode(rembgMode) {
+        if (rembgMode) {
+            this._addActiveClass('rembgBtn');
+        }
+    }
+
+    // Full 모드 활성화 시 fullBtn에 활성 클래스 적용
+    _applyFullMode(fullMode) {
+        if (fullMode) {
+            this._addActiveClass('fullBtn');
         }
     }
 

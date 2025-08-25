@@ -513,12 +513,28 @@ body {
     content: url('../resources/repeat_1.png');
 }
 
+/* RemBG 버튼 */
+#rembgBtn:hover:not(:disabled) .control-icon,
+#rembgBtn:active:not(:disabled) .control-icon,
+#rembgBtn.active .control-icon {
+    color: #10b981;
+}
+
+/* Crop 버튼 */
+#cropBtn:hover:not(:disabled) .control-icon,
+#cropBtn:active:not(:disabled) .control-icon,
+#cropBtn.active .control-icon {
+    color: #60a5fa;
+}
+
 /* Flip 버튼 */
 #flipBtn:hover:not(:disabled) .control-icon,
 #flipBtn:active:not(:disabled) .control-icon,
 #flipBtn.active .control-icon {
     content: url('../resources/flip_1.png');
 }
+
+/* Full 버튼 - SVG 아이콘 사용하므로 별도 이미지 불필요 */
 
 /* ================================================
    컨테이너 및 레이아웃 스타일
@@ -857,6 +873,72 @@ input[type="number"]:disabled {
     height: 100%;
     object-fit: contain;
     display: block;
+}
+
+/* 크롭 모드일 때 VTON 결과 이미지를 꽉 채우기 */
+.crop-mode #vtonResult {
+    object-fit: cover;
+}
+
+/* 카메라 풀뷰 모드 */
+#mainContainer.camera-fullscreen {
+    background: blue !important; /* mainContainer 디버그용 */
+    display: flex !important;
+    flex-direction: column !important;
+    visibility: visible !important;
+}
+
+#mainContainer.camera-fullscreen .main-grid-section {
+    background: green !important; /* main-grid-section 디버그용 */
+    display: flex !important;
+    grid-template-columns: none !important;
+    visibility: visible !important;
+    flex: 1 !important;
+}
+
+#mainContainer.camera-fullscreen .col-span-7 {
+    background: yellow !important; /* col-span-7 디버그용 */
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: 100% !important;
+    visibility: visible !important;
+}
+
+#mainContainer.camera-fullscreen .camera-container {
+    background: orange !important; /* camera-container 디버그용 */
+    flex: 1 !important;
+    aspect-ratio: unset !important;
+    min-height: 0 !important;
+    display: flex !important;
+    visibility: visible !important;
+}
+
+#mainContainer.camera-fullscreen .camera-container canvas {
+    background: purple !important; /* canvas 디버그용 */
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* 숨겨야 할 요소들 */
+#mainContainer.camera-fullscreen #vton-panel {
+    display: none !important;
+}
+
+#mainContainer.camera-fullscreen .wardrobe-section {
+    display: none !important;
+}
+
+#mainContainer.camera-fullscreen .progress-bar {
+    display: none !important;
+}
+
+#mainContainer.camera-fullscreen .control-area {
+    display: none !important;
 }
 
 /* 유틸 */

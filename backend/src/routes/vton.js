@@ -75,6 +75,9 @@ function fileToDataURL(absPath) {
     return `data:${mime};base64,${buf.toString('base64')}`;
 }
 
+// VTON 작업 시간 추적용 저장소
+const vtonJobTimes = new Map();
+
 // POST /vton/jobs
 router.post('/jobs', upload.single('person_image'), async (req, res) => {
     const startedAt = Date.now();
@@ -151,6 +154,8 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
             // 즉시 결과 케이스 (일부 환경에서)
             const out = Array.isArray(runJson.output) ? runJson.output[0] : runJson.output;
             const isDataUrl = typeof out === 'string' && out.startsWith('data:image/');
+            const elapsedTime = ((Date.now() - startedAt) / 1000).toFixed(1);
+            console.log(`[VTON] vton elapsed_time: ${elapsedTime} seconds, result completed immediately`);
             console.log('[VTON] FASHN immediate completed', { isDataUrl: !!isDataUrl });
             return res.json({
                 status: 'succeeded',
@@ -165,6 +170,8 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
             return res.status(502).json({ error: 'No prediction id from FASHN', body: text });
         }
 
+        // 작업 시작 시간 저장
+        vtonJobTimes.set(runJson.id, startedAt);
         console.log('[VTON] FASHN accepted id=', runJson.id, 'in', (Date.now() - startedAt) + 'ms');
         return res.json({ job_id: runJson.id, status: 'submitted' });
 
@@ -208,6 +215,15 @@ router.get('/jobs/:id', async (req, res) => {
         if (j.status === 'completed') {
             const out = Array.isArray(j.output) ? j.output[0] : j.output;
             const isDataUrl = typeof out === 'string' && out.startsWith('data:image/');
+            
+            // 경과 시간 계산 및 로깅
+            const startTime = vtonJobTimes.get(id);
+            if (startTime) {
+                const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`[VTON] vton elapsed_time: ${elapsedTime} seconds, result completed for job ${id}`);
+                vtonJobTimes.delete(id); // 메모리 정리
+            }
+            
             return res.json({
                 status: 'succeeded',
                 result_url: isDataUrl ? undefined : out,
@@ -215,6 +231,13 @@ router.get('/jobs/:id', async (req, res) => {
                 raw: j
             });
         } else if (j.status === 'failed') {
+            // 실패한 경우에도 시간 정리
+            if (vtonJobTimes.has(id)) {
+                const startTime = vtonJobTimes.get(id);
+                const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`[VTON] vton elapsed_time: ${elapsedTime} seconds, result failed for job ${id}`);
+                vtonJobTimes.delete(id);
+            }
             return res.json({ status: 'failed', error: j.error?.message || 'failed', raw: j });
         } else {
             return res.json({ status: 'running', stage: j.status, raw: j });

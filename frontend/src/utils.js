@@ -197,9 +197,9 @@ export class CanvasUtils {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 이미지 캔버스에 그리기
+    // 이미지 캔버스에 그리기 (rembg는 비동기로 처리되므로 여기서는 일반 그리기만)
     static drawImageToCanvas(canvas, image, options = {}) {
-        const { clearFirst = true, flip = false } = options;
+        const { clearFirst = true, flip = false, crop = false } = options;
 
         if (!(image instanceof HTMLImageElement)) {
             throw new Error('Image must be a valid HTMLImageElement');
@@ -215,16 +215,52 @@ export class CanvasUtils {
             this.clearCanvas(canvas);
         }
 
+        ctx.save(); // 현재 상태 저장
+
         if (flip) {
             // 좌우 플립 적용
-            ctx.save(); // 현재 상태 저장
             ctx.scale(-1, 1); // X축 반전
-            ctx.drawImage(image, -canvas.width, 0, canvas.width, canvas.height);
-            ctx.restore(); // 상태 복원
+        }
+
+        if (crop) {
+            // 중앙 크롭 적용 - 좌/우는 검정으로 마스킹, 중앙 1/3만 표시
+            const sourceWidth = image.naturalWidth;
+            const sourceHeight = image.naturalHeight;
+            const cropX = sourceWidth / 3; // 시작 X: 1/3 지점
+            const cropWidth = sourceWidth / 3; // 너비: 1/3
+            
+            // 먼저 검정색으로 전체 캔버스 채우기
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 중앙 영역에만 이미지 그리기 (원본 비율 유지)
+            const canvasCenterX = canvas.width / 3; // 캔버스의 중앙 1/3 시작점
+            const canvasCenterWidth = canvas.width / 3; // 캔버스의 중앙 1/3 너비
+            
+            if (flip) {
+                // 플립된 상태에서는 중앙 영역의 위치를 조정
+                ctx.drawImage(
+                    image, 
+                    cropX, 0, cropWidth, sourceHeight, // 소스 영역 (원본 중앙 1/3)
+                    -(canvasCenterX + canvasCenterWidth), 0, canvasCenterWidth, canvas.height // 플립된 중앙 영역
+                );
+            } else {
+                ctx.drawImage(
+                    image, 
+                    cropX, 0, cropWidth, sourceHeight, // 소스 영역 (원본 중앙 1/3)
+                    canvasCenterX, 0, canvasCenterWidth, canvas.height // 캔버스 중앙 영역
+                );
+            }
         } else {
             // 일반 그리기
-            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            if (flip) {
+                ctx.drawImage(image, -canvas.width, 0, canvas.width, canvas.height);
+            } else {
+                ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            }
         }
+
+        ctx.restore(); // 상태 복원
     }
 }
 
