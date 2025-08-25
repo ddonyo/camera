@@ -24,6 +24,7 @@ export class MJPEGViewer {
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
         this.liveFrameCount = 0; // 라이브 프레임 카운터
         this.originalFPS = null; // 파일에서 읽어온 원본 FPS
+        this.frameLogCounter = 0; // 프레임 로그 카운터 (조건부 로깅용)
 
         this._bindEvents(); // 이벤트 바인딩
         this._setupLiveIpcListeners(); // IPC 리스너 (라이브)
@@ -119,13 +120,20 @@ export class MJPEGViewer {
 
         // 메인 프로세스에서 오는 프레임 경로 수신
         this.#electronAPI.on('frame-path', (filePath) => {
-            console.log('Received frame path:', filePath);
+            // 100개마다 한 번씩 로그 출력 (조건부 로깅)
+            this.frameLogCounter++;
+            if (this.frameLogCounter % 100 === 1) {
+                console.log(`Received frame path: ${filePath} (frame #${this.frameLogCounter})`);
+            }
             this._handleLiveFrame(filePath, 'path');
         });
 
         // 메인 프로세스에서 오는 프레임 바이너리 데이터 수신
         this.#electronAPI.on('frame-data', (binaryData) => {
-            console.log('Received frame data:', binaryData.length, 'bytes');
+            // 프레임 데이터는 덜 자주 발생하므로 10개마다 로그
+            if (this.frameLogCounter % 10 === 1) {
+                console.log(`Received frame data: ${binaryData.length} bytes (frame #${this.frameLogCounter})`);
+            }
             this._handleLiveFrame(binaryData, 'binary');
         });
     }
@@ -845,6 +853,7 @@ export class MJPEGViewer {
         this.uiController.clearMessage();
         this.uiController.updateProgress(0, 'none');
         this.liveFrameCount = 0;
+        this.frameLogCounter = 0; // 프레임 로그 카운터 리셋
     }
 
     // 재시작을 위한 내부 상태 초기화

@@ -47,7 +47,16 @@ async function createJob({ personRef, garmentId, options }, onProgress) {
     const fd = new FormData();
     fd.append('garment_id', garmentId);
     fd.append('face_lock', String(!!options?.face_lock));
+    fd.append('vton_mode', options?.vton_mode || 'balanced');
     fd.append('person_image', personRef.blob, 'person.jpg');
+    
+    console.log(`[VTON Service] Sending API request with mode: ${options?.vton_mode || 'balanced'}`);
+    console.log('[VTON Service] FormData contents:', {
+        garment_id: garmentId,
+        face_lock: String(!!options?.face_lock),
+        vton_mode: options?.vton_mode || 'balanced',
+        person_image: 'blob'
+    });
 
     const res = await fetch(VTON_ENDPOINT.create, { method: 'POST', body: fd });
     if (!res.ok) throw new Error(await safeText(res));

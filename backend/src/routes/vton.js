@@ -86,10 +86,12 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
         const apiKey = getFashnKey();
 
         const garmentId = req.body.garment_id;
-        const mode = req.body.mode || 'balanced';
+        const vtonMode = req.body.vton_mode || 'balanced';
 
         console.log('[VTON] /jobs inbound',
-            { garmentId, hasFile: !!req.file, mime: req.file?.mimetype, size: req.file?.size });
+            { garmentId, vtonMode, hasFile: !!req.file, mime: req.file?.mimetype, size: req.file?.size });
+        console.log('[VTON] Raw request body vton_mode:', req.body.vton_mode);
+        console.log('[VTON] Final vtonMode value:', vtonMode);
 
         if (!req.file) return res.status(400).json({ error: 'person_image file is required' });
         if (!garmentId || !GARMENT_MAP[garmentId]) return res.status(400).json({ error: 'invalid garment_id' });
@@ -107,7 +109,7 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
             inputs: {
                 model_image: personDataURL,
                 garment_image: garmentDataURL,
-                mode,
+                mode: vtonMode,
                 moderation_level: 'conservative',
                 return_base64: true, // ← 먼저 base64로 받아서 네트워크 문제 분리
             },
@@ -115,7 +117,7 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
 
         console.log('[VTON] → FASHN /v1/run (sending)', {
             url: 'https://api.fashn.ai/v1/run',
-            mode,
+            vtonMode,
             bodyBytes: JSON.stringify(payload).length
         });
 
