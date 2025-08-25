@@ -147,7 +147,7 @@ export class ImageLoader {
             name,
             path,
             data: path,
-            index
+            index,
         });
     }
 }
@@ -157,7 +157,7 @@ export class TimerUtils {
     // 시간 지연 (ms)
     static delay(ms) {
         ValidationUtils.validateNumber(ms, 'Delay time', { min: 0 });
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     // 다음 프레임 대기 (FPS 기반)
@@ -228,27 +228,39 @@ export class CanvasUtils {
             const sourceHeight = image.naturalHeight;
             const cropX = sourceWidth / 3; // 시작 X: 1/3 지점
             const cropWidth = sourceWidth / 3; // 너비: 1/3
-            
+
             // 먼저 검정색으로 전체 캔버스 채우기
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+
             // 중앙 영역에만 이미지 그리기 (원본 비율 유지)
             const canvasCenterX = canvas.width / 3; // 캔버스의 중앙 1/3 시작점
             const canvasCenterWidth = canvas.width / 3; // 캔버스의 중앙 1/3 너비
-            
+
             if (flip) {
                 // 플립된 상태에서는 중앙 영역의 위치를 조정
                 ctx.drawImage(
-                    image, 
-                    cropX, 0, cropWidth, sourceHeight, // 소스 영역 (원본 중앙 1/3)
-                    -(canvasCenterX + canvasCenterWidth), 0, canvasCenterWidth, canvas.height // 플립된 중앙 영역
+                    image,
+                    cropX,
+                    0,
+                    cropWidth,
+                    sourceHeight, // 소스 영역 (원본 중앙 1/3)
+                    -(canvasCenterX + canvasCenterWidth),
+                    0,
+                    canvasCenterWidth,
+                    canvas.height // 플립된 중앙 영역
                 );
             } else {
                 ctx.drawImage(
-                    image, 
-                    cropX, 0, cropWidth, sourceHeight, // 소스 영역 (원본 중앙 1/3)
-                    canvasCenterX, 0, canvasCenterWidth, canvas.height // 캔버스 중앙 영역
+                    image,
+                    cropX,
+                    0,
+                    cropWidth,
+                    sourceHeight, // 소스 영역 (원본 중앙 1/3)
+                    canvasCenterX,
+                    0,
+                    canvasCenterWidth,
+                    canvas.height // 캔버스 중앙 영역
                 );
             }
         } else {
@@ -305,7 +317,7 @@ export class FileUtils {
         try {
             // frame0.jpg 파일이 존재하는지 확인 (첫 번째 프레임 파일)
             const response = await fetch('./record/frame0.jpg', {
-                method: 'HEAD' // HEAD 요청으로 파일 존재만 확인
+                method: 'HEAD', // HEAD 요청으로 파일 존재만 확인
             });
 
             if (response.ok) {
@@ -326,7 +338,7 @@ export class FileUtils {
         try {
             const frameInfo = ImageLoader.createFrameInfo(index, Config.PATHS.RECORD_FRAME);
             const response = await fetch(frameInfo.path, {
-                method: 'HEAD' // HEAD 요청으로 파일 존재만 확인
+                method: 'HEAD', // HEAD 요청으로 파일 존재만 확인
             });
             return response.ok;
         } catch (error) {
@@ -363,9 +375,10 @@ export class FileUtils {
             }
 
             const totalCount = lastExistingIndex + 1;
-            console.log(`[FileUtils] Found ${totalCount} total frames (frame0 to frame${lastExistingIndex})`);
+            console.log(
+                `[FileUtils] Found ${totalCount} total frames (frame0 to frame${lastExistingIndex})`
+            );
             return totalCount;
-
         } catch (error) {
             console.error('[FileUtils] Error counting total frames:', error);
             return 0;

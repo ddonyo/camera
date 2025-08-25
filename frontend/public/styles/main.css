@@ -14,7 +14,7 @@ body {
     --color-bg-tertiary: #1c1c1c;
     --color-bg-button: #3b3b3b;
     --color-bg-button-hover: #6b6b6b;
-    --color-bg-button-active: #B01010;
+    --color-bg-button-active: #b01010;
     --color-bg-input: #2a2a2a;
 
     --color-text-primary: #f1f1f1;
@@ -260,7 +260,7 @@ body {
 }
 
 /* 전체화면 모드에서 number input 너비 확장 */
-.fullscreen-mode input[type="number"] {
+.fullscreen-mode input[type='number'] {
     min-width: 3.6rem !important;
     /* 3rem에서 4rem으로 확장 */
     width: 3.6rem !important;
@@ -623,7 +623,7 @@ body {
 
 /* 프로그레스 바 내부 진행 표시줄 애니메이션 */
 #progress {
-    transition: width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: width;
 }
 
@@ -706,7 +706,7 @@ body {
 }
 
 /* Number input 기본 스타일 */
-input[type="number"] {
+input[type='number'] {
     background-color: var(--color-bg-input);
     color: var(--color-text-primary);
     border: 1px solid var(--color-border-input);
@@ -723,14 +723,14 @@ input[type="number"] {
 }
 
 /* 기본 스피너 제거 */
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
     -webkit-appearance: none;
     appearance: none;
     margin: 0;
 }
 
-input[type="number"] {
+input[type='number'] {
     -moz-appearance: textfield;
     appearance: textfield;
 }
@@ -774,15 +774,15 @@ input[type="number"] {
 }
 
 .number-input-btn.up::after {
-    content: "▲";
+    content: '▲';
 }
 
 .number-input-btn.down::after {
-    content: "▼";
+    content: '▼';
 }
 
 /* 포커스 시 테두리 강조 */
-input[type="number"]:focus {
+input[type='number']:focus {
     outline: none;
     border-color: var(--color-text-loading);
     box-shadow: 0 0 0 1px var(--color-text-loading);
@@ -793,7 +793,7 @@ input[type="number"]:focus {
    ================================================ */
 
 /* 비활성화된 input 요소 - HTML disabled 속성만 사용 */
-input[type="number"]:disabled {
+input[type='number']:disabled {
     background-color: var(--color-bg-input) !important;
     color: var(--color-text-disabled) !important;
     border-color: var(--color-border-input) !important;
@@ -865,8 +865,8 @@ input[type="number"]:disabled {
 }
 
 /* 패널 내부 미디어 맞춤 */
-#vton-panel>img,
-#vton-panel>video {
+#vton-panel > img,
+#vton-panel > video {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -887,7 +887,7 @@ input[type="number"]:disabled {
 }
 
 /* Crop 모드에서 생성된 VTON 결과 - 패널에 맞게 확대 */
-#vtonResult[data-crop-generated="true"] {
+#vtonResult[data-crop-generated='true'] {
     object-fit: cover !important; /* crop으로 생성된 경우 패널을 꽉 채움 */
 }
 

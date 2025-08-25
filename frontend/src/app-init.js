@@ -7,7 +7,7 @@ import { renderWardrobeGrid } from './wardrobe-data.js';
 // 이미지 URL에 타임스탬프 추가 (캐시 방지)
 function addTimestampToImages() {
     const timestamp = new Date().getTime();
-    document.querySelectorAll('img').forEach(img => {
+    document.querySelectorAll('img').forEach((img) => {
         if (img.src.includes('/resources/')) {
             img.src = `${img.src}?t=${timestamp}`;
         }

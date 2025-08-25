@@ -88,10 +88,14 @@ export class FrameManager {
                 consecutiveFailures = 0;
             } catch (error) {
                 consecutiveFailures++;
-                console.warn(`[FrameManager] Failed to load frame ${frameIndex}, consecutive failures: ${consecutiveFailures}`);
+                console.warn(
+                    `[FrameManager] Failed to load frame ${frameIndex}, consecutive failures: ${consecutiveFailures}`
+                );
 
                 if (consecutiveFailures >= maxConsecutiveFailures) {
-                    console.log(`[FrameManager] Stopping frame loading after ${maxConsecutiveFailures} consecutive failures`);
+                    console.log(
+                        `[FrameManager] Stopping frame loading after ${maxConsecutiveFailures} consecutive failures`
+                    );
                     break;
                 }
                 frameIndex++;
@@ -119,7 +123,10 @@ export class FrameManager {
         while (consecutiveFailures < maxConsecutiveFailures) {
             try {
                 // 파일 존재 확인 및 로드
-                const frameInfo = ImageLoader.createFrameInfo(frameIndex, Config.PATHS.RECORD_FRAME);
+                const frameInfo = ImageLoader.createFrameInfo(
+                    frameIndex,
+                    Config.PATHS.RECORD_FRAME
+                );
                 const img = await ImageLoader.loadImage(frameInfo.path);
 
                 // 프레임 정보를 배열에 추가
@@ -141,22 +148,27 @@ export class FrameManager {
                 // 속도 제한을 위한 지연 (effectiveFPS가 제공된 경우)
                 if (effectiveFPS && effectiveFPS > 0) {
                     const delay = 1000 / effectiveFPS;
-                    await new Promise(resolve => setTimeout(resolve, delay));
+                    await new Promise((resolve) => setTimeout(resolve, delay));
                 }
-
             } catch (error) {
                 consecutiveFailures++;
-                console.warn(`[FrameManager] Failed to load frame ${frameIndex}, consecutive failures: ${consecutiveFailures}`);
+                console.warn(
+                    `[FrameManager] Failed to load frame ${frameIndex}, consecutive failures: ${consecutiveFailures}`
+                );
 
                 if (consecutiveFailures >= maxConsecutiveFailures) {
-                    console.log(`[FrameManager] Stopping sequential loading after ${maxConsecutiveFailures} consecutive failures`);
+                    console.log(
+                        `[FrameManager] Stopping sequential loading after ${maxConsecutiveFailures} consecutive failures`
+                    );
                     break;
                 }
                 frameIndex++;
             }
         }
 
-        console.log(`[FrameManager] Sequential loading completed. Total frames: ${this.frames.length}`);
+        console.log(
+            `[FrameManager] Sequential loading completed. Total frames: ${this.frames.length}`
+        );
         return this.frames.length;
     }
 
@@ -168,19 +180,19 @@ export class FrameManager {
             return { success: false, reachedEnd: false, newIndex: 0 };
         }
 
-        const targetIndex = this.#currentIndex + (direction * step);
+        const targetIndex = this.#currentIndex + direction * step;
         const newIndex = this.#wrapIndex(targetIndex, circular);
-        const reachedEnd = !circular && (
-            (direction > 0 && targetIndex >= this.frames.length) ||
-            (direction < 0 && targetIndex < 0)
-        );
+        const reachedEnd =
+            !circular &&
+            ((direction > 0 && targetIndex >= this.frames.length) ||
+                (direction < 0 && targetIndex < 0));
 
         this.#currentIndex = newIndex;
 
         return {
             success: !reachedEnd,
             reachedEnd,
-            newIndex: this.#currentIndex
+            newIndex: this.#currentIndex,
         };
     }
 
@@ -213,7 +225,7 @@ export class FrameManager {
         const result = this.navigate(direction, { circular: repeatMode });
         return {
             shouldStop: !result.success,
-            reachedEnd: result.reachedEnd
+            reachedEnd: result.reachedEnd,
         };
     }
 
@@ -247,7 +259,7 @@ export class FrameManager {
             index: this.#currentIndex,
             total: this.frames.length,
             frame: frame,
-            progress: this.getProgress()
+            progress: this.getProgress(),
         };
     }
 
@@ -257,7 +269,7 @@ export class FrameManager {
         return {
             path: frame ? frame.path : '',
             name: frame ? frame.name : '',
-            frame: frame ? `${this.#currentIndex + 1} / ${this.frames.length}` : ''
+            frame: frame ? `${this.#currentIndex + 1} / ${this.frames.length}` : '',
         };
     }
 
@@ -278,7 +290,7 @@ export class FrameManager {
             currentIndex: this.#currentIndex,
             hasFrames: this.hasFrames(),
             progress: this.getProgress(),
-            currentFrame: this.getCurrentFrame()
+            currentFrame: this.getCurrentFrame(),
         };
     }
 }

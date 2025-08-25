@@ -5,9 +5,10 @@ const fs = require('fs'); // fs 모듈 명시적 임포트
 const fsp = require('fs').promises; // 비동기 메서드용
 const watcher = require('../backend/src/frame-watcher');
 // 플랫폼별 캡처 모듈 동적 로드
-const capture = process.platform === 'linux'
-    ? require('../backend/src/capture')
-    : require('../backend/src/win-capture');
+const capture =
+    process.platform === 'linux'
+        ? require('../backend/src/capture')
+        : require('../backend/src/win-capture');
 const { fork } = require('child_process');
 const http = require('http');
 
@@ -24,7 +25,7 @@ const IS_WIN = process.platform === 'win32'; // [추가] 윈도우 감지
 // 윈도우 설정
 const WINDOW_CONFIG = {
     width: 1920,
-    height: 1080
+    height: 1080,
 };
 
 // 경로 설정
@@ -33,7 +34,7 @@ const PATHS = {
     RECORD_DIR: path.join(__dirname, '../frontend/public/record'), // 녹화 프레임 저장 경로
     PRELOAD: path.join(__dirname, '../backend/src/preload.js'), // Preload 스크립트
     INDEX: path.join(__dirname, '../frontend/public/index.html'), // 메인 HTML
-    VTON_SAVE_DIR: path.join(__dirname, '../frontend/public/vton') // vton 이미지 저장 경로 (선택적)
+    VTON_SAVE_DIR: path.join(__dirname, '../frontend/public/vton'), // vton 이미지 저장 경로 (선택적)
 };
 
 // 프레임 처리 및 관리 클래스
@@ -63,13 +64,11 @@ class FrameHandler {
                 throw error;
             });
 
-            const frameFiles = files.filter(file =>
-                file.startsWith('frame') && file.endsWith('.jpg')
+            const frameFiles = files.filter(
+                (file) => file.startsWith('frame') && file.endsWith('.jpg')
             );
 
-            await Promise.all(
-                frameFiles.map(file => fsp.unlink(path.join(dirPath, file)))
-            );
+            await Promise.all(frameFiles.map((file) => fsp.unlink(path.join(dirPath, file))));
 
             if (frameFiles.length > 0) {
                 console.log(`${dirName} directory cleared (${frameFiles.length} files)`);
@@ -89,7 +88,9 @@ class FrameHandler {
 
             const numFiles = this.fps * maxDelay + 4;
 
-            console.log(`Starting capture with fps: ${this.fps}, delay: ${delay}, numFiles: ${numFiles}`);
+            console.log(
+                `Starting capture with fps: ${this.fps}, delay: ${delay}, numFiles: ${numFiles}`
+            );
 
             const device = new capture.Device({
                 saveDir: PATHS.LIVE_DIR,
@@ -115,7 +116,9 @@ class FrameHandler {
             device.on('data', (msg) => {
                 if (msg.type === capture.CAP_MSG_TYPE_CAM_INFO) {
                     const info = msg.payload;
-                    console.log(`Cam Info(${info.format}, ${info.width}x${info.height}, ${info.fps}fps)`);
+                    console.log(
+                        `Cam Info(${info.format}, ${info.width}x${info.height}, ${info.fps}fps)`
+                    );
                     this.captureInfo = info;
                 } else {
                     console.log(`Received Message : ${msg.type},${msg.payload}`);
@@ -174,65 +177,76 @@ class FrameHandler {
             if (!this.watcher) {
                 let lastWatcherTime = null;
                 let numWaitFrames = 0;
-                this.watcher = await watcher.start(async (type, data, frameNumber) => {
-                    const currentTime = Date.now();
-                    if (!lastWatcherTime) lastWatcherTime = currentTime;
-                    const interval = currentTime - lastWatcherTime;
-                    lastWatcherTime = currentTime;
+                this.watcher = await watcher.start(
+                    async (type, data, frameNumber) => {
+                        const currentTime = Date.now();
+                        if (!lastWatcherTime) lastWatcherTime = currentTime;
+                        const interval = currentTime - lastWatcherTime;
+                        lastWatcherTime = currentTime;
 
-                    let item = { type: type, number: frameNumber, data: data };
+                        let item = { type: type, number: frameNumber, data: data };
 
-                    if (frameNumber > 0) { // 첫장은 무조건 출력 후 처리
-                        if (this.numDelayedFrames > 0) { // Delay 모드인 경우
-                            this.delayedFrames.push(item);
-                            const numAvailFrames = this.delayedFrames.length - this.numDelayedFrames;
-
-                            if (numAvailFrames <= 0) {
-                                const waitTime = Math.floor(-numAvailFrames / this.fps);
-                                if (numWaitFrames <= waitTime) {
-                                    numWaitFrames++;
-                                    console.log(`Waiting capture frames ${this.delayedFrames.length}/${this.numDelayedFrames}`);
-                                    return;
-                                }
-                                numWaitFrames = 0;
-                                item = this.delayedFrames.shift();
-                            } else {
-                                // Delay 값이 작아지면서 큐에 존재하는 프레임이 여러개인 경우 처리
-                                if (numAvailFrames > 1) {
-                                    const count = Math.ceil(numAvailFrames / this.fps);
-                                    this.delayedFrames.splice(0, count);
-                                }
-                                item = this.delayedFrames.shift();
-                            }
-                        } else {
-                            if (this.delayedFrames.length > 0) { // Delay에서 Live로 전환된 경우
+                        if (frameNumber > 0) {
+                            // 첫장은 무조건 출력 후 처리
+                            if (this.numDelayedFrames > 0) {
+                                // Delay 모드인 경우
                                 this.delayedFrames.push(item);
+                                const numAvailFrames =
+                                    this.delayedFrames.length - this.numDelayedFrames;
 
-                                const count = Math.ceil(this.delayedFrames.length / this.fps);
-                                this.delayedFrames.splice(0, count);
+                                if (numAvailFrames <= 0) {
+                                    const waitTime = Math.floor(-numAvailFrames / this.fps);
+                                    if (numWaitFrames <= waitTime) {
+                                        numWaitFrames++;
+                                        console.log(
+                                            `Waiting capture frames ${this.delayedFrames.length}/${this.numDelayedFrames}`
+                                        );
+                                        return;
+                                    }
+                                    numWaitFrames = 0;
+                                    item = this.delayedFrames.shift();
+                                } else {
+                                    // Delay 값이 작아지면서 큐에 존재하는 프레임이 여러개인 경우 처리
+                                    if (numAvailFrames > 1) {
+                                        const count = Math.ceil(numAvailFrames / this.fps);
+                                        this.delayedFrames.splice(0, count);
+                                    }
+                                    item = this.delayedFrames.shift();
+                                }
+                            } else {
+                                if (this.delayedFrames.length > 0) {
+                                    // Delay에서 Live로 전환된 경우
+                                    this.delayedFrames.push(item);
 
-                                item = this.delayedFrames.shift();
+                                    const count = Math.ceil(this.delayedFrames.length / this.fps);
+                                    this.delayedFrames.splice(0, count);
 
-                                if (this.delayedFrames.length === 0) {
-                                    console.log('Delay To Live Transition');
+                                    item = this.delayedFrames.shift();
+
+                                    if (this.delayedFrames.length === 0) {
+                                        console.log('Delay To Live Transition');
+                                    }
                                 }
                             }
                         }
+
+                        if (debugLevel > 0)
+                            console.log(
+                                `Streaming mode - Frame: ${item.number}, Interval: ${interval}ms`
+                            );
+
+                        await this.sendFrame(win, item);
+
+                        // Recording이 활성화되어 있으면 파일 저장
+                        if (this.isRecording) {
+                            await this.saveFrameToRecord(item);
+                        }
+                    },
+                    {
+                        liveDir: PATHS.LIVE_DIR,
+                        dataType: 'path',
                     }
-
-                    if (debugLevel > 0)
-                        console.log(`Streaming mode - Frame: ${item.number}, Interval: ${interval}ms`);
-
-                    await this.sendFrame(win, item);
-
-                    // Recording이 활성화되어 있으면 파일 저장
-                    if (this.isRecording) {
-                        await this.saveFrameToRecord(item);
-                    }
-                }, {
-                    liveDir: PATHS.LIVE_DIR,
-                    dataType: 'path'
-                });
+                );
             }
 
             await this.startCapture(options);
@@ -268,11 +282,13 @@ class FrameHandler {
                 const filePath = path.join(PATHS.RECORD_DIR, 'rec_info.json');
                 const jsonData = JSON.stringify(this.captureInfo, null, 2);
 
-                fsp.writeFile(filePath, jsonData).then(() => {
-                    console.log(`Saved ${filePath}`);
-                }).catch(error => {
-                    console.error('Error saving rec_info.json:', error);
-                });
+                fsp.writeFile(filePath, jsonData)
+                    .then(() => {
+                        console.log(`Saved ${filePath}`);
+                    })
+                    .catch((error) => {
+                        console.error('Error saving rec_info.json:', error);
+                    });
             }
 
             this.isRecording = true;
@@ -317,8 +333,7 @@ class FrameHandler {
                 await fsp.copyFile(item.data, destPath);
             }
 
-            if (debugLevel > 0)
-                console.log(`Saved frame ${count} to record directory ${destPath}`);
+            if (debugLevel > 0) console.log(`Saved frame ${count} to record directory ${destPath}`);
         } catch (error) {
             console.error('Error preparing frame save:', error);
         }
@@ -355,7 +370,7 @@ class FrameHandler {
         return {
             isStreaming: this.isStreaming,
             isRecording: this.isRecording,
-            frameCounter: this.frameCounter
+            frameCounter: this.frameCounter,
         };
     }
 }
@@ -371,7 +386,7 @@ function setupIpcHandlers(win) {
         'set-delay': (event, delay) => frameHandler.setDelay(delay),
         'start-record': () => frameHandler.enableRecording(),
         'stop-record': () => frameHandler.disableRecording(),
-        'log-message': (event, message) => console.log('APP: ' + message)
+        'log-message': (event, message) => console.log('APP: ' + message),
     };
 
     Object.entries(handlers).forEach(([event, handler]) => {
@@ -430,22 +445,27 @@ function createWindow() {
             nodeIntegration: true, // contextIsolation 제거 반영
             enableRemoteModule: false,
             preload: PATHS.PRELOAD,
-            webSecurity: false
-        }
+            webSecurity: false,
+        },
     });
 
     // 캐시 비활성화
     win.webContents.session.clearCache();
     win.webContents.session.clearStorageData({
         storages: [
-            'appcache', 'filesystem', 'indexdb', 'localstorage',
-            'shadercache', 'websql', 'serviceworkers', 'cachestorage'
+            'appcache',
+            'filesystem',
+            'indexdb',
+            'localstorage',
+            'shadercache',
+            'websql',
+            'serviceworkers',
+            'cachestorage',
         ],
     });
 
     win.setMenuBarVisibility(false);
     win.loadFile(PATHS.INDEX);
-
 
     setupIpcHandlers(win);
     return win;
@@ -503,7 +523,11 @@ app.whenReady().then(async () => {
         callback(false);
     });
     startBackendOnce();
-    try { await waitForBackend(); } catch (e) { console.error('[electron] backend not ready:', e); }
+    try {
+        await waitForBackend();
+    } catch (e) {
+        console.error('[electron] backend not ready:', e);
+    }
     createWindow();
 });
 
@@ -528,6 +552,8 @@ process.on('SIGTERM', () => {
 
 app.on('before-quit', () => {
     if (__backendProc && !__backendProc.killed) {
-        try { __backendProc.kill('SIGINT'); } catch (_) { }
+        try {
+            __backendProc.kill('SIGINT');
+        } catch (_) {}
     }
 });

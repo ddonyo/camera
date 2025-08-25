@@ -35,21 +35,25 @@ export function createVtonUI() {
     function succeed(url, save = true, cropMode = false) {
         console.log('VTON succeed with url:', url, 'save:', save, 'cropMode:', cropMode);
         setPreview(url); // 미리보기 업데이트
-        
+
         // VTON 결과 이미지에 생성 모드 정보 저장
         if (img) {
             img.setAttribute('data-crop-generated', cropMode ? 'true' : 'false');
             console.log('Set VTON result crop mode:', cropMode);
         }
-        
+
         if (loading) show(loading, false); // VTON 완료 후 숨김
 
         if (save) {
             const now = new Date();
-            const timestamp = now.toISOString().replace(/[:\-T]/g, '').slice(0, 14);
+            const timestamp = now
+                .toISOString()
+                .replace(/[:\-T]/g, '')
+                .slice(0, 14);
             const filename = `result_${timestamp}.png`;
 
-            return window.electronAPI.saveVtonImage(url, filename)
+            return window.electronAPI
+                .saveVtonImage(url, filename)
                 .then((savePath) => {
                     console.log(`Image saved as: ${savePath}`);
                 })

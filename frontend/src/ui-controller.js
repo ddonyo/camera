@@ -6,15 +6,15 @@ export class UIController {
     // 내부 상수
     static #CONSTANTS = {
         TAGS: {
-            BUTTON: 'BUTTON'
+            BUTTON: 'BUTTON',
         },
         SELECTORS: {
             LABEL: 'label',
-            SPAN: 'span'
+            SPAN: 'span',
         },
         CLASSES: {
-            STATUS_TEXT: 'status-text'
-        }
+            STATUS_TEXT: 'status-text',
+        },
     };
 
     constructor() {
@@ -24,7 +24,9 @@ export class UIController {
         this.messageTimeout = null; // 메시지 타임아웃 ID
 
         // Speed 관련 요소 캐싱
-        this._speedLabel = this.elements.speedInput?.closest(UIController.#CONSTANTS.SELECTORS.LABEL);
+        this._speedLabel = this.elements.speedInput?.closest(
+            UIController.#CONSTANTS.SELECTORS.LABEL
+        );
         this._speedSpan = this._speedLabel?.querySelector(UIController.#CONSTANTS.SELECTORS.SPAN);
     }
 
@@ -50,7 +52,17 @@ export class UIController {
     }
 
     // 애플리케이션 상태에 따른 UI 적용 (버튼, 프로그레스 바 등)
-    applyState(state, playing = false, direction = 1, repeatMode = false, hasFrames = false, flipMode = false, cropMode = false, rembgMode = false, fullMode = false) {
+    applyState(
+        state,
+        playing = false,
+        direction = 1,
+        repeatMode = false,
+        hasFrames = false,
+        flipMode = false,
+        cropMode = false,
+        rembgMode = false,
+        fullMode = false
+    ) {
         this._disableAllButtons();
         this._applyStateSpecificButtons(state, hasFrames);
         this._applyPlaybackActiveStates(state, playing, direction);
@@ -71,11 +83,17 @@ export class UIController {
     // 재생 관련 버튼 활성화
     _enablePlaybackButtons() {
         const playbackButtons = [
-            'playBtn', 'reverseBtn', 'pauseBtn', 'rewindBtn',
-            'fastForwardBtn', 'nextFrameBtn', 'prevFrameBtn', 'repeatBtn'
+            'playBtn',
+            'reverseBtn',
+            'pauseBtn',
+            'rewindBtn',
+            'fastForwardBtn',
+            'nextFrameBtn',
+            'prevFrameBtn',
+            'repeatBtn',
         ];
 
-        playbackButtons.forEach(btnKey => {
+        playbackButtons.forEach((btnKey) => {
             if (this.elements[btnKey]) {
                 this.elements[btnKey].disabled = false;
             }
@@ -90,7 +108,14 @@ export class UIController {
 
         switch (state) {
             case State.IDLE:
-                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
+                this._enableButtons([
+                    'liveBtn',
+                    'playbackBtn',
+                    'flipBtn',
+                    'rembgBtn',
+                    'cropBtn',
+                    'fullBtn',
+                ]);
                 if (hasFrames) {
                     this._enablePlaybackButtons();
                 }
@@ -98,7 +123,15 @@ export class UIController {
                 break;
 
             case State.LIVE:
-                this._enableButtons(['liveBtn', 'recordBtn', 'playbackBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
+                this._enableButtons([
+                    'liveBtn',
+                    'recordBtn',
+                    'playbackBtn',
+                    'flipBtn',
+                    'rembgBtn',
+                    'cropBtn',
+                    'fullBtn',
+                ]);
                 this._addActiveClass('liveBtn');
                 this._toggleDelayElements(false);
                 break;
@@ -110,7 +143,14 @@ export class UIController {
                 break;
 
             case State.PLAYBACK:
-                this._enableButtons(['liveBtn', 'playbackBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
+                this._enableButtons([
+                    'liveBtn',
+                    'playbackBtn',
+                    'flipBtn',
+                    'rembgBtn',
+                    'cropBtn',
+                    'fullBtn',
+                ]);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
                 this._toggleDelayElements(true);
@@ -123,9 +163,7 @@ export class UIController {
         if (state !== State.PLAYBACK) return;
 
         if (playing) {
-            const activeButton = direction === Direction.FORWARD
-                ? 'playBtn'
-                : 'reverseBtn';
+            const activeButton = direction === Direction.FORWARD ? 'playBtn' : 'reverseBtn';
             this._addActiveClass(activeButton);
         } else {
             this._addActiveClass('pauseBtn');
@@ -173,7 +211,12 @@ export class UIController {
         if (!progressBar) return;
 
         const shouldEnable = hasFrames && (state === State.IDLE || state === State.PLAYBACK);
-        this._toggleElementClasses(progressBar, Config.CLASSES.ENABLED, Config.CLASSES.DISABLED, shouldEnable);
+        this._toggleElementClasses(
+            progressBar,
+            Config.CLASSES.ENABLED,
+            Config.CLASSES.DISABLED,
+            shouldEnable
+        );
     }
 
     // 프로그레스 바 진행률 업데이트 (애니메이션 타입 지정 가능)
@@ -229,7 +272,7 @@ export class UIController {
             Config.CLASSES.LOADING,
             Config.CLASSES.ERROR,
             Config.CLASSES.WARNING,
-            Config.CLASSES.NORMAL
+            Config.CLASSES.NORMAL,
         ];
 
         statusText.classList.remove(...messageTypeClasses);
@@ -285,8 +328,8 @@ export class UIController {
     // 모든 버튼 토글 (활성화/비활성화)
     _toggleAllButtons(disable) {
         Object.values(this.elements)
-            .filter(el => el?.tagName === UIController.#CONSTANTS.TAGS.BUTTON)
-            .forEach(el => {
+            .filter((el) => el?.tagName === UIController.#CONSTANTS.TAGS.BUTTON)
+            .forEach((el) => {
                 el.disabled = disable;
                 if (disable) {
                     el.classList.remove(Config.CLASSES.ACTIVE);
@@ -313,7 +356,7 @@ export class UIController {
 
     // 지정된 버튼들 활성화
     _enableButtons(buttonKeys) {
-        buttonKeys.forEach(key => {
+        buttonKeys.forEach((key) => {
             if (this.elements[key]) {
                 this.elements[key].disabled = false;
             }

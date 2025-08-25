@@ -10,7 +10,8 @@ let activeWatchers = new Set();
 // 프레임 감시 설정 객체
 const FRAME_WATCHER_CONFIG = Object.freeze({
     FRAME_PATTERN: /^frame\d+\.jpg$/i, // 감시 대상 프레임 파일명 패턴
-    WATCH_OPTIONS: { // Chokidar 감시 옵션
+    WATCH_OPTIONS: {
+        // Chokidar 감시 옵션
         persistent: true,
         ignoreInitial: true,
         usePolling: false,
@@ -21,10 +22,11 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
         //}
     },
     DEFAULT_LIVE_DIR: '../../frontend/public/live', // 기본 감시 디렉토리
-    RETRY: { // 오류 시 재시도 설정
+    RETRY: {
+        // 오류 시 재시도 설정
         MAX_ATTEMPTS: 3,
-        DELAY_MS: 1000
-    }
+        DELAY_MS: 1000,
+    },
 });
 
 // 파일 경로를 웹 경로로 변환
@@ -135,11 +137,15 @@ async function start(onChangeCallback, options = {}) {
             // 재시작 시도
             if (restartAttempts < FRAME_WATCHER_CONFIG.RETRY.MAX_ATTEMPTS) {
                 restartAttempts++;
-                console.log(`[FrameWatcher] Attempting restart (${restartAttempts}/${FRAME_WATCHER_CONFIG.RETRY.MAX_ATTEMPTS})...`);
+                console.log(
+                    `[FrameWatcher] Attempting restart (${restartAttempts}/${FRAME_WATCHER_CONFIG.RETRY.MAX_ATTEMPTS})...`
+                );
 
                 try {
                     await stop(watcher);
-                    await new Promise(resolve => setTimeout(resolve, FRAME_WATCHER_CONFIG.RETRY.DELAY_MS));
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, FRAME_WATCHER_CONFIG.RETRY.DELAY_MS)
+                    );
 
                     // 재귀적으로 다시 시작 (새로운 watcher 인스턴스 반환)
                     return start(onChangeCallback, options);
@@ -173,8 +179,9 @@ async function stop(watcher) {
 
         // 활성 watcher에서 제거
         activeWatchers.delete(watcher);
-        console.log(`[FrameWatcher] Watcher removed. Active watchers count: ${activeWatchers.size}`);
-
+        console.log(
+            `[FrameWatcher] Watcher removed. Active watchers count: ${activeWatchers.size}`
+        );
     } catch (error) {
         console.error('[FrameWatcher] Error stopping watcher:', error);
         // close 에러가 발생해도 Set에서는 제거
@@ -186,7 +193,7 @@ async function stop(watcher) {
 async function stopAll() {
     console.log(`[FrameWatcher] Stopping all active watchers (${activeWatchers.size})`);
 
-    const stopPromises = Array.from(activeWatchers).map(watcher => stop(watcher));
+    const stopPromises = Array.from(activeWatchers).map((watcher) => stop(watcher));
     await Promise.all(stopPromises);
 
     activeWatchers.clear();
@@ -202,5 +209,5 @@ module.exports = {
     convertToWebPath,
     isTargetFrameFile,
     ensureDirectoryExists,
-    FRAME_WATCHER_CONFIG
+    FRAME_WATCHER_CONFIG,
 };

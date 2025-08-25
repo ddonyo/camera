@@ -6,7 +6,7 @@ const CONFIG = Object.freeze({
     USE_SOCKET_IO: false, // Socket.IO 사용 여부
     SOCKET_URL: 'http://localhost:3000', // Socket.IO 서버 URL
     VALID_CHANNELS: ['frame-path', 'frame-data'], // 유효한 IPC/Socket 채널 목록
-    LOG_PREFIX: '[Preload]' // 로그 접두사
+    LOG_PREFIX: '[Preload]', // 로그 접두사
 });
 
 // Socket.IO 인스턴스 (지연 초기화)
@@ -112,7 +112,6 @@ function emitEvent(event, data) {
     }
 }
 
-
 // `electronAPI`를 렌더러 프로세스의 `window` 객체에 노출
 contextBridge.exposeInMainWorld('electronAPI', {
     log: logMessage, // 로그 함수
@@ -125,7 +124,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getFullscreen: () => ipcRenderer.invoke('get-fullscreen'),
     toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
     // VTON 이미지 저장 IPC
-    saveVtonImage: (url, filename) => ipcRenderer.invoke('save-vton-image', { url, filename })
+    saveVtonImage: (url, filename) => ipcRenderer.invoke('save-vton-image', { url, filename }),
 });
 
 console.log(`${CONFIG.LOG_PREFIX} Electron API exposed to renderer process`);

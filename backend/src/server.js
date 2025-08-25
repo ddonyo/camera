@@ -8,14 +8,14 @@ const rembgRouter = require('./routes/rembg');
 const CONFIG = {
     DEFAULT_PORT: 3000,
     LOCALE: 'ko-KR',
-    BANNER_WIDTH: 50
+    BANNER_WIDTH: 50,
 };
 
 const MESSAGES = {
     SERVER_STARTED: 'MJPEG Server Started',
     NOT_FOUND: 'Page not found.',
     REQUEST_LOG_HEADER: 'Request Log:',
-    SHUTDOWN_NOTICE: 'Press Ctrl+C to stop the server'
+    SHUTDOWN_NOTICE: 'Press Ctrl+C to stop the server',
 };
 
 const app = express();
@@ -46,7 +46,7 @@ const utils = {
         const method = utils.formatMethod(req.method);
         const prefix = type === 'ERROR' ? 'ERROR 404 NOT FOUND: ' : '';
         console.log(`[${timestamp}] ${prefix}${method} ${req.url}`);
-    }
+    },
 };
 
 // 미들웨어 설정
@@ -58,11 +58,13 @@ function setupMiddleware() {
     });
 
     // 정적 파일 서빙 설정
-    const staticOptions = utils.isDevelopment() ? {
-        etag: false,
-        lastModified: false,
-        maxAge: 0
-    } : {};
+    const staticOptions = utils.isDevelopment()
+        ? {
+              etag: false,
+              lastModified: false,
+              maxAge: 0,
+          }
+        : {};
 
     app.use(express.static(path.join(__dirname, '../../frontend/public'), staticOptions));
 
@@ -74,7 +76,11 @@ function setupMiddleware() {
 function setupRoutes() {
     // 헬스체크 (Electron이 이걸 기다렸다가 창을 염)
     app.get('/health', (req, res) => {
-        res.json({ ok: true, time: utils.getTimestamp(), mode: utils.isDevelopment() ? 'development' : 'production' });
+        res.json({
+            ok: true,
+            time: utils.getTimestamp(),
+            mode: utils.isDevelopment() ? 'development' : 'production',
+        });
     });
 
     // 환경 정보 API
@@ -82,7 +88,7 @@ function setupRoutes() {
         const isDev = utils.isDevelopment();
         res.json({
             isDev,
-            mode: isDev ? 'development' : 'production'
+            mode: isDev ? 'development' : 'production',
         });
     });
 
@@ -113,7 +119,7 @@ function printStartupBanner() {
         `Start Time: ${utils.getTimestamp()}`,
         '',
         MESSAGES.REQUEST_LOG_HEADER,
-        MESSAGES.SHUTDOWN_NOTICE
+        MESSAGES.SHUTDOWN_NOTICE,
     ];
 
     console.log('\n' + utils.createBanner(bannerContent) + '\n');

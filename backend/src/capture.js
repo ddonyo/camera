@@ -6,14 +6,13 @@ const EventEmitter = require('events');
 
 // native/linux/capture_interface.h 를 노드용으로 변환
 
-const CAP_MSG_MAGIC = 0x1CF3;
+const CAP_MSG_MAGIC = 0x1cf3;
 
 // To capture device
-const CAP_MSG_TYPE_REQ_INFO = 0x100
+const CAP_MSG_TYPE_REQ_INFO = 0x100;
 
 // From capture device
 const CAP_MSG_TYPE_CAM_INFO = 0x200;
-
 
 class Device extends EventEmitter {
     /**
@@ -90,14 +89,13 @@ class Device extends EventEmitter {
 
                     const type = buf.readUint16LE(2);
                     const len = buf.readUint32LE(4);
-                    if (buf.length < 8 + len)
-                        break;
+                    if (buf.length < 8 + len) break;
 
                     let payload = null;
 
                     if (type == CAP_MSG_TYPE_CAM_INFO) {
                         if (len == 16) {
-                            const buf2 = buf.subarray(8, 8 + len)
+                            const buf2 = buf.subarray(8, 8 + len);
                             payload = {
                                 format: buf2.toString('utf-8', 0, 4),
                                 width: buf2.readUint16LE(4),
@@ -150,13 +148,20 @@ class Device extends EventEmitter {
     #startProcess() {
         const cmd = path.join(__dirname, '../../native/linux/capture');
         const args = [
-            '-t', path.join(this.saveDir, '.tmp', 'live.jpg'),
-            '-S', path.join(this.saveDir, this.fileFmt),
-            '-w', this.width,
-            '-h', this.height,
-            '-n', this.numFiles,
-            '-r', this.fps,
-            '-u', this.socketPath,
+            '-t',
+            path.join(this.saveDir, '.tmp', 'live.jpg'),
+            '-S',
+            path.join(this.saveDir, this.fileFmt),
+            '-w',
+            this.width,
+            '-h',
+            this.height,
+            '-n',
+            this.numFiles,
+            '-r',
+            this.fps,
+            '-u',
+            this.socketPath,
         ];
 
         if (this.debugLevel > 0) {

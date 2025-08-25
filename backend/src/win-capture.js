@@ -189,7 +189,9 @@ class WinDevice extends EventEmitter {
                 await fsp.writeFile(filePath, buffer);
 
                 if (this.debugLevel > 0) {
-                    console.log(`[WinCapture] Frame captured: ${fileName} (${buffer.length} bytes)`);
+                    console.log(
+                        `[WinCapture] Frame captured: ${fileName} (${buffer.length} bytes)`
+                    );
                 }
 
                 // 프레임 카운터 증가
@@ -223,14 +225,16 @@ class WinDevice extends EventEmitter {
             this.camInfo = {
                 format: 'MJPG',
                 width: this.width,
-                height: this.height, 
-                fps: this.fps
+                height: this.height,
+                fps: this.fps,
             };
 
-            console.log(`[WinCapture] Starting capture: ${this.width}x${this.height}@${this.fps}fps`);
+            console.log(
+                `[WinCapture] Starting capture: ${this.width}x${this.height}@${this.fps}fps`
+            );
 
             this.isRunning = true;
-            
+
             // 연결됨 이벤트 발생
             this.emit('connected', this);
 
@@ -238,7 +242,7 @@ class WinDevice extends EventEmitter {
             setTimeout(() => {
                 this.emit('data', {
                     type: 0x200, // CAP_MSG_TYPE_CAM_INFO
-                    payload: this.camInfo
+                    payload: this.camInfo,
                 });
             }, 100);
 
@@ -246,9 +250,11 @@ class WinDevice extends EventEmitter {
             const minInterval = 100; // 최소 100ms 간격 (최대 10fps)
             const targetInterval = 1000 / this.fps;
             const intervalMs = Math.max(minInterval, targetInterval);
-            
-            console.log(`[WinCapture] Using capture interval: ${intervalMs}ms (${(1000/intervalMs).toFixed(1)}fps)`);
-            
+
+            console.log(
+                `[WinCapture] Using capture interval: ${intervalMs}ms (${(1000 / intervalMs).toFixed(1)}fps)`
+            );
+
             this.captureInterval = setInterval(async () => {
                 try {
                     await this.#captureFrame();
@@ -258,7 +264,6 @@ class WinDevice extends EventEmitter {
             }, intervalMs);
 
             console.log('[WinCapture] Windows webcam capture started successfully');
-
         } catch (error) {
             console.error('[WinCapture] Failed to start capture:', error);
             this.emit('error', error);
@@ -282,7 +287,12 @@ class WinDevice extends EventEmitter {
         }
 
         // 웹캠 스트림 중지 요청
-        if (this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.webContents && !this.mainWindow.webContents.isDestroyed()) {
+        if (
+            this.mainWindow &&
+            !this.mainWindow.isDestroyed() &&
+            this.mainWindow.webContents &&
+            !this.mainWindow.webContents.isDestroyed()
+        ) {
             try {
                 await this.mainWindow.webContents.executeJavaScript(`
                     if (window.__winCaptureStream) {
@@ -300,7 +310,9 @@ class WinDevice extends EventEmitter {
                 console.error('[WinCapture] Error stopping webcam:', error);
             }
         } else {
-            console.log('[WinCapture] Skipping webcam cleanup - window/webContents already destroyed');
+            console.log(
+                '[WinCapture] Skipping webcam cleanup - window/webContents already destroyed'
+            );
         }
 
         console.log('[WinCapture] Capture stopped');
@@ -317,7 +329,12 @@ class WinDevice extends EventEmitter {
     // 소멸자 (Linux capture와 동일한 인터페이스)
     async destroy() {
         try {
-            if (this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.webContents && !this.mainWindow.webContents.isDestroyed()) {
+            if (
+                this.mainWindow &&
+                !this.mainWindow.isDestroyed() &&
+                this.mainWindow.webContents &&
+                !this.mainWindow.webContents.isDestroyed()
+            ) {
                 await this.stop();
             } else {
                 // 윈도우가 이미 파괴된 경우 캡쳐 인터벌만 정리

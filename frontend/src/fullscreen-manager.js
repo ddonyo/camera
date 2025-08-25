@@ -15,7 +15,7 @@ export class FullscreenManager {
         return window['electronAPI'];
     }
 
-        // 이벤트 바인딩
+    // 이벤트 바인딩
     _bindEvents() {
         // DOM 로드 후 요소 찾기
         if (document.readyState === 'loading') {
@@ -40,7 +40,6 @@ export class FullscreenManager {
         } else {
             console.log('Electron fullscreen button not found - using F11 key only');
         }
-
 
         // 키보드 이벤트 등록 (즉시 등록)
         this._bindKeyboardEvents();
@@ -82,17 +81,25 @@ export class FullscreenManager {
         });
 
         // 마우스가 컨트롤 영역에 있을 때는 숨기지 않음
-        document.addEventListener('mouseenter', (e) => {
-            if (this.isFullscreen && e.target.closest('.control-area, .progress-bar')) {
-                this._cancelHideControls();
-            }
-        }, true);
+        document.addEventListener(
+            'mouseenter',
+            (e) => {
+                if (this.isFullscreen && e.target.closest('.control-area, .progress-bar')) {
+                    this._cancelHideControls();
+                }
+            },
+            true
+        );
 
-        document.addEventListener('mouseleave', (e) => {
-            if (this.isFullscreen && e.target.closest('.control-area, .progress-bar')) {
-                this._scheduleHideControls();
-            }
-        }, true);
+        document.addEventListener(
+            'mouseleave',
+            (e) => {
+                if (this.isFullscreen && e.target.closest('.control-area, .progress-bar')) {
+                    this._scheduleHideControls();
+                }
+            },
+            true
+        );
     }
 
     // 전체화면 모드 토글
@@ -135,7 +142,6 @@ export class FullscreenManager {
 
                 console.log('Fullscreen mode activated');
             }, 300);
-
         } catch (error) {
             console.error('Failed to enter fullscreen:', error);
         }
@@ -174,7 +180,6 @@ export class FullscreenManager {
             if (this.#electronAPI) {
                 await this.#electronAPI.setFullscreen(false);
             }
-
         } catch (error) {
             console.error('Failed to exit fullscreen:', error);
         }

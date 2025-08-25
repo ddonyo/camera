@@ -2,7 +2,7 @@
 import { $$ } from './dom.js';
 
 export function bindNumberInputs() {
-    $$('.number-input-wrapper[data-number-input]').forEach(wrap => {
+    $$('.number-input-wrapper[data-number-input]').forEach((wrap) => {
         const id = wrap.dataset.numberInput;
         const step = parseFloat(wrap.dataset.step || '1');
         const min = parseFloat(wrap.dataset.min ?? Number.NEGATIVE_INFINITY);
