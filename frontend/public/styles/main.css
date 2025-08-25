@@ -875,9 +875,20 @@ input[type="number"]:disabled {
     display: block;
 }
 
-/* 크롭 모드일 때 VTON 결과 이미지를 꽉 채우기 */
-.crop-mode #vtonResult {
-    object-fit: cover;
+/* VTON 결과 이미지 기본 설정 - 비율 유지 */
+#vtonResult {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important; /* 기본은 비율 유지 */
+    object-position: center !important;
+    display: block !important;
+}
+
+/* Crop 모드에서 생성된 VTON 결과 - 패널에 맞게 확대 */
+#vtonResult[data-crop-generated="true"] {
+    object-fit: cover !important; /* crop으로 생성된 경우 패널을 꽉 채움 */
 }
 
 /* 카메라 풀뷰 모드 */

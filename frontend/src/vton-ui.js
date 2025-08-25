@@ -32,9 +32,16 @@ export function createVtonUI() {
         if (label) txt.textContent = label;
     }
 
-    function succeed(url, save = true) {
-        console.log('VTON succeed with url:', url, 'save:', save);
+    function succeed(url, save = true, cropMode = false) {
+        console.log('VTON succeed with url:', url, 'save:', save, 'cropMode:', cropMode);
         setPreview(url); // 미리보기 업데이트
+        
+        // VTON 결과 이미지에 생성 모드 정보 저장
+        if (img) {
+            img.setAttribute('data-crop-generated', cropMode ? 'true' : 'false');
+            console.log('Set VTON result crop mode:', cropMode);
+        }
+        
         if (loading) show(loading, false); // VTON 완료 후 숨김
 
         if (save) {

@@ -87,10 +87,10 @@ export function initWardrobeController() {
             });
 
             if (result.status === 'succeeded') {
-                if (result.result_url) ui.succeed(result.result_url);
-                else if (result.result_base64) ui.succeed(`data:image/png;base64,${result.result_base64}`);
-                else if (result.image_base64) ui.succeed(`data:image/png;base64,${result.image_base64}`);
-                else ui.succeed(personRef.previewUrl);
+                if (result.result_url) ui.succeed(result.result_url, true, cropMode);
+                else if (result.result_base64) ui.succeed(`data:image/png;base64,${result.result_base64}`, true, cropMode);
+                else if (result.image_base64) ui.succeed(`data:image/png;base64,${result.image_base64}`, true, cropMode);
+                else ui.succeed(personRef.previewUrl, true, cropMode);
             } else {
                 ui.fail(result.error || 'Failed');
             }
