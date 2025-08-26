@@ -6,6 +6,7 @@ class ScreenshotManager {
 
     init() {
         this.setupEventListeners();
+        this.setupKeyboardShortcut();
     }
 
     setupEventListeners() {
@@ -15,6 +16,18 @@ class ScreenshotManager {
                 this.captureScreenshot();
             });
         }
+    }
+
+    setupKeyboardShortcut() {
+        // F12 키로 스크린샷 캡처
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'F12') {
+                event.preventDefault(); // 기본 브라우저 개발자 도구 방지
+                this.captureScreenshot();
+            }
+        });
+
+        console.log('Screenshot keyboard shortcut registered: F12');
     }
 
     async captureScreenshot() {

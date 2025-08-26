@@ -115,6 +115,7 @@ export class UIController {
                     'rembgBtn',
                     'cropBtn',
                     'fullBtn',
+                    'screenshotBtn',
                 ]);
                 if (hasFrames) {
                     this._enablePlaybackButtons();
@@ -131,13 +132,14 @@ export class UIController {
                     'rembgBtn',
                     'cropBtn',
                     'fullBtn',
+                    'screenshotBtn',
                 ]);
                 this._addActiveClass('liveBtn');
                 this._toggleDelayElements(false);
                 break;
 
             case State.RECORD:
-                this._enableButtons(['recordBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
+                this._enableButtons(['recordBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn', 'screenshotBtn']);
                 this._addActiveClass('recordBtn');
                 this._toggleDelayElements(true);
                 break;
@@ -150,6 +152,7 @@ export class UIController {
                     'rembgBtn',
                     'cropBtn',
                     'fullBtn',
+                    'screenshotBtn',
                 ]);
                 this._addActiveClass('playbackBtn');
                 this._enablePlaybackButtons();
