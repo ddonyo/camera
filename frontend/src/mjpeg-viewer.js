@@ -217,7 +217,8 @@ export class MJPEGViewer {
             // Live 모드에서 Live 버튼 재클릭 = 스트리밍 완전 중지
             this._stopCurrentMode();
         } else {
-            // IDLE 상태에서 Live 버튼 클릭 = 스트리밍 시작
+            // 다른 상태에서 Live 버튼 클릭 = 현재 모드 완전 중지 후 Live 시작
+            this._stopCurrentMode();
             await this._startLiveMode();
         }
     }
@@ -311,7 +312,8 @@ export class MJPEGViewer {
         if (this.state === State.PLAYBACK) {
             this._stopCurrentMode();
         } else {
-            // IDLE 또는 LIVE 상태에서만 실행됨 (RECORD에서는 버튼이 비활성화됨)
+            // 다른 상태에서 Playback 버튼 클릭 = 현재 모드 완전 중지 후 Playback 시작
+            this._stopCurrentMode();
             await this._startPlaybackMode();
         }
     }
@@ -887,6 +889,9 @@ export class MJPEGViewer {
 
     // IDLE 상태로 초기화 및 UI 정리
     _resetToIdle() {
+        // 재생 상태 완전 초기화
+        this.playing = false;
+        
         this.uiController.clearCanvas();
         this.frameManager.clear();
         this._setState(State.IDLE);
@@ -929,13 +934,22 @@ export class MJPEGViewer {
 
     // 현재 모드 중지 및 IDLE 전환
     _stopCurrentMode() {
-        this._pause();
+        console.log(`[Stop] Stopping current mode: ${this.state}`);
+        
+        // 재생 상태 강제 중지
+        this.playing = false;
 
         if (this._isStreamingMode()) {
             this._emitToElectron(IPCCommands.STOP_STREAMING);
         }
 
+        // 녹화 중인 경우 녹화도 중지
+        if (this.state === State.RECORD) {
+            this._emitToElectron(IPCCommands.STOP_RECORDING);
+        }
+
         this._resetToIdle();
+        console.log(`[Stop] Mode stopped, state reset to: ${this.state}`);
     }
 
     // Playback 모드 재생 시작/재개
@@ -970,7 +984,7 @@ export class MJPEGViewer {
 
     // Playback 모드 프레임 재생 루프
     async _executePlayLoop() {
-        while (this.playing) {
+        while (this.playing && this.state === State.PLAYBACK) {
             try {
                 await this._processFrame(this.currentDirection);
                 await TimerUtils.waitForNextFrame(this._getEffectiveFPS());
