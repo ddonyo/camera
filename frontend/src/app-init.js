@@ -1,6 +1,5 @@
 import { MJPEGViewer } from './mjpeg-viewer.js';
 import { FullscreenManager } from './fullscreen-manager.js';
-import { ScreenshotManager } from './screenshot-manager.js';
 import { bindNumberInputs } from './number-input.js';
 import { initWardrobeController } from './wardrobe-controller.js';
 import { renderWardrobeGrid } from './wardrobe-data.js';
@@ -26,18 +25,11 @@ function initializeApp() {
     // 전체화면 관리자 인스턴스 생성 및 전역 할당
     window.fullscreenManager = new FullscreenManager();
 
-    // 스크린샷 관리자 인스턴스 생성 및 전역 할당
-    window.screenshotManager = new ScreenshotManager();
-
     console.log('MJPEG Viewer Application initialized');
 }
 
 // 애플리케이션 종료 전 정리 함수
 function cleanupApp() {
-    if (window.screenshotManager) {
-        window.screenshotManager = null;
-    }
-
     if (window.fullscreenManager) {
         window.fullscreenManager.destroy();
         window.fullscreenManager = null;

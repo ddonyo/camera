@@ -125,8 +125,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
     // VTON 이미지 저장 IPC
     saveVtonImage: (url, filename) => ipcRenderer.invoke('save-vton-image', { url, filename }),
-    // 스크린샷 캡처 IPC
-    captureScreenshot: () => ipcRenderer.invoke('capture-screenshot'),
 });
 
 console.log(`${CONFIG.LOG_PREFIX} Electron API exposed to renderer process`);

@@ -430,32 +430,6 @@ function setupIpcHandlers(win) {
                 .catch((err) => reject(err));
         });
     });
-
-    // 스크린샷 캡처 IPC 핸들러
-    ipcMain.handle('capture-screenshot', async (event) => {
-        try {
-            console.log('[IPC] Screenshot capture requested');
-            
-            const response = await fetch(`${BACKEND_URL}/api/v1/screenshot/capture`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Screenshot API failed: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            console.log('[IPC] Screenshot captured:', result.filename);
-            
-            return result;
-        } catch (error) {
-            console.error('[IPC] Screenshot capture failed:', error);
-            throw error;
-        }
-    });
 }
 
 // 메인 창 생성 및 설정
