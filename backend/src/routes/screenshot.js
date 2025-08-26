@@ -62,6 +62,85 @@ async function captureScreenshotWindows() {
     });
 }
 
+// Linux용 스크린샷 캡처 함수 (scrot 또는 xwd 사용)
+async function captureScreenshotLinux() {
+    return new Promise((resolve, reject) => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `screenshot_${timestamp}.png`;
+        const filepath = path.join(SCREENSHOT_DIR, filename);
+        
+        // scrot을 먼저 시도 (설치되어 있다면)
+        const scrotChild = spawn('scrot', [filepath], { stdio: 'ignore' });
+        
+        scrotChild.on('close', (code) => {
+            if (code === 0) {
+                resolve({ filename, filepath });
+            } else {
+                // scrot 실패시 xwd + convert 시도
+                tryXwdCapture();
+            }
+        });
+        
+        scrotChild.on('error', (error) => {
+            // scrot이 없는 경우 xwd + convert 시도
+            tryXwdCapture();
+        });
+        
+        function tryXwdCapture() {
+            // xwd로 전체 화면 캡처 후 convert로 PNG 변환
+            const xwdTempPath = path.join(SCREENSHOT_DIR, `temp_${timestamp}.xwd`);
+            
+            const xwdChild = spawn('xwd', ['-root', '-out', xwdTempPath]);
+            
+            xwdChild.on('close', (code) => {
+                if (code === 0) {
+                    // xwd 파일을 PNG로 변환
+                    const convertChild = spawn('convert', [xwdTempPath, filepath]);
+                    
+                    convertChild.on('close', (convertCode) => {
+                        // 임시 xwd 파일 삭제
+                        spawn('rm', [xwdTempPath]);
+                        
+                        if (convertCode === 0) {
+                            resolve({ filename, filepath });
+                        } else {
+                            reject(new Error(`ImageMagick convert failed with code ${convertCode}`));
+                        }
+                    });
+                    
+                    convertChild.on('error', (convertError) => {
+                        spawn('rm', [xwdTempPath]);
+                        tryGnomeScreenshot();
+                    });
+                } else {
+                    tryGnomeScreenshot();
+                }
+            });
+            
+            xwdChild.on('error', (error) => {
+                tryGnomeScreenshot();
+            });
+        }
+        
+        function tryGnomeScreenshot() {
+            // GNOME 환경에서 gnome-screenshot 시도
+            const gnomeChild = spawn('gnome-screenshot', ['-f', filepath]);
+            
+            gnomeChild.on('close', (code) => {
+                if (code === 0) {
+                    resolve({ filename, filepath });
+                } else {
+                    reject(new Error(`All screenshot methods failed. Please install scrot, ImageMagick, or gnome-screenshot`));
+                }
+            });
+            
+            gnomeChild.on('error', (error) => {
+                reject(new Error(`All screenshot methods failed. Please install scrot, ImageMagick, or gnome-screenshot`));
+            });
+        }
+    });
+}
+
 // POST /capture - 스크린샷 캡처
 router.post('/capture', async (req, res) => {
     try {
@@ -73,8 +152,10 @@ router.post('/capture', async (req, res) => {
         let result;
         if (process.platform === 'win32') {
             result = await captureScreenshotWindows();
+        } else if (process.platform === 'linux') {
+            result = await captureScreenshotLinux();
         } else {
-            throw new Error('Screenshot capture is currently only supported on Windows');
+            throw new Error(`Screenshot capture is not supported on ${process.platform}`);
         }
         
         console.log(`[Screenshot] Captured: ${result.filename}`);
