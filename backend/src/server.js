@@ -3,6 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const vtonRouter = require('./routes/vton');
 const rembgRouter = require('./routes/rembg');
+const screenshotRouter = require('./routes/screenshot');
 
 // 상수 정의
 const CONFIG = {
@@ -102,6 +103,9 @@ function setupRoutes() {
 
     // RemBG API 라우터
     app.use('/api/v1/rembg', rembgRouter);
+
+    // Screenshot API 라우터
+    app.use('/api/v1/screenshot', screenshotRouter);
 
     // 404 핸들러 (마지막에 등록)
     app.use((req, res) => {
