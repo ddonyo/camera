@@ -3,7 +3,6 @@ import { $, $$ } from './dom.js';
 import { createVtonUI } from './vton-ui.js';
 import { captureCurrentFrame } from './capture-helper.js';
 import { runVTONWithFallback } from './vton-service.js';
-import { removeBackground } from './rembg-service.js';
 
 export function initWardrobeController() {
     const grid = $('#wardrobeGrid');
@@ -33,9 +32,6 @@ export function initWardrobeController() {
         const cropBtn = document.getElementById('cropBtn');
         const cropMode = cropBtn && cropBtn.classList.contains('active');
 
-        // RemBG 모드 확인 (rembgBtn의 active 클래스로 판단)
-        const rembgBtn = document.getElementById('rembgBtn');
-        const rembgMode = rembgBtn && rembgBtn.classList.contains('active');
 
         // VTON 모드 가져오기
         const vtonMode = getSelectedVtonMode();
@@ -58,31 +54,6 @@ export function initWardrobeController() {
         let finalBlob = shot.blob;
         let finalDataUrl = shot.dataUrl;
 
-        // RemBG 모드가 활성화된 경우 배경 제거 적용
-        if (rembgMode) {
-            ui.setProgress(0.15, 'Removing background...');
-
-            const rembgResult = await removeBackground(shot.blob, (progress, stage) => {
-                // 배경 제거 진행률을 0.15~0.4 범위로 매핑
-                const mappedProgress = 0.15 + progress * 0.25;
-                ui.setProgress(mappedProgress, stage);
-            });
-
-            if (rembgResult.success) {
-                // 배경이 제거된 이미지를 사용
-                finalDataUrl = rembgResult.resultUrl;
-                finalBlob = await (await fetch(finalDataUrl)).blob();
-                ui.setPreview(finalDataUrl); // 배경이 제거된 이미지로 미리보기 업데이트
-                console.log(
-                    `[RemBG] Background removal completed in ${rembgResult.elapsedTime} seconds`
-                );
-            } else {
-                console.warn(
-                    '[RemBG] Background removal failed, using original image:',
-                    rembgResult.error
-                );
-            }
-        }
 
         const personRef = {
             type: 'file',
@@ -98,8 +69,8 @@ export function initWardrobeController() {
                 garmentId,
                 options,
                 onProgress: (p, stage) => {
-                    // VTON 진행률을 0.4~1.0 범위로 매핑 (rembg가 0.15~0.4 사용)
-                    const baseProgress = rembgMode ? 0.4 : 0.05;
+                    // VTON 진행률을 0.05~1.0 범위로 매핑
+                    const baseProgress = 0.05;
                     const mappedProgress =
                         typeof p === 'number' ? baseProgress + p * (1 - baseProgress) : undefined;
                     ui.setProgress(mappedProgress, stage);

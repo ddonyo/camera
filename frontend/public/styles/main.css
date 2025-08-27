@@ -513,12 +513,6 @@ body {
     content: url('../resources/repeat_1.png');
 }
 
-/* RemBG 버튼 */
-#rembgBtn:hover:not(:disabled) .control-icon,
-#rembgBtn:active:not(:disabled) .control-icon,
-#rembgBtn.active .control-icon {
-    color: #10b981;
-}
 
 /* Crop 버튼 */
 #cropBtn:hover:not(:disabled) .control-icon,

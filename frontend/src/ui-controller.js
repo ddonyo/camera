@@ -60,7 +60,6 @@ export class UIController {
         hasFrames = false,
         flipMode = false,
         cropMode = false,
-        rembgMode = false,
         fullMode = false,
         isLoadingFrames = false
     ) {
@@ -77,7 +76,6 @@ export class UIController {
         this._applyRepeatMode(repeatMode);
         this._applyFlipMode(flipMode);
         this._applyCropMode(cropMode);
-        this._applyRembgMode(rembgMode);
         this._applyFullMode(fullMode);
         this._applyProgressBarState(state, hasFrames);
     }
@@ -127,7 +125,6 @@ export class UIController {
                     'liveBtn',
                     'playbackBtn',
                     'flipBtn',
-                    'rembgBtn',
                     'cropBtn',
                     'fullBtn',
                 ]);
@@ -143,7 +140,6 @@ export class UIController {
                     'recordBtn',
                     'playbackBtn',
                     'flipBtn',
-                    'rembgBtn',
                     'cropBtn',
                     'fullBtn',
                 ]);
@@ -152,7 +148,7 @@ export class UIController {
                 break;
 
             case State.RECORD:
-                this._enableButtons(['recordBtn', 'flipBtn', 'rembgBtn', 'cropBtn', 'fullBtn']);
+                this._enableButtons(['recordBtn', 'flipBtn', 'cropBtn', 'fullBtn']);
                 this._addActiveClass('recordBtn');
                 this._toggleDelayElements(true);
                 break;
@@ -162,7 +158,6 @@ export class UIController {
                     'liveBtn',
                     'playbackBtn',
                     'flipBtn',
-                    'rembgBtn',
                     'cropBtn',
                     'fullBtn',
                 ]);
@@ -206,12 +201,6 @@ export class UIController {
         }
     }
 
-    // RemBG 모드 활성화 시 rembgBtn에 활성 클래스 적용
-    _applyRembgMode(rembgMode) {
-        if (rembgMode) {
-            this._addActiveClass('rembgBtn');
-        }
-    }
 
     // Full 모드 활성화 시 fullBtn에 활성 클래스 적용
     _applyFullMode(fullMode) {

@@ -1,5 +1,4 @@
 // frontend/src/capture-helper.js
-import { removeBackground } from './rembg-service.js';
 
 export async function captureCurrentFrame({
     maxWidth = 1080,

@@ -28,7 +28,6 @@ export class MJPEGViewer {
         this.repeatMode = false; // 반복 재생
         this.flipMode = false; // 좌우 반전
         this.cropMode = false; // 중앙 크롭
-        this.rembgMode = false; // 배경 제거
         this.fullMode = false; // 풀스크린 모드
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
         this.liveFrameCount = 0; // 라이브 프레임 카운터
@@ -94,7 +93,6 @@ export class MJPEGViewer {
             prevFrameBtn: () => this._handleStep(Direction.REVERSE),
             repeatBtn: () => this._handleRepeat(),
             flipBtn: () => this._handleFlip(),
-            rembgBtn: () => this._handleRembg(),
             cropBtn: () => this._handleCrop(),
             fullBtn: () => this._handleFull(),
             progressBar: (evt) => this._handleSeek(evt),
@@ -392,24 +390,6 @@ export class MJPEGViewer {
         }
     }
 
-    // RemBG 버튼 이벤트 핸들러
-    _handleRembg() {
-        this.rembgMode = !this.rembgMode;
-
-        // Body에 rembg-mode 클래스 추가/제거하여 CSS 스타일 적용
-        const body = document.body;
-        if (this.rembgMode) {
-            body.classList.add('rembg-mode');
-        } else {
-            body.classList.remove('rembg-mode');
-        }
-
-        this._updateUI();
-
-        if (this.state === State.PLAYBACK && !this.playing) {
-            this._updateFrameDisplay();
-        }
-    }
 
     // Crop 버튼 이벤트 핸들러
     _handleCrop() {
@@ -840,7 +820,6 @@ export class MJPEGViewer {
             hasFrames,
             this.flipMode,
             this.cropMode,
-            this.rembgMode,
             this.fullMode,
             this.isLoadingFrames // 프레임 로딩 상태 추가
         );

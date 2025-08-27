@@ -197,7 +197,7 @@ export class CanvasUtils {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 이미지 캔버스에 그리기 (rembg는 비동기로 처리되므로 여기서는 일반 그리기만)
+    // 이미지 캔버스에 그리기
     static drawImageToCanvas(canvas, image, options = {}) {
         const { clearFirst = true, flip = false, crop = false } = options;
 
