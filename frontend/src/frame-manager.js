@@ -132,8 +132,7 @@ export class FrameManager {
                 // 프레임 정보를 배열에 추가
                 this.frames.push(frameInfo);
 
-                // 즉시 캔버스에 렌더링
-                CanvasUtils.drawImageToCanvas(canvas, img, renderOptions);
+                // (렌더링/지연 제거) → 프레임 목록만 축적하고 진행상황 콜백만 호출
 
                 // 콜백 호출
                 if (onFrameLoaded) {
@@ -143,13 +142,7 @@ export class FrameManager {
                 frameIndex++;
                 consecutiveFailures = 0;
 
-                console.log(`[FrameManager] Loaded and rendered frame ${frameIndex - 1}`);
-
-                // 속도 제한을 위한 지연 (effectiveFPS가 제공된 경우)
-                if (effectiveFPS && effectiveFPS > 0) {
-                    const delay = 1000 / effectiveFPS;
-                    await new Promise((resolve) => setTimeout(resolve, delay));
-                }
+                console.log(`[FrameManager] Loaded frame ${frameIndex - 1}`);
             } catch (error) {
                 consecutiveFailures++;
                 console.warn(

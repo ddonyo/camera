@@ -693,7 +693,7 @@ export class MJPEGViewer {
             console.log(`[Playback] Set original FPS to ${recordedFPS} from rec_info.json`);
 
             this._setState(State.PLAYBACK);
-            this.playing = true;
+            this.playing = false;   // 진입 시 재생 꺼진 상태로
             this.currentDirection = direction;
 
             const frameCount = await this._loadFramesWithProgress();
@@ -704,6 +704,9 @@ export class MJPEGViewer {
             }
 
             this._initializePlaybackPosition(direction);
+
+            // 자동재생: playback 모드 진입 시 자동으로 재생 시작
+            this._play(direction);
         } catch (error) {
             this._handleError(error, ErrorMessages.LOAD_RECORDED_FRAMES_FAILED);
         }
