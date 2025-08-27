@@ -23,7 +23,7 @@ class Device extends EventEmitter {
      * @param {number} [options.numFiles=4] - 저장 파일 수
      * @param {number} [options.width=640] - 프레임 Width
      * @param {number} [options.height=480] - 프레임 Height
-     * @param {number} [options.fps=30] - 초당 프레임 수
+     * @param {number} [options.fps=30] - 초당 프래임 수
      * @param {boolean} [options.useStdout=false] - 표준 출력을 사용할지 여부
      */
     constructor(options) {
@@ -40,6 +40,8 @@ class Device extends EventEmitter {
         this.height = options.height || 480;
         this.fps = options.fps || 30;
         this.stdout = options.useStdout ? 'inherit' : 'ignore';
+        this.isRecording = false;
+        this.recordingStartTime = null;
     }
 
     async #unlinkSocketPath() {
@@ -223,6 +225,63 @@ class Device extends EventEmitter {
 
     async destroy() {
         await this.stop();
+    }
+
+    // Recording control methods
+    async startRecording() {
+        if (this.isRecording) {
+            console.log('[Capture] Already recording, ignoring start request');
+            return false;
+        }
+
+        try {
+            this.isRecording = true;
+            this.recordingStartTime = Date.now();
+            console.log('[Capture] Recording started');
+            this.emit('recordingStarted', {
+                timestamp: this.recordingStartTime,
+                saveDir: this.saveDir
+            });
+            return true;
+        } catch (error) {
+            this.isRecording = false;
+            this.recordingStartTime = null;
+            console.error('[Capture] Failed to start recording:', error);
+            this.emit('recordingError', error);
+            return false;
+        }
+    }
+
+    async stopRecording() {
+        if (!this.isRecording) {
+            console.log('[Capture] Not recording, ignoring stop request');
+            return false;
+        }
+
+        try {
+            const duration = Date.now() - this.recordingStartTime;
+            this.isRecording = false;
+            console.log(`[Capture] Recording stopped after ${duration}ms`);
+            this.emit('recordingStopped', {
+                startTime: this.recordingStartTime,
+                duration: duration,
+                saveDir: this.saveDir
+            });
+            this.recordingStartTime = null;
+            return true;
+        } catch (error) {
+            console.error('[Capture] Failed to stop recording:', error);
+            this.emit('recordingError', error);
+            return false;
+        }
+    }
+
+    getRecordingStatus() {
+        return {
+            isRecording: this.isRecording,
+            startTime: this.recordingStartTime,
+            duration: this.isRecording ? Date.now() - this.recordingStartTime : 0
+        };
     }
 }
 

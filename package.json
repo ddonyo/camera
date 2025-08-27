@@ -5,7 +5,10 @@
     "scripts": {
         "start": "XDG_RUNTIME_DIR=/tmp/weston WAYLAND_DISPLAY=wayland-0 electron . --no-sandbox --ozone-platform=wayland",
         "start:win": "electron .",
-        "build": "make -C native/linux"
+        "build": "make -C native/linux",
+        "test:hand": "node backend/src/test/hand-gesture-test.js",
+        "setup:python": "pip install mediapipe opencv-python",
+        "check:deps": "python3 -c \"import mediapipe, cv2; print('Python dependencies OK')\""
     },
     "author": "LGE SoC Media BSP Task",
     "description": "MJPEG Viewer",

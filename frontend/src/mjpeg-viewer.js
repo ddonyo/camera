@@ -11,6 +11,7 @@ import {
 import { TimerUtils, CanvasUtils, FileUtils } from './utils.js';
 import { FrameManager } from './frame-manager.js';
 import { UIController } from './ui-controller.js';
+import { ROIOverlay } from './roi-overlay.js';
 
 // MJPEG 뷰어 메인 로직 클래스
 export class MJPEGViewer {
@@ -19,6 +20,7 @@ export class MJPEGViewer {
 
         this.frameManager = new FrameManager(); // 프레임 관리자
         this.uiController = new UIController(); // UI 컨트롤러
+        this.roiOverlay = null; // ROI 오버레이 (나중에 초기화)
 
         console.log('UI elements:', this.uiController.elements);
 
@@ -37,6 +39,9 @@ export class MJPEGViewer {
 
         this._bindEvents(); // 이벤트 바인딩
         this._setupLiveIpcListeners(); // IPC 리스너 (라이브)
+        setTimeout(() => {
+            this._initROIOverlay();
+        }, 100);
         this._updateUI(); // UI 업데이트
 
         console.log('MJPEGViewer constructor completed');
@@ -94,6 +99,7 @@ export class MJPEGViewer {
             repeatBtn: () => this._handleRepeat(),
             flipBtn: () => this._handleFlip(),
             cropBtn: () => this._handleCrop(),
+            roiBtn: () => this._toggleROIOverlay(),
             fullBtn: () => this._handleFull(),
             progressBar: (evt) => this._handleSeek(evt),
         };
@@ -145,6 +151,23 @@ export class MJPEGViewer {
                 );
             }
             this._handleLiveFrame(binaryData, 'binary');
+        });
+
+        // 손 감지 결과 수신
+        this.#electronAPI.on('hand-detection', (detectionData) => {
+            this._handleHandDetectionData(detectionData);
+        });
+
+        // 손 제스처 녹화 시작 이벤트
+        this.#electronAPI.on('recording-started', (data) => {
+            console.log('[MJPEGViewer] Recording started by hand gesture:', data);
+            this.uiController.setMessage('🔴 Hand gesture: Recording started', MessageType.INFO);
+        });
+
+        // 손 제스처 녹화 중지 이벤트
+        this.#electronAPI.on('recording-stopped', (data) => {
+            console.log('[MJPEGViewer] Recording stopped by hand gesture:', data);
+            this.uiController.setMessage('⏹️ Hand gesture: Recording stopped', MessageType.INFO);
         });
     }
 
@@ -977,5 +1000,111 @@ export class MJPEGViewer {
         this._updateUI();
         this._pause();
         this._setState(State.IDLE);
+    }
+
+    // ROI 오버레이 초기화
+    _initROIOverlay() {
+        const viewerCanvas = this.uiController.elements.viewer;
+        console.log('[MJPEGViewer] Initializing ROI overlay...', {
+            viewerCanvas: !!viewerCanvas,
+            viewerId: viewerCanvas?.id,
+            canvasRect: viewerCanvas?.getBoundingClientRect(),
+            parentElement: viewerCanvas?.parentElement?.tagName,
+            parentClass: viewerCanvas?.parentElement?.className
+        });
+        if (viewerCanvas) {
+            try {
+                this.roiOverlay = new ROIOverlay(viewerCanvas);
+
+                // 기본적으로 활성화
+                this.roiOverlay.enable();
+
+                // 윈도우 리사이즈 이벤트 처리
+                window.addEventListener('resize', () => {
+                    if (this.roiOverlay) {
+                        this.roiOverlay.handleResize();
+                    }
+                });
+                console.log('[MJPEGViewer] ROI overlay initialized successfully');
+            } catch (error) {
+                console.error('[MJPEGViewer] Failed to initialize ROI overlay:', error);
+                this.roiOverlay = null;
+            }
+        } else {
+            console.warn('[MJPEGViewer] Viewer canvas not found, ROI overlay not initialized');
+        }
+    }
+
+    // ROI 오버레이 토글
+    _toggleROIOverlay() {
+        if (this.roiOverlay) {
+            this.roiOverlay.toggle();
+            const isEnabled = this.roiOverlay.isEnabled;
+            this.uiController.setMessage(
+                `ROI 오버레이 ${isEnabled ? '활성화됨' : '비활성화됨'}`,
+                MessageType.INFO
+            );
+            console.log(`[MJPEGViewer] ROI overlay ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+    }
+
+    // 손 감지 결과 업데이트 (백엔드에서 받은 데이터)
+    _updateHandDetections(detections) {
+        if (this.roiOverlay) {
+            this.roiOverlay.updateHandDetections(detections);
+        }
+    }
+
+    // 손 감지 데이터 처리 (IPC에서 받은 데이터)
+    _handleHandDetectionData(detectionData) {
+        if (!detectionData || !detectionData.hands) {
+            return;
+        }
+
+        // 디버그 로그 (가끔씩만)
+        if (Math.random() < 0.1) { // 10% 확률로 로그 출력
+            console.log('[MJPEGViewer] Hand detection data received:', {
+                handCount: detectionData.hands.length,
+                rightHandInStartROI: detectionData.rightHandInStartROI,
+                leftHandInStopROI: detectionData.leftHandInStopROI
+            });
+        }
+
+        // ROI 오버레이 업데이트
+        this._updateHandDetections(detectionData.hands);
+
+        // ROI 진입 상태에 따른 UI 피드백
+        if (detectionData.rightHandInStartROI) {
+            this._showROIFeedback('start', true);
+        }
+        if (detectionData.leftHandInStopROI) {
+            this._showROIFeedback('stop', true);
+        }
+    }
+
+    // ROI 진입 시각적 피드백
+    _showROIFeedback(type, isActive) {
+        // ROI 버튼에 임시 하이라이트 효과
+        const roiBtn = this.uiController.elements.roiBtn;
+        if (roiBtn && isActive) {
+            roiBtn.classList.add('roi-active');
+            setTimeout(() => {
+                roiBtn.classList.remove('roi-active');
+            }, 500);
+        }
+    }
+
+    // MJPEGViewer 소멸 시 ROI 오버레이 정리
+    destroy() {
+        this._pause();
+        this.uiController.destroy();
+        this.frameManager.clear();
+
+        if (this.roiOverlay) {
+            this.roiOverlay.destroy();
+            this.roiOverlay = null;
+        }
+
+        console.log('MJPEGViewer destroyed');
     }
 }

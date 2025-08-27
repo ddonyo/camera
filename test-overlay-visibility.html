@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROI Overlay Visibility Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .camera-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            margin: 20px auto;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            background: #000;
+        }
+        #testCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 6px;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #007bff;
+            color: white;
+        }
+        .info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎯 ROI Overlay Visibility Test - Fixed Version</h1>
+        
+        <div class="info">
+            <strong>테스트 내용:</strong>
+            <ul>
+                <li>Canvas positioning: absolute + 100% width/height</li>
+                <li>Z-index: 200 (높은 우선순위)</li>
+                <li>Red border for visibility debugging</li>
+                <li>Immediate visibility test drawing</li>
+            </ul>
+        </div>
+
+        <div class="camera-container">
+            <canvas id="testCanvas" width="800" height="600"></canvas>
+        </div>
+
+        <div class="controls">
+            <button onclick="toggleROI()">ROI 오버레이 토글</button>
+            <button onclick="drawTest()">가시성 테스트 그리기</button>
+            <button onclick="simulateHands()">손 감지 시뮬레이션</button>
+            <button onclick="clearLog()">로그 지우기</button>
+        </div>
+
+        <div class="log" id="logContainer">
+            <div>ROI Overlay Visibility Test 시작...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { ROIOverlay } from './frontend/src/roi-overlay.js';
+        
+        let roiOverlay = null;
+        let isROIEnabled = false;
+
+        // 테스트 캔버스 초기화
+        function initTestCanvas() {
+            const canvas = document.getElementById('testCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 가상 카메라 화면 그리기
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#2c3e50');
+            gradient.addColorStop(1, '#34495e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 중앙에 "CAMERA VIEW" 텍스트
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('CAMERA VIEW', canvas.width / 2, canvas.height / 2);
+            
+            // 그리드 라인
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            
+            log('테스트 캔버스 초기화 완료');
+        }
+
+        // ROI 오버레이 초기화
+        function initROIOverlay() {
+            const canvas = document.getElementById('testCanvas');
+            try {
+                roiOverlay = new ROIOverlay(canvas);
+                roiOverlay.enable();
+                isROIEnabled = true;
+                log('ROI 오버레이 초기화 완료 - 수정된 버전');
+            } catch (error) {
+                log('ROI 오버레이 초기화 실패: ' + error.message);
+            }
+        }
+
+        // 로그 출력
+        function log(message) {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 전역 함수들
+        window.toggleROI = function() {
+            if (roiOverlay) {
+                roiOverlay.toggle();
+                isROIEnabled = roiOverlay.isEnabled;
+                log(`ROI 표시 ${isROIEnabled ? '활성화' : '비활성화'}`);
+            }
+        };
+
+        window.drawTest = function() {
+            if (roiOverlay) {
+                roiOverlay.drawVisibilityTest();
+                log('가시성 테스트 그리기 실행');
+            }
+        };
+
+        window.simulateHands = function() {
+            if (roiOverlay) {
+                const detections = [
+                    {
+                        handedness: 'Right',
+                        confidence: 0.9,
+                        center: { x: 0.8, y: 0.4 },
+                        bbox: { x1: 0.76, y1: 0.35, x2: 0.84, y2: 0.45 }
+                    },
+                    {
+                        handedness: 'Left',
+                        confidence: 0.85,
+                        center: { x: 0.2, y: 0.4 },
+                        bbox: { x1: 0.16, y1: 0.35, x2: 0.24, y2: 0.45 }
+                    }
+                ];
+                roiOverlay.updateHandDetections(detections);
+                log('양손 감지 시뮬레이션 실행');
+            }
+        };
+
+        window.clearLog = function() {
+            document.getElementById('logContainer').innerHTML = '<div>로그 지워짐...</div>';
+        };
+
+        // 초기화
+        window.addEventListener('load', () => {
+            initTestCanvas();
+            
+            // ROI 오버레이는 약간 지연 후 초기화
+            setTimeout(() => {
+                initROIOverlay();
+            }, 200);
+        });
+    </script>
+</body>
+</html>

@@ -1,11 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
+const HandRouter = require('./hand-router');
 
 const debugLevel = 0;
 
 // 활성 watcher Set
 let activeWatchers = new Set();
+
+// 핸드 라우터 인스턴스
+let handRouter = null;
 
 // 프레임 감시 설정 객체
 const FRAME_WATCHER_CONFIG = Object.freeze({
@@ -75,14 +79,26 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
             try {
                 const data = fs.readFileSync(filePath);
                 callback('frame-data', data, frameNumber);
+                // 핸드 라우터에서 프레임 처리
+                if (handRouter && handRouter.isEnabled) {
+                    handRouter.processFrame(data);
+                }
             } catch (error) {
                 console.error(`[FrameWatcher] Error reading file as binary:`, error);
                 // 에러 발생시 path 방식으로 fallback
                 callback('frame-path', filePath, frameNumber);
+                // path 방식으로 핸드 라우터 처리
+                if (handRouter && handRouter.isEnabled) {
+                    handRouter.processImagePath(filePath);
+                }
             }
         } else {
             // 기존 path 방식
             callback('frame-path', filePath, frameNumber);
+            // path 방식으로 핸드 라우터 처리
+            if (handRouter && handRouter.isEnabled) {
+                handRouter.processImagePath(filePath);
+            }
         }
     } catch (error) {
         console.error(`[FrameWatcher] Callback error for ${eventType} event:`, error);
@@ -98,6 +114,18 @@ async function start(onChangeCallback, options = {}) {
     const liveDir = options.liveDir || FRAME_WATCHER_CONFIG.DEFAULT_LIVE_DIR;
     const dataType = options.dataType || 'path'; // 'bin' 또는 'path' (기본값: 'path')
     const state = { frameCount: 0 };
+    const captureDevice = options.captureDevice || null;
+    // 핸드 라우터 초기화 (캡쳐 디바이스가 제공되고 아직 초기화되지 않은 경우)
+    if (captureDevice && !handRouter) {
+        try {
+            handRouter = new HandRouter(captureDevice);
+            await handRouter.start();
+            console.log('[FrameWatcher] Hand-triggered recording initialized');
+        } catch (error) {
+            console.warn('[FrameWatcher] Failed to initialize hand detection:', error.message);
+            handRouter = null;
+        }
+    }
 
     // 디렉토리 존재 확인 및 생성
     await ensureDirectoryExists(liveDir);
@@ -196,8 +224,29 @@ async function stopAll() {
     const stopPromises = Array.from(activeWatchers).map((watcher) => stop(watcher));
     await Promise.all(stopPromises);
 
+    // 핸드 라우터 정리
+    if (handRouter) {
+        handRouter.stop();
+        handRouter = null;
+        console.log('[FrameWatcher] Hand router stopped');
+    }
+
     activeWatchers.clear();
     console.log('[FrameWatcher] All watchers stopped');
+}
+
+// 핸드 라우터 상태 및 통계 조회
+function getHandRouterStatus() {
+    return handRouter ? handRouter.getStatus() : null;
+}
+
+// 핸드 제스처 시뮬레이션 (테스트용)
+function simulateHandGesture(handedness, x, y, confidence = 0.8) {
+    if (handRouter) {
+        return handRouter.simulateHandDetection(handedness, x, y, confidence);
+    }
+    console.warn('[FrameWatcher] Hand router not initialized');
+    return false;
 }
 
 // CommonJS 모듈 export
@@ -205,6 +254,8 @@ module.exports = {
     start,
     stop,
     stopAll,
+    getHandRouterStatus,
+    simulateHandGesture,
     // 테스트를 위한 유틸리티 함수들 export
     convertToWebPath,
     isTargetFrameFile,

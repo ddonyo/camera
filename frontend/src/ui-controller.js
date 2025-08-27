@@ -126,6 +126,7 @@ export class UIController {
                     'playbackBtn',
                     'flipBtn',
                     'cropBtn',
+                    'roiBtn',
                     'fullBtn',
                 ]);
                 if (hasFrames) {
@@ -141,6 +142,7 @@ export class UIController {
                     'playbackBtn',
                     'flipBtn',
                     'cropBtn',
+                    'roiBtn',
                     'fullBtn',
                 ]);
                 this._addActiveClass('liveBtn');
@@ -148,7 +150,7 @@ export class UIController {
                 break;
 
             case State.RECORD:
-                this._enableButtons(['recordBtn', 'flipBtn', 'cropBtn', 'fullBtn']);
+                this._enableButtons(['recordBtn', 'flipBtn', 'cropBtn', 'roiBtn', 'fullBtn']);
                 this._addActiveClass('recordBtn');
                 this._toggleDelayElements(true);
                 break;
@@ -159,6 +161,7 @@ export class UIController {
                     'playbackBtn',
                     'flipBtn',
                     'cropBtn',
+                    'roiBtn',
                     'fullBtn',
                 ]);
                 this._addActiveClass('playbackBtn');

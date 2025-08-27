@@ -11,6 +11,7 @@ const capture =
         : require('../backend/src/win-capture');
 const { fork } = require('child_process');
 const http = require('http');
+const { initializeHandRouter } = require('../backend/src/routes/hand-detection');
 
 let __backendProc = null;
 const BACKEND_PORT = process.env.PORT || 3000;
@@ -132,6 +133,14 @@ class FrameHandler {
             await device.start();
 
             this.captureDevice = device;
+
+            try {
+                console.log('[Main] Initializing hand detection system...');
+                initializeHandRouter(device);
+                console.log('[Main] Hand detection system initialized successfully');
+            } catch (handError) {
+                console.warn('[Main] Failed to initialize hand detection:', handError.message);
+            }
         }
     }
 
@@ -490,6 +499,19 @@ function startBackendOnce() {
     __backendProc.on('exit', (code, signal) => {
         console.log(`[backend] exit code=${code}, signal=${signal}`);
         __backendProc = null;
+    });
+
+    __backendProc.on('message', (message) => {
+        if (!message || !message.type) return;
+
+        console.log(`[Main] Received backend message:`, message.type);
+
+        const allWindows = BrowserWindow.getAllWindows();
+        for (const window of allWindows) {
+            if (window.webContents) {
+                window.webContents.send(message.type, message.data);
+            }
+        }
     });
 }
 

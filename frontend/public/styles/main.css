@@ -521,6 +521,38 @@ body {
     color: #60a5fa;
 }
 
+/* ROI 버튼 */
+#roiBtn:hover:not(:disabled) .control-icon,
+#roiBtn:active:not(:disabled) .control-icon,
+#roiBtn.active .control-icon {
+    color: #fbbf24; /* 주황색 - ROI 영역 표시를 나타냄 */
+}
+
+/* ROI 감지 활성화 효과 */
+#roiBtn.roi-active {
+    animation: roi-pulse 0.5s ease-in-out;
+    background-color: rgba(251, 191, 36, 0.2);
+}
+
+#roiBtn.roi-active .control-icon {
+    color: #fbbf24;
+}
+
+@keyframes roi-pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 8px rgba(251, 191, 36, 0.1);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+    }
+}
+
 /* Flip 버튼 */
 #flipBtn:hover:not(:disabled) .control-icon,
 #flipBtn:active:not(:disabled) .control-icon,
