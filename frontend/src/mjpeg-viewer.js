@@ -34,6 +34,7 @@ export class MJPEGViewer {
         this.liveFrameCount = 0; // 라이브 프레임 카운터
         this.originalFPS = null; // 파일에서 읽어온 원본 FPS
         this.frameLogCounter = 0; // 프레임 로그 카운터 (조건부 로깅용)
+        this.isLoadingFrames = false; // 프레임 로딩 상태
 
         this._bindEvents(); // 이벤트 바인딩
         this._setupLiveIpcListeners(); // IPC 리스너 (라이브)
@@ -715,6 +716,9 @@ export class MJPEGViewer {
     // 녹화 프레임 로드 (UI 진행 표시)
     async _loadFramesWithProgress() {
         try {
+            this.isLoadingFrames = true; // 로딩 시작
+            this._updateUI(); // UI 상태 업데이트
+
             this.uiController.setMessage('Counting total frames...', MessageType.LOADING, false);
             const totalFrameCount = await FileUtils.getTotalFrameCount();
 
@@ -752,12 +756,14 @@ export class MJPEGViewer {
             );
 
             this.playing = false;
+            this.isLoadingFrames = false; // 로딩 완료
             this.uiController.clearMessage();
             this._updateUI();
 
             return frameCount;
         } catch (error) {
             this.playing = false;
+            this.isLoadingFrames = false; // 로딩 실패 시에도 false
             this.uiController.clearMessage();
             this._updateUI();
             throw error;
@@ -835,7 +841,8 @@ export class MJPEGViewer {
             this.flipMode,
             this.cropMode,
             this.rembgMode,
-            this.fullMode
+            this.fullMode,
+            this.isLoadingFrames // 프레임 로딩 상태 추가
         );
 
         if (this.state === State.PLAYBACK || this.state === State.IDLE) {

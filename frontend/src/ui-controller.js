@@ -61,9 +61,17 @@ export class UIController {
         flipMode = false,
         cropMode = false,
         rembgMode = false,
-        fullMode = false
+        fullMode = false,
+        isLoadingFrames = false
     ) {
         this._disableAllButtons();
+
+        // 프레임 로딩 중일 때는 모든 버튼을 비활성화하고 로딩 상태만 표시
+        if (isLoadingFrames) {
+            this._applyLoadingState();
+            return;
+        }
+
         this._applyStateSpecificButtons(state, hasFrames);
         this._applyPlaybackActiveStates(state, playing, direction);
         this._applyRepeatMode(repeatMode);
@@ -72,6 +80,13 @@ export class UIController {
         this._applyRembgMode(rembgMode);
         this._applyFullMode(fullMode);
         this._applyProgressBarState(state, hasFrames);
+    }
+
+    // 프레임 로딩 상태 적용
+    _applyLoadingState() {
+        // 모든 버튼 비활성화 (이미 _disableAllButtons()에서 처리됨)
+        // 필요시 특별한 로딩 UI 표시 가능
+        console.log('[UIController] Frame loading in progress - all buttons disabled');
     }
 
     // 모든 버튼 비활성화
@@ -400,3 +415,4 @@ export class UIController {
         }
     }
 }
+
