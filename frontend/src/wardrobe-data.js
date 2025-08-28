@@ -1,20 +1,20 @@
 // frontend/src/wardrobe-data.js
 export const WARDROBE_ITEMS = [
     { id: 'denim-jacket', img: './resources/wardrobe/denim_jacket.webp', label: 'Denim Jacket' },
-    { id: 'blue-suit', img: './resources/wardrobe/blue_suit.jpg', label: 'Blue Suit' },
-    { id: 'navy-suit', img: './resources/wardrobe/navy_suit.jpg', label: 'Navy Suit' },
-    { id: 'party-suit', img: './resources/wardrobe/party_suit.jpg', label: 'Party Suit' },
+    { id: 'golf-polo', img: './resources/wardrobe/golf_polo.png', label: 'Golf Polo' },
+    { id: 'formula-shirt', img: './resources/wardrobe/formula_shirt.jpg', label: 'Formula Shirt' },
+    { id: 'hawaiian-shirt', img: './resources/wardrobe/hawaiian_shirt.webp', label: 'Hawaiian Shirt' },
     {
-        id: 'yellow-shirt',
-        img: './resources/wardrobe/yellow_polo_shirt.png',
-        label: 'Yellow P-Shirt',
+        id: 'red-polo-shirt',
+        img: './resources/wardrobe/red_polo_shirt.png',
+        label: 'Red Polo Shirt',
     },
     {
         id: 'green-shirt',
         img: './resources/wardrobe/green_polo_shirt.webp',
         label: 'Green P-Shirt',
     },
-    { id: 'white-shirt', img: './resources/wardrobe/white_shirt.webp', label: 'White Shirt' },
+    { id: 'striped-shirt', img: './resources/wardrobe/striped_shirt.jpg', label: 'Striped Shirt' },
     { id: 'blue-shirt', img: './resources/wardrobe/blue_shirt.jpg', label: 'Blue Shirt' },
     { id: 'beige-knit', img: './resources/wardrobe/beige_knit.webp', label: 'Beige Knit' },
     { id: 'beige-pants', img: './resources/wardrobe/beige_pants.webp', label: 'Beige Pants' },
