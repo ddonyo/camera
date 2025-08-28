@@ -1,25 +1,34 @@
 {
-    "name": "mjpeg-viewer",
-    "version": "1.0.0",
-    "main": "electron/main.js",
-    "scripts": {
-        "start": "XDG_RUNTIME_DIR=/tmp/weston WAYLAND_DISPLAY=wayland-0 electron . --no-sandbox --ozone-platform=wayland",
-        "start:win": "electron .",
-        "build": "make -C native/linux",
-        "test:hand": "node backend/src/test/hand-gesture-test.js",
-        "setup:python": "pip install mediapipe opencv-python",
-        "check:deps": "python3 -c \"import mediapipe, cv2; print('Python dependencies OK')\""
-    },
-    "author": "LGE SoC Media BSP Task",
-    "description": "MJPEG Viewer",
-    "dependencies": {
-        "chokidar": "^4.0.3",
-        "cors": "^2.8.5",
-        "cross-env": "^7.0.3",
-        "dotenv": "^17.2.1",
-        "electron": "^36.2.1",
-        "express": "^5.1.0",
-        "multer": "^2.0.2",
-        "socket.io": "^4.8.1"
-    }
+  "name": "mjpeg-viewer",
+  "version": "1.0.0",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "XDG_RUNTIME_DIR=/tmp/weston WAYLAND_DISPLAY=wayland-0 electron . --no-sandbox --ozone-platform=wayland",
+    "start:win": "electron .",
+    "build": "make -C native/linux",
+    "test:hand": "node backend/src/test/hand-gesture-test.js",
+    "setup:python": "pip install mediapipe opencv-python",
+    "check:deps": "python3 -c \"import mediapipe, cv2; print('Python dependencies OK')\"",
+    "prepare": "husky"
+  },
+  "author": "LGE SoC Media BSP Task",
+  "description": "MJPEG Viewer",
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
+    "dotenv": "^17.2.1",
+    "electron": "^36.2.1",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.5",
+    "prettier": "^3.6.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,css,scss,html,yml,yaml}": "prettier --write"
+  }
 }

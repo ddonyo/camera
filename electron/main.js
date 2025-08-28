@@ -11,7 +11,10 @@ const capture =
         : require('../backend/src/win-capture');
 const { fork } = require('child_process');
 const http = require('http');
-const { initializeHandRouter, getHandRouterInstance } = require('../backend/src/routes/hand-detection');
+const {
+    initializeHandRouter,
+    getHandRouterInstance,
+} = require('../backend/src/routes/hand-detection');
 
 let __backendProc = null;
 const BACKEND_PORT = process.env.PORT || 3000;
@@ -140,47 +143,62 @@ class FrameHandler {
             try {
                 console.log('[Main] Initializing hand detection system...');
                 console.log('[Main] Device available for HandRouter:', !!device);
-                
+
                 initializeHandRouter(device);
                 console.log('[Main] initializeHandRouter called');
-                
+
                 // Ensure main window reference is set again after HandRouter initialization
                 if (process.platform !== 'linux' && this.currentWindow) {
                     device.setMainWindow(this.currentWindow);
                     device.setFrameHandler(this); // FrameHandler도 재설정
-                    console.log('[Main] Main window and FrameHandler re-assigned to capture device after HandRouter init');
+                    console.log(
+                        '[Main] Main window and FrameHandler re-assigned to capture device after HandRouter init'
+                    );
                 }
-                
+
                 // HandRouter 인스턴스를 frame-watcher와 device에 전달
                 const handRouterInstance = getHandRouterInstance();
                 console.log('[Main] HandRouter instance retrieved:', !!handRouterInstance);
-                
+
                 if (handRouterInstance) {
                     console.log('[Main] HandRouter isEnabled:', handRouterInstance.isEnabled);
                     watcher.setHandRouter(handRouterInstance);
                     console.log('[Main] HandRouter connected to frame-watcher');
-                    
+
                     // Windows에서는 HandRouter를 device에도 설정
                     if (process.platform !== 'linux' && device.setHandRouter) {
                         device.setHandRouter(handRouterInstance);
                         console.log('[Main] HandRouter connected to WinDevice');
                     }
-                    
+
                     // HandRouter 이벤트를 프론트엔드로 전달
                     handRouterInstance.on('recordingStarted', () => {
                         console.log('[Main] HandRouter recording started - updating UI');
                         if (this.currentWindow && this.currentWindow.webContents) {
-                            this.currentWindow.webContents.send('recording-state-changed', { isRecording: true, source: 'gesture' });
+                            this.currentWindow.webContents.send('recording-state-changed', {
+                                isRecording: true,
+                                source: 'gesture',
+                            });
                         }
                     });
-                    
+
                     handRouterInstance.on('recordingStopped', () => {
                         console.log('[Main] HandRouter recording stopped - updating UI');
                         if (this.currentWindow && this.currentWindow.webContents) {
-                            this.currentWindow.webContents.send('recording-state-changed', { isRecording: false, source: 'gesture' });
+                            this.currentWindow.webContents.send('recording-state-changed', {
+                                isRecording: false,
+                                source: 'gesture',
+                            });
                         }
                     });
-                    
+
+                    // Dwell progress 이벤트를 프론트엔드로 전달
+                    handRouterInstance.on('dwellProgress', (data) => {
+                        if (this.currentWindow && this.currentWindow.webContents) {
+                            this.currentWindow.webContents.send('roi-dwell-progress', data);
+                        }
+                    });
+
                     // HandRouter 시작
                     try {
                         await handRouterInstance.start();
@@ -191,7 +209,7 @@ class FrameHandler {
                 } else {
                     console.error('[Main] HandRouter instance is null - initialization failed');
                 }
-                
+
                 console.log('[Main] Hand detection system initialized successfully');
             } catch (handError) {
                 console.warn('[Main] Failed to initialize hand detection:', handError.message);

@@ -118,6 +118,12 @@ ipcRenderer.on('recording-state-changed', (event, data) => {
     window.dispatchEvent(new CustomEvent('recording-state-changed', { detail: data }));
 });
 
+// ROI dwell progress 이벤트 리스너
+ipcRenderer.on('roi-dwell-progress', (event, data) => {
+    // 프론트엔드로 이벤트 전달
+    window.dispatchEvent(new CustomEvent('roi-dwell-progress', { detail: data }));
+});
+
 // `electronAPI`를 렌더러 프로세스의 `window` 객체에 노출
 contextBridge.exposeInMainWorld('electronAPI', {
     log: logMessage, // 로그 함수

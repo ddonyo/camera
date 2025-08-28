@@ -10,17 +10,34 @@ class HandRouter extends EventEmitter {
         this.handWorker = null;
         this.roiConfig = getROIConfig();
         this.isEnabled = false;
-        
+
         // Debouncing and cooldown state
         this.lastTriggers = {
             start: 0,
-            stop: 0
+            stop: 0,
         };
-        
+
         this.triggerState = {
-            start: false,  // Whether right hand is currently in start ROI
-            stop: false    // Whether left hand is currently in stop ROI  
+            start: false, // Whether right hand is currently in start ROI
+            stop: false, // Whether left hand is currently in stop ROI
         };
+
+        // Dwell time tracking (1초 동안 ROI에 머물러야 트리거)
+        this.dwellState = {
+            start: {
+                isInROI: false,
+                enteredTime: 0,
+                progress: 0, // 0 to 1 for visual feedback
+            },
+            stop: {
+                isInROI: false,
+                enteredTime: 0,
+                progress: 0, // 0 to 1 for visual feedback
+            },
+        };
+
+        this.DWELL_TIME_MS = 1000; // 1초 dwell time
+        this.dwellUpdateInterval = null;
 
         // Statistics
         this.stats = {
@@ -28,7 +45,7 @@ class HandRouter extends EventEmitter {
             handsDetected: 0,
             triggersStart: 0,
             triggersStop: 0,
-            lastFrameTime: 0
+            lastFrameTime: 0,
         };
 
         this.setupROIConfigListener();
@@ -60,7 +77,7 @@ class HandRouter extends EventEmitter {
 
             // Initialize hand worker
             this.handWorker = new HandWorker(config.hand_detection);
-            
+
             this.handWorker.on('detection', (data) => {
                 this.handleHandDetection(data);
             });
@@ -77,10 +94,9 @@ class HandRouter extends EventEmitter {
 
             await this.handWorker.start();
             this.isEnabled = true;
-            
+
             console.log('[HandRouter] Started successfully');
             this.emit('started');
-            
         } catch (error) {
             console.error('[HandRouter] Failed to start:', error);
             this.emit('error', error);
@@ -94,7 +110,7 @@ class HandRouter extends EventEmitter {
         }
 
         console.log('[HandRouter] Stopping...');
-        
+
         if (this.handWorker) {
             this.handWorker.stop();
             this.handWorker = null;
@@ -102,7 +118,7 @@ class HandRouter extends EventEmitter {
 
         this.isEnabled = false;
         this.resetState();
-        
+
         console.log('[HandRouter] Stopped');
         this.emit('stopped');
     }
@@ -110,6 +126,14 @@ class HandRouter extends EventEmitter {
     resetState() {
         this.triggerState = { start: false, stop: false };
         this.lastTriggers = { start: 0, stop: 0 };
+        this.dwellState = {
+            start: { isInROI: false, enteredTime: 0, progress: 0 },
+            stop: { isInROI: false, enteredTime: 0, progress: 0 },
+        };
+        if (this.dwellUpdateInterval) {
+            clearInterval(this.dwellUpdateInterval);
+            this.dwellUpdateInterval = null;
+        }
         console.log('[HandRouter] State reset completed');
     }
 
@@ -138,12 +162,12 @@ class HandRouter extends EventEmitter {
     handleHandDetection(data) {
         const { hands, timestamp } = data;
         const config = this.roiConfig.get();
-        
+
         // Only log when hands are detected or ROI hit
         if (hands.length > 0) {
             console.log(`[HandRouter] ${hands.length} hand(s) detected`);
         }
-        
+
         if (!config || hands.length === 0) {
             return;
         }
@@ -156,49 +180,59 @@ class HandRouter extends EventEmitter {
 
         for (const hand of hands) {
             const { handedness, center, confidence } = hand;
-            
+
             // Apply coordinate transformation based on flip_mode
-            const effectiveCenter = config.flip_mode 
+            const effectiveCenter = config.flip_mode
                 ? { x: 1 - center.x, y: center.y } // Flip X coordinate when flip_mode is true
                 : center; // Use original coordinates when flip_mode is false
-            
+
             // MediaPipe returns mirrored handedness for webcam:
             // Physical right hand = "Left" in MediaPipe, Physical left hand = "Right" in MediaPipe
-            // 
+            //
             // We want the effectiveHandedness to represent the PHYSICAL hand, not MediaPipe's result
             // flip_mode false (normal): show physical hand names
             // flip_mode true (flipped): show physical hand names (same as normal)
             const effectiveHandedness = handedness === 'Right' ? 'Left' : 'Right'; // Always flip MediaPipe to show physical hands
-            
+
             // Show hand position for debugging (use effective handedness and coordinates)
-            console.log(`[HandRouter] ${effectiveHandedness} hand at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)}) confidence: ${confidence.toFixed(3)} [original: (${center.x.toFixed(3)}, ${center.y.toFixed(3)})]`);
-            
+            console.log(
+                `[HandRouter] ${effectiveHandedness} hand at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)}) confidence: ${confidence.toFixed(3)} [original: (${center.x.toFixed(3)}, ${center.y.toFixed(3)})]`
+            );
+
             if (confidence < config.min_confidence) {
-                console.log(`[HandRouter] Skipping ${effectiveHandedness} hand - low confidence (${confidence.toFixed(3)} < ${config.min_confidence})`);
-                continue; 
+                console.log(
+                    `[HandRouter] Skipping ${effectiveHandedness} hand - low confidence (${confidence.toFixed(3)} < ${config.min_confidence})`
+                );
+                continue;
             }
-            
+
             // Check ROI intersections - always use same logic regardless of flip mode
             // Right hand -> start ROI (녹화 시작), Left hand -> stop ROI (녹화 중지)
             if (effectiveHandedness === 'Right') {
                 if (this.roiConfig.isPointInROI(effectiveCenter.x, effectiveCenter.y, 'start')) {
                     rightHandInStartROI = true;
-                    console.log(`[HandRouter] Right hand in start ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`);
+                    console.log(
+                        `[HandRouter] Right hand in start ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
+                    );
                 }
             } else if (effectiveHandedness === 'Left') {
                 if (this.roiConfig.isPointInROI(effectiveCenter.x, effectiveCenter.y, 'stop')) {
                     leftHandInStopROI = true;
-                    console.log(`[HandRouter] Left hand in stop ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`);
+                    console.log(
+                        `[HandRouter] Left hand in stop ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
+                    );
                 }
             }
         }
 
-        // Handle trigger logic with debouncing and cooldown  
+        // Handle trigger logic with debouncing and cooldown
         this.handleTriggerLogic(rightHandInStartROI, leftHandInStopROI, config);
-        
+
         // Show ROI status when hands detected
         if (rightHandInStartROI || leftHandInStopROI) {
-            console.log(`[HandRouter] ROI HIT! Right in start: ${rightHandInStartROI}, Left in stop: ${leftHandInStopROI}`);
+            console.log(
+                `[HandRouter] ROI HIT! Right in start: ${rightHandInStartROI}, Left in stop: ${leftHandInStopROI}`
+            );
         }
 
         // Emit detection event for UI feedback
@@ -206,47 +240,144 @@ class HandRouter extends EventEmitter {
             hands,
             rightHandInStartROI,
             leftHandInStopROI,
-            timestamp
+            timestamp,
         });
     }
 
     handleTriggerLogic(rightHandInStartROI, leftHandInStopROI, config) {
         const now = Date.now();
-        
-        // Handle start trigger (right hand in start ROI)
-        if (rightHandInStartROI && !this.triggerState.start) {
-            // Check debounce and cooldown
-            if (now - this.lastTriggers.start > config.cooldown_ms) {
-                this.triggerState.start = true;
-                this.lastTriggers.start = now;
-                this.stats.triggersStart++;
-                
-                console.log('[HandRouter] START TRIGGER - Right hand entered start ROI');
-                this.triggerRecordingStart();
+
+        // Handle START ROI with dwell time
+        if (rightHandInStartROI) {
+            if (!this.dwellState.start.isInROI) {
+                // Hand just entered START ROI
+                this.dwellState.start.isInROI = true;
+                this.dwellState.start.enteredTime = now;
+                this.dwellState.start.progress = 0;
+
+                console.log('[HandRouter] Right hand entered START ROI - starting dwell timer');
+
+                // Start progress update for visual feedback
+                this.startDwellProgress('start');
+            } else {
+                // Hand is dwelling in START ROI
+                const dwellTime = now - this.dwellState.start.enteredTime;
+                this.dwellState.start.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+
+                // Check if dwell time reached and cooldown passed
+                if (dwellTime >= this.DWELL_TIME_MS && !this.triggerState.start) {
+                    if (now - this.lastTriggers.start > config.cooldown_ms) {
+                        this.triggerState.start = true;
+                        this.lastTriggers.start = now;
+                        this.stats.triggersStart++;
+
+                        console.log('[HandRouter] START TRIGGER - 1 second dwell completed');
+                        this.triggerRecordingStart();
+
+                        // Reset dwell state after trigger
+                        this.dwellState.start.isInROI = false;
+                        this.dwellState.start.progress = 0;
+                    }
+                }
             }
-        } else if (!rightHandInStartROI && this.triggerState.start) {
-            // Reset state when hand exits ROI
-            setTimeout(() => {
-                this.triggerState.start = false;
-            }, config.debounce_ms);
+        } else {
+            // Hand left START ROI
+            if (this.dwellState.start.isInROI) {
+                console.log('[HandRouter] Right hand left START ROI - resetting dwell');
+                this.dwellState.start.isInROI = false;
+                this.dwellState.start.progress = 0;
+
+                // Reset trigger state after debounce
+                if (this.triggerState.start) {
+                    setTimeout(() => {
+                        this.triggerState.start = false;
+                    }, config.debounce_ms);
+                }
+            }
         }
 
-        // Handle stop trigger (left hand in stop ROI)
-        if (leftHandInStopROI && !this.triggerState.stop) {
-            // Check debounce and cooldown
-            if (now - this.lastTriggers.stop > config.cooldown_ms) {
-                this.triggerState.stop = true;
-                this.lastTriggers.stop = now;
-                this.stats.triggersStop++;
-                
-                console.log('[HandRouter] STOP TRIGGER - Left hand entered stop ROI');
-                this.triggerRecordingStop();
+        // Handle STOP ROI with dwell time
+        if (leftHandInStopROI) {
+            if (!this.dwellState.stop.isInROI) {
+                // Hand just entered STOP ROI
+                this.dwellState.stop.isInROI = true;
+                this.dwellState.stop.enteredTime = now;
+                this.dwellState.stop.progress = 0;
+
+                console.log('[HandRouter] Left hand entered STOP ROI - starting dwell timer');
+
+                // Start progress update for visual feedback
+                this.startDwellProgress('stop');
+            } else {
+                // Hand is dwelling in STOP ROI
+                const dwellTime = now - this.dwellState.stop.enteredTime;
+                this.dwellState.stop.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+
+                // Check if dwell time reached and cooldown passed
+                if (dwellTime >= this.DWELL_TIME_MS && !this.triggerState.stop) {
+                    if (now - this.lastTriggers.stop > config.cooldown_ms) {
+                        this.triggerState.stop = true;
+                        this.lastTriggers.stop = now;
+                        this.stats.triggersStop++;
+
+                        console.log('[HandRouter] STOP TRIGGER - 1 second dwell completed');
+                        this.triggerRecordingStop();
+
+                        // Reset dwell state after trigger
+                        this.dwellState.stop.isInROI = false;
+                        this.dwellState.stop.progress = 0;
+                    }
+                }
             }
-        } else if (!leftHandInStopROI && this.triggerState.stop) {
-            // Reset state when hand exits ROI
-            setTimeout(() => {
-                this.triggerState.stop = false;
-            }, config.debounce_ms);
+        } else {
+            // Hand left STOP ROI
+            if (this.dwellState.stop.isInROI) {
+                console.log('[HandRouter] Left hand left STOP ROI - resetting dwell');
+                this.dwellState.stop.isInROI = false;
+                this.dwellState.stop.progress = 0;
+
+                // Reset trigger state after debounce
+                if (this.triggerState.stop) {
+                    setTimeout(() => {
+                        this.triggerState.stop = false;
+                    }, config.debounce_ms);
+                }
+            }
+        }
+    }
+
+    startDwellProgress(type) {
+        // Emit progress updates for UI feedback
+        if (!this.dwellUpdateInterval) {
+            this.dwellUpdateInterval = setInterval(() => {
+                const now = Date.now();
+
+                // Update and emit START ROI progress
+                if (this.dwellState.start.isInROI) {
+                    const dwellTime = now - this.dwellState.start.enteredTime;
+                    this.dwellState.start.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+                }
+
+                // Update and emit STOP ROI progress
+                if (this.dwellState.stop.isInROI) {
+                    const dwellTime = now - this.dwellState.stop.enteredTime;
+                    this.dwellState.stop.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+                }
+
+                // Emit dwell progress for UI
+                this.emit('dwellProgress', {
+                    start: this.dwellState.start.progress,
+                    stop: this.dwellState.stop.progress,
+                    startActive: this.dwellState.start.isInROI,
+                    stopActive: this.dwellState.stop.isInROI,
+                });
+
+                // Clear interval if no hands in ROI
+                if (!this.dwellState.start.isInROI && !this.dwellState.stop.isInROI) {
+                    clearInterval(this.dwellUpdateInterval);
+                    this.dwellUpdateInterval = null;
+                }
+            }, 50); // Update every 50ms for smooth progress
         }
     }
 
@@ -257,13 +388,14 @@ class HandRouter extends EventEmitter {
         }
 
         console.log('[HandRouter] Triggering recording START');
-        
-        this.captureDevice.startRecording()
+
+        this.captureDevice
+            .startRecording()
             .then((success) => {
                 if (success) {
                     this.emit('recordingStarted', {
                         trigger: 'hand_gesture',
-                        timestamp: Date.now()
+                        timestamp: Date.now(),
                     });
                 }
             })
@@ -280,13 +412,14 @@ class HandRouter extends EventEmitter {
         }
 
         console.log('[HandRouter] Triggering recording STOP');
-        
-        this.captureDevice.stopRecording()
+
+        this.captureDevice
+            .stopRecording()
             .then((success) => {
                 if (success) {
                     this.emit('recordingStopped', {
-                        trigger: 'hand_gesture', 
-                        timestamp: Date.now()
+                        trigger: 'hand_gesture',
+                        timestamp: Date.now(),
                     });
                 }
             })
@@ -303,12 +436,12 @@ class HandRouter extends EventEmitter {
             confidence: confidence,
             center: { x, y },
             bbox: { x1: x - 0.1, y1: y - 0.1, x2: x + 0.1, y2: y + 0.1 },
-            landmarks: []
+            landmarks: [],
         };
 
         const fakeData = {
             hands: [fakeHand],
-            timestamp: Date.now()
+            timestamp: Date.now(),
         };
 
         console.log(`[HandRouter] SIMULATION: ${handedness} hand at (${x}, ${y})`);
@@ -321,14 +454,14 @@ class HandRouter extends EventEmitter {
             triggerState: { ...this.triggerState },
             stats: { ...this.stats },
             config: this.roiConfig.get(),
-            handWorkerStatus: this.handWorker ? this.handWorker.getStatus() : null
+            handWorkerStatus: this.handWorker ? this.handWorker.getStatus() : null,
         };
     }
 
     getStats() {
         return {
             ...this.stats,
-            uptime: this.isEnabled ? Date.now() - this.stats.lastFrameTime : 0
+            uptime: this.isEnabled ? Date.now() - this.stats.lastFrameTime : 0,
         };
     }
 }

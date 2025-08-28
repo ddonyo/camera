@@ -50,14 +50,25 @@ export class MJPEGViewer {
         // ROI 제스처 녹화 상태 변경 리스너
         window.addEventListener('recording-state-changed', (event) => {
             const { isRecording, source } = event.detail;
-            console.log(`[MJPEGViewer] Recording state changed: ${isRecording} (source: ${source})`);
-            
+            console.log(
+                `[MJPEGViewer] Recording state changed: ${isRecording} (source: ${source})`
+            );
+
             if (isRecording) {
-                console.log('[MJPEGViewer] Gesture recording started - updating UI to recording mode');
+                console.log(
+                    '[MJPEGViewer] Gesture recording started - updating UI to recording mode'
+                );
                 this._switchToGestureRecordingMode();
             } else {
                 console.log('[MJPEGViewer] Gesture recording stopped - updating UI to live mode');
                 this._switchToLiveMode();
+            }
+        });
+
+        // ROI dwell progress 리스너
+        window.addEventListener('roi-dwell-progress', (event) => {
+            if (this.roiOverlay) {
+                this.roiOverlay.updateDwellProgress(event.detail);
             }
         });
     }
@@ -311,36 +322,72 @@ export class MJPEGViewer {
         }
     }
 
-    // Live에서 Record로 전환 (무중단)
-    async _switchFromLiveToRecord() {
+    // 공용 녹화 시작 메서드 (Live 스트리밍은 유지)
+    async _startRecording(source = 'button') {
         try {
-            console.log('[Live to Record] Enabling recording without interruption');
+            console.log(`[Recording] Starting recording from ${source}`);
 
-            // UI 상태를 즉시 업데이트하여 반응성 향상
+            // UI 상태를 RECORD로 변경 (Live 스트리밍은 계속 진행)
             this._setState(State.RECORD);
             this.liveFrameCount = 0; // Record 모드 카운터 리셋
 
-            // 백그라운드에서 녹화 시작 명령 전송
-            this._emitToElectron(IPCCommands.START_RECORDING);
+            // UI 업데이트 (상태 변경으로 버튼 활성/비활성화 자동 처리됨)
+            this._updateUI();
 
-            console.log('[Live to Record] Successfully enabled recording');
+            // 메시지 표시 (소스에 따라 다른 메시지)
+            const message =
+                source === 'gesture'
+                    ? '🔴 Hand gesture: Recording started'
+                    : '🔴 Recording started';
+            this.uiController.setMessage(message, MessageType.INFO);
+
+            // 백그라운드에서 녹화 시작 명령 전송 (버튼으로 시작한 경우에만)
+            // 중요: START_RECORDING만 전송, STOP_STREAMING은 전송하지 않음
+            if (source === 'button') {
+                this._emitToElectron(IPCCommands.START_RECORDING);
+            }
+
+            console.log(`[Recording] Successfully started recording from ${source}`);
         } catch (error) {
-            this._handleError(error, 'Mode switch error');
+            this._handleError(error, 'Recording start error');
         }
     }
 
-    // Record 모드 중지 및 Playback 전환 준비
-    async _stopRecordMode() {
+    // 공용 녹화 중지 메서드 (버튼과 제스처 모두 Playback 모드로 전환)
+    async _stopRecording(source = 'button') {
         try {
-            console.log('[Record] Stopping record mode and switching to playback');
+            console.log(`[Recording] Stopping recording from ${source}`);
 
+            // 메시지 표시 (소스에 따라 다른 메시지)
+            const message =
+                source === 'gesture'
+                    ? '⏹️ Hand gesture: Recording stopped'
+                    : '⏹️ Recording stopped';
+            this.uiController.setMessage(message, MessageType.INFO);
+
+            // 녹화 중지 명령 전송
             this._emitToElectron(IPCCommands.STOP_RECORDING);
             this._emitToElectron(IPCCommands.STOP_STREAMING);
 
+            // Playback 모드로 전환 (버튼과 제스처 모두 동일하게 처리)
             await this._startPlaybackMode(Direction.FORWARD);
+
+            console.log(
+                `[Recording] Successfully stopped recording from ${source} and switched to playback`
+            );
         } catch (error) {
-            this._handleError(error, 'Record stop error');
+            this._handleError(error, 'Recording stop error');
         }
+    }
+
+    // Live에서 Record로 전환 (무중단) - 버튼 클릭용
+    async _switchFromLiveToRecord() {
+        await this._startRecording('button');
+    }
+
+    // Record 모드 중지 및 Playback 전환 준비 - 버튼 클릭용
+    async _stopRecordMode() {
+        await this._stopRecording('button');
     }
 
     // Playback 버튼 이벤트 핸들러
@@ -422,7 +469,7 @@ export class MJPEGViewer {
     _handleFlip() {
         this.flipMode = !this.flipMode;
         this._updateUI();
-        
+
         // Update ROI flip mode
         this._updateROIFlipMode();
 
@@ -430,7 +477,6 @@ export class MJPEGViewer {
             this._updateFrameDisplay();
         }
     }
-
 
     // Crop 버튼 이벤트 핸들러
     _handleCrop() {
@@ -715,7 +761,7 @@ export class MJPEGViewer {
             console.log(`[Playback] Set original FPS to ${recordedFPS} from rec_info.json`);
 
             this._setState(State.PLAYBACK);
-            this.playing = false;   // 진입 시 재생 꺼진 상태로
+            this.playing = false; // 진입 시 재생 꺼진 상태로
             this.currentDirection = direction;
 
             const frameCount = await this._loadFramesWithProgress();
@@ -1028,7 +1074,7 @@ export class MJPEGViewer {
             viewerId: viewerCanvas?.id,
             canvasRect: viewerCanvas?.getBoundingClientRect(),
             parentElement: viewerCanvas?.parentElement?.tagName,
-            parentClass: viewerCanvas?.parentElement?.className
+            parentClass: viewerCanvas?.parentElement?.className,
         });
         if (viewerCanvas) {
             try {
@@ -1074,56 +1120,14 @@ export class MJPEGViewer {
         }
     }
 
-    // 제스처 녹화 모드로 UI 전환
+    // 제스처 녹화 모드로 UI 전환 (공용 메서드 사용)
     _switchToGestureRecordingMode() {
-        // 상태를 RECORD로 변경하여 "Recording" 표시
-        this.state = State.RECORD;
-        
-        // Live, Play, 재생 제어 컨트롤들 비활성화
-        this.uiController._disableButtons([
-            'liveBtn',
-            'playbackBtn', 
-            'playBtn',
-            'reverseBtn',
-            'pauseBtn',
-            'rewindBtn',
-            'fastForwardBtn',
-            'nextFrameBtn',
-            'prevFrameBtn',
-            'repeatBtn'
-        ]);
-        
-        // 녹화 관련 UI 업데이트
-        this._updateUI();
-        
-        // 메시지 표시
-        this.uiController.setMessage('🔴 Hand gesture: Recording started', MessageType.INFO);
+        this._startRecording('gesture');
     }
 
-    // 라이브 모드로 UI 복원
+    // 라이브 모드로 UI 복원 (공용 메서드 사용)
     _switchToLiveMode() {
-        // 상태를 LIVE로 복원
-        this.state = State.LIVE;
-        
-        // 모든 버튼 다시 활성화
-        this.uiController._enableButtons([
-            'liveBtn',
-            'playbackBtn',
-            'recordBtn',
-            'flipBtn',
-            'cropBtn',
-            'roiBtn',
-            'fullBtn'
-        ]);
-        
-        // Live 버튼 활성 클래스 추가
-        this.uiController._addActiveClass('liveBtn');
-        
-        // UI 업데이트
-        this._updateUI();
-        
-        // 메시지 표시
-        this.uiController.setMessage('⏹️ Hand gesture: Recording stopped', MessageType.INFO);
+        this._stopRecording('gesture');
     }
 
     // 손 감지 결과 업데이트 (백엔드에서 받은 데이터)
@@ -1137,10 +1141,14 @@ export class MJPEGViewer {
     _forwardHandRouterEvents() {
         // HandRouter에서 ROI HIT 이벤트를 받아서 ROI 오버레이에 전달
         this.#electronAPI.on('handDetection', (data) => {
-            if (this.roiOverlay && data.rightHandInStartROI !== undefined && data.leftHandInStopROI !== undefined) {
+            if (
+                this.roiOverlay &&
+                data.rightHandInStartROI !== undefined &&
+                data.leftHandInStopROI !== undefined
+            ) {
                 this.roiOverlay.updateROIActivation({
                     start_roi: data.rightHandInStartROI,
-                    stop_roi: data.leftHandInStopROI
+                    stop_roi: data.leftHandInStopROI,
                 });
             }
         });
@@ -1153,11 +1161,12 @@ export class MJPEGViewer {
         }
 
         // 디버그 로그 (가끔씩만)
-        if (Math.random() < 0.1) { // 10% 확률로 로그 출력
+        if (Math.random() < 0.1) {
+            // 10% 확률로 로그 출력
             console.log('[MJPEGViewer] Hand detection data received:', {
                 handCount: detectionData.hands.length,
                 rightHandInStartROI: detectionData.rightHandInStartROI,
-                leftHandInStopROI: detectionData.leftHandInStopROI
+                leftHandInStopROI: detectionData.leftHandInStopROI,
             });
         }
 

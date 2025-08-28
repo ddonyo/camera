@@ -67,23 +67,30 @@ class WinDevice extends EventEmitter {
     // FrameHandler 참조 설정 (녹화 제어용)
     setFrameHandler(frameHandler) {
         this.frameHandler = frameHandler;
-        console.log(`[WinCapture] FrameHandler ${frameHandler ? 'set' : 'cleared'}:`, !!frameHandler);
+        console.log(
+            `[WinCapture] FrameHandler ${frameHandler ? 'set' : 'cleared'}:`,
+            !!frameHandler
+        );
     }
 
     // HandRouter 설정
     setHandRouter(handRouter) {
         this.handRouter = handRouter;
         console.log('[WinCapture] HandRouter set');
-        
+
         // HandRouter 이벤트를 IPC로 전달
         if (this.handRouter) {
             this.handRouter.on('handDetection', (data) => {
-                if (this.mainWindow && !this.mainWindow.isDestroyed() && 
-                    this.mainWindow.webContents && !this.mainWindow.webContents.isDestroyed()) {
+                if (
+                    this.mainWindow &&
+                    !this.mainWindow.isDestroyed() &&
+                    this.mainWindow.webContents &&
+                    !this.mainWindow.webContents.isDestroyed()
+                ) {
                     this.mainWindow.webContents.send('handDetection', data);
                     console.log('[WinCapture] Forwarded handDetection event to renderer:', {
                         rightHandInStartROI: data.rightHandInStartROI,
-                        leftHandInStopROI: data.leftHandInStopROI
+                        leftHandInStopROI: data.leftHandInStopROI,
                     });
                 }
             });
@@ -353,8 +360,16 @@ class WinDevice extends EventEmitter {
 
     // 녹화 시작 (HandRouter 호환성을 위한 구현)
     async startRecording() {
-        if (this.isRecording) {
+        // frameHandler의 녹화 상태도 확인 (버튼으로 이미 녹화 중일 수 있음)
+        const isFrameHandlerRecording = this.frameHandler && this.frameHandler.isRecording;
+
+        if (this.isRecording || isFrameHandlerRecording) {
             console.log('[WinCapture] Already recording, ignoring start request');
+            // frameHandler가 녹화 중이면 내부 상태도 동기화
+            if (isFrameHandlerRecording && !this.isRecording) {
+                this.isRecording = true;
+                this.recordingStartTime = Date.now();
+            }
             return true;
         }
 
@@ -373,7 +388,7 @@ class WinDevice extends EventEmitter {
             console.log('[WinCapture] Recording started');
             this.emit('recordingStarted', {
                 startTime: this.recordingStartTime,
-                saveDir: this.saveDir
+                saveDir: this.saveDir,
             });
             return true;
         } catch (error) {
@@ -387,28 +402,31 @@ class WinDevice extends EventEmitter {
 
     // 녹화 중지 (HandRouter 호환성을 위한 구현)
     async stopRecording() {
-        if (!this.isRecording) {
+        // frameHandler의 녹화 상태도 확인 (버튼으로 시작한 녹화도 제스처로 중지 가능)
+        const isFrameHandlerRecording = this.frameHandler && this.frameHandler.isRecording;
+
+        if (!this.isRecording && !isFrameHandlerRecording) {
             console.log('[WinCapture] Not recording, ignoring stop request');
             return false;
         }
 
         try {
             // FrameHandler를 직접 호출하여 실제 녹화 중지
-            if (this.frameHandler) {
+            if (this.frameHandler && this.frameHandler.isRecording) {
                 console.log('[WinCapture] Stopping actual recording via FrameHandler');
                 await this.frameHandler.disableRecording();
                 console.log('[WinCapture] FrameHandler.disableRecording() called');
-            } else {
+            } else if (!this.frameHandler) {
                 console.error('[WinCapture] Cannot stop recording - FrameHandler not available');
             }
 
-            const duration = Date.now() - this.recordingStartTime;
+            const duration = this.recordingStartTime ? Date.now() - this.recordingStartTime : 0;
             this.isRecording = false;
             console.log(`[WinCapture] Recording stopped after ${duration}ms`);
             this.emit('recordingStopped', {
                 startTime: this.recordingStartTime,
                 duration: duration,
-                saveDir: this.saveDir
+                saveDir: this.saveDir,
             });
             this.recordingStartTime = null;
             return true;
@@ -424,7 +442,7 @@ class WinDevice extends EventEmitter {
         return {
             isRecording: this.isRecording,
             startTime: this.recordingStartTime,
-            duration: this.isRecording ? Date.now() - this.recordingStartTime : 0
+            duration: this.isRecording ? Date.now() - this.recordingStartTime : 0,
         };
     }
 
