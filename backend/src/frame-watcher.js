@@ -11,6 +11,58 @@ let activeWatchers = new Set();
 // 핸드 라우터 인스턴스
 let handRouter = null;
 
+// 핸드 라우터 프레임 전송 상태 추적
+let handRouterState = {
+    lastSentTime: 0,
+    isFirstSend: true,
+    hasLoggedStart: false
+};
+
+// HandRouter 인스턴스 설정 함수
+function setHandRouter(handRouterInstance) {
+    handRouter = handRouterInstance;
+    console.log('[FrameWatcher] HandRouter instance set:', !!handRouter);
+    if (handRouter) {
+        console.log('[FrameWatcher] HandRouter isEnabled:', handRouter.isEnabled);
+    }
+    // HandRouter가 재설정되면 상태 초기화
+    handRouterState.isFirstSend = true;
+    handRouterState.hasLoggedStart = false;
+}
+
+// HandRouter 프레임 전송 로그 관리 함수
+function logHandRouterFrame(type) {
+    const now = Date.now();
+    const timeSinceLastSend = now - handRouterState.lastSentTime;
+    
+    // 첫 번째 전송이거나 5초 이상 중단되었다가 재시작하는 경우에만 로그
+    if (handRouterState.isFirstSend || timeSinceLastSend > 5000) {
+        if (handRouterState.isFirstSend) {
+            console.log(`[FrameWatcher] Starting HandRouter frame processing (${type})`);
+            handRouterState.isFirstSend = false;
+        } else {
+            console.log(`[FrameWatcher] Resuming HandRouter frame processing after ${Math.round(timeSinceLastSend/1000)}s (${type})`);
+        }
+        handRouterState.hasLoggedStart = true;
+    }
+    
+    handRouterState.lastSentTime = now;
+}
+
+// 주기적으로 HandRouter 중단 상태 확인
+setInterval(() => {
+    if (handRouter && handRouter.isEnabled && handRouterState.hasLoggedStart) {
+        const now = Date.now();
+        const timeSinceLastSend = now - handRouterState.lastSentTime;
+        
+        // 10초 이상 프레임이 안 들어오면 중단으로 간주
+        if (timeSinceLastSend > 10000) {
+            console.log(`[FrameWatcher] HandRouter frame processing stopped`);
+            handRouterState.hasLoggedStart = false; // 중단 로그를 한 번만 찍기 위해
+        }
+    }
+}, 5000); // 5초마다 체크
+
 // 프레임 감시 설정 객체
 const FRAME_WATCHER_CONFIG = Object.freeze({
     FRAME_PATTERN: /^frame\d+\.jpg$/i, // 감시 대상 프레임 파일명 패턴
@@ -20,10 +72,10 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
         ignoreInitial: true,
         usePolling: false,
         depth: 0,
-        //awaitWriteFinish: {
-        //    stabilityThreshold: 50,
-        //    pollInterval: 25
-        //}
+        awaitWriteFinish: {
+            stabilityThreshold: 100,
+            pollInterval: 50
+        }
     },
     DEFAULT_LIVE_DIR: '../../frontend/public/live', // 기본 감시 디렉토리
     RETRY: {
@@ -81,6 +133,7 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
                 callback('frame-data', data, frameNumber);
                 // 핸드 라우터에서 프레임 처리
                 if (handRouter && handRouter.isEnabled) {
+                    logHandRouterFrame('binary');
                     handRouter.processFrame(data);
                 }
             } catch (error) {
@@ -89,6 +142,7 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
                 callback('frame-path', filePath, frameNumber);
                 // path 방식으로 핸드 라우터 처리
                 if (handRouter && handRouter.isEnabled) {
+                    logHandRouterFrame('path fallback');
                     handRouter.processImagePath(filePath);
                 }
             }
@@ -97,6 +151,7 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
             callback('frame-path', filePath, frameNumber);
             // path 방식으로 핸드 라우터 처리
             if (handRouter && handRouter.isEnabled) {
+                logHandRouterFrame('path');
                 handRouter.processImagePath(filePath);
             }
         }
@@ -115,17 +170,7 @@ async function start(onChangeCallback, options = {}) {
     const dataType = options.dataType || 'path'; // 'bin' 또는 'path' (기본값: 'path')
     const state = { frameCount: 0 };
     const captureDevice = options.captureDevice || null;
-    // 핸드 라우터 초기화 (캡쳐 디바이스가 제공되고 아직 초기화되지 않은 경우)
-    if (captureDevice && !handRouter) {
-        try {
-            handRouter = new HandRouter(captureDevice);
-            await handRouter.start();
-            console.log('[FrameWatcher] Hand-triggered recording initialized');
-        } catch (error) {
-            console.warn('[FrameWatcher] Failed to initialize hand detection:', error.message);
-            handRouter = null;
-        }
-    }
+    // HandRouter는 main.js에서 초기화되므로 여기서는 초기화하지 않음
 
     // 디렉토리 존재 확인 및 생성
     await ensureDirectoryExists(liveDir);
@@ -254,6 +299,7 @@ module.exports = {
     start,
     stop,
     stopAll,
+    setHandRouter,
     getHandRouterStatus,
     simulateHandGesture,
     // 테스트를 위한 유틸리티 함수들 export

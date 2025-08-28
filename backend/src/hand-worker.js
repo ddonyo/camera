@@ -136,6 +136,13 @@ class HandWorker extends EventEmitter {
 
     processFrame(imageBuffer) {
         if (!this.isRunning) {
+            console.log('[HandWorker] Skipping frame - worker not running');
+            return false;
+        }
+
+        // Validate image buffer
+        if (!imageBuffer || imageBuffer.length === 0) {
+            console.log('[HandWorker] Skipping frame - empty image buffer');
             return false;
         }
 
@@ -147,6 +154,7 @@ class HandWorker extends EventEmitter {
 
         // Drop frame if too many pending
         if (this.pendingFrames >= this.maxPendingFrames) {
+            console.log('[HandWorker] Dropping frame - too many pending:', this.pendingFrames);
             return false;
         }
 
@@ -170,6 +178,13 @@ class HandWorker extends EventEmitter {
 
         try {
             const imageBuffer = fs.readFileSync(imagePath);
+            
+            // Additional validation for file-based images
+            if (!imageBuffer || imageBuffer.length === 0) {
+                console.log('[HandWorker] Skipping frame - empty image file:', imagePath);
+                return false;
+            }
+            
             return this.processFrame(imageBuffer);
         } catch (error) {
             console.error('[HandWorker] Failed to read image:', error);

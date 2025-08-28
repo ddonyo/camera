@@ -9,6 +9,17 @@ export class ROIOverlay {
         this.config = null;
         this.handDetections = [];
         this.isEnabled = false;
+        this.animationId = null;
+        
+        // ROI 활성화 상태 (손 감지 시 UI 효과용)
+        this.roiActiveState = {
+            start_roi: false,
+            stop_roi: false,
+            lastActivationTime: {
+                start_roi: 0,
+                stop_roi: 0
+            }
+        };
         
         this.createOverlayCanvas();
         this.setupStyles();
@@ -237,9 +248,9 @@ export class ROIOverlay {
         
         console.log('[ROI-Overlay] Drawing ROI areas...');
         
-        // ROI 영역 그리기
-        this.drawROI('start_roi', this.styles.startROI, 'START (Right Hand)');
-        this.drawROI('stop_roi', this.styles.stopROI, 'STOP (Left Hand)');
+        // ROI 영역 그리기 (항상 고정된 라벨)
+        this.drawROI('start_roi', this.styles.startROI, 'REC START');
+        this.drawROI('stop_roi', this.styles.stopROI, 'REC STOP');
         
         // 손 감지 결과 그리기
         this.drawHandDetections();
@@ -278,16 +289,42 @@ export class ROIOverlay {
         const centerY = (y1 + y2) / 2;
         const radius = Math.min((x2 - x1), (y2 - y1)) / 2;
         
+        // ROI 활성 상태 확인
+        const isActive = this.roiActiveState[roiKey];
+        const timeSinceActivation = isActive ? Date.now() - this.roiActiveState.lastActivationTime[roiKey] : 0;
+        
         console.log(`[ROI-Overlay] ${roiKey} circle:`, {
             centerX, centerY, radius,
-            canvasSize: { width: canvas.width, height: canvas.height }
+            canvasSize: { width: canvas.width, height: canvas.height },
+            isActive: isActive
         });
         
         // ROI 원형 그리기
         ctx.save();
-        ctx.strokeStyle = style.strokeStyle;
-        ctx.fillStyle = style.fillStyle;
-        ctx.lineWidth = style.lineWidth;
+        
+        // 활성 상태일 때 시각적 효과 적용
+        if (isActive && timeSinceActivation < 3000) { // 3초간 효과 지속
+            // 펄스 효과 계산 (더 빠르고 강하게)
+            const pulseIntensity = Math.sin((timeSinceActivation / 100) * Math.PI) * 0.7 + 0.3;
+            
+            // 활성 상태 색상 (매우 밝고 선명하게)
+            const activeStrokeColor = roiKey === 'start_roi' ? '#00ff00' : '#ff0000';
+            const activeFillColor = roiKey === 'start_roi' ? `rgba(0, 255, 0, ${0.5 * pulseIntensity})` : `rgba(255, 0, 0, ${0.5 * pulseIntensity})`;
+            
+            // 강한 글로우 효과 추가
+            ctx.shadowColor = activeStrokeColor;
+            ctx.shadowBlur = 30 + (pulseIntensity * 50);
+            
+            ctx.strokeStyle = activeStrokeColor;
+            ctx.fillStyle = activeFillColor;
+            ctx.lineWidth = style.lineWidth * 2 + (pulseIntensity * 5);
+        } else {
+            // 기본 상태
+            ctx.strokeStyle = style.strokeStyle;
+            ctx.fillStyle = style.fillStyle;
+            ctx.lineWidth = style.lineWidth;
+        }
+        
         ctx.setLineDash(style.lineDash);
         
         // 원형 배경 채우기
@@ -298,21 +335,52 @@ export class ROIOverlay {
         // 원형 테두리 그리기
         ctx.stroke();
         
-        // 라벨 그리기 (원 위쪽에)
-        this.drawLabel(centerX, centerY - radius - 10, label);
+        // 활성 상태일 때 추가 원형 애니메이션 (여러 개의 웨이브)
+        if (isActive && timeSinceActivation < 3000) {
+            // 첫 번째 웨이브
+            const wave1Radius = radius + (timeSinceActivation / 3000) * 100;
+            const wave1Opacity = Math.max(0, 1 - (timeSinceActivation / 3000));
+            
+            ctx.strokeStyle = roiKey === 'start_roi' ? '#00ff00' : '#ff0000';
+            ctx.globalAlpha = wave1Opacity * 0.8;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, wave1Radius, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // 두 번째 웨이브 (더 빠르게)
+            if (timeSinceActivation > 500) {
+                const wave2Radius = radius + ((timeSinceActivation - 500) / 2500) * 80;
+                const wave2Opacity = Math.max(0, 1 - ((timeSinceActivation - 500) / 2500));
+                ctx.globalAlpha = wave2Opacity * 0.6;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, wave2Radius, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            
+            ctx.globalAlpha = 1;
+        }
+        
+        // 그림자 효과 제거
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        
+        // 라벨 그리기 (원 위쪽에, 중앙 정렬)
+        this.drawLabel(centerX, centerY - radius - 10, label, 'center');
         
         // 중심점에 작은 점 추가
-        ctx.fillStyle = style.strokeStyle;
+        ctx.fillStyle = isActive ? (roiKey === 'start_roi' ? '#00ff00' : '#ff6b6b') : style.strokeStyle;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, 3, 0, 2 * Math.PI);
+        ctx.arc(centerX, centerY, isActive ? 5 : 3, 0, 2 * Math.PI);
         ctx.fill();
         
         ctx.restore();
         
-        console.log(`[ROI-Overlay] ${roiKey} drawn successfully`);
+        console.log(`[ROI-Overlay] ${roiKey} drawn successfully (active: ${isActive})`);
     }
 
-    drawLabel(x, y, text) {
+    drawLabel(x, y, text, textAlign = 'left') {
         const ctx = this.overlayCtx;
         const style = this.styles.label;
         
@@ -321,7 +389,7 @@ export class ROIOverlay {
         ctx.fillStyle = style.fillStyle;
         ctx.strokeStyle = style.strokeStyle;
         ctx.lineWidth = style.lineWidth;
-        ctx.textAlign = 'center'; // 중앙 정렬
+        ctx.textAlign = textAlign;
         
         // 텍스트 테두리
         ctx.strokeText(text, x, y);
@@ -397,9 +465,9 @@ export class ROIOverlay {
         // ROI 상태 표시
         const statusY = this.overlayCanvas.height - 60;
         
-        this.drawLabel(10, statusY, '👋 Hand Gesture Recording:');
-        this.drawLabel(10, statusY + 20, `• Right hand in green area → START recording`);
-        this.drawLabel(10, statusY + 40, `• Left hand in red area → STOP recording`);
+        this.drawLabel(10, statusY, 'Hand Gesture Recording:');
+        this.drawLabel(10, statusY + 20, `Right hand in green area → START recording`);
+        this.drawLabel(10, statusY + 40, `Left hand in red area → STOP recording`);
         
         // 현재 감지된 손 개수
         const handCount = this.handDetections.length;
@@ -425,8 +493,75 @@ export class ROIOverlay {
         console.log('[ROI-Overlay] Configuration updated');
     }
 
+    // ROI 활성화 상태 업데이트 (손 감지 시 UI 효과 트리거)
+    updateROIActivation(activation) {
+        console.log('[ROI-Overlay] updateROIActivation called:', activation);
+        const now = Date.now();
+        
+        // start_roi 활성화 상태 업데이트
+        if (activation.start_roi !== this.roiActiveState.start_roi) {
+            this.roiActiveState.start_roi = activation.start_roi;
+            if (activation.start_roi) {
+                this.roiActiveState.lastActivationTime.start_roi = now;
+                console.log('[ROI-Overlay] Start ROI activated at:', now);
+            }
+        }
+        
+        // stop_roi 활성화 상태 업데이트
+        if (activation.stop_roi !== this.roiActiveState.stop_roi) {
+            this.roiActiveState.stop_roi = activation.stop_roi;
+            if (activation.stop_roi) {
+                this.roiActiveState.lastActivationTime.stop_roi = now;
+                console.log('[ROI-Overlay] Stop ROI activated at:', now);
+            }
+        }
+        
+        // 활성화된 ROI가 있으면 즉시 다시 렌더링하고 애니메이션 시작
+        if (this.isEnabled && (activation.start_roi || activation.stop_roi)) {
+            console.log('[ROI-Overlay] Starting animation for active ROI');
+            this.render();
+            this.startAnimation();
+        }
+    }
+
+    startAnimation() {
+        if (this.animationId) {
+            return; // 이미 애니메이션이 실행 중
+        }
+        
+        const animate = () => {
+            const now = Date.now();
+            const hasActiveROI = this.roiActiveState.start_roi || this.roiActiveState.stop_roi;
+            const startTime = Math.max(this.roiActiveState.lastActivationTime.start_roi || 0, 
+                                       this.roiActiveState.lastActivationTime.stop_roi || 0);
+            const withinEffectDuration = hasActiveROI && 
+                (now - startTime) < 3000;
+            
+            if (hasActiveROI && withinEffectDuration) {
+                this.render();
+                this.animationId = requestAnimationFrame(animate);
+            } else {
+                this.stopAnimation();
+                // 마지막 렌더링으로 기본 상태 표시
+                if (this.isEnabled) {
+                    this.render();
+                }
+            }
+        };
+        
+        this.animationId = requestAnimationFrame(animate);
+    }
+    
+    stopAnimation() {
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+    }
+
     // 정리
     destroy() {
+        this.stopAnimation();
         if (this.overlayCanvas && this.overlayCanvas.parentElement) {
             this.overlayCanvas.parentElement.removeChild(this.overlayCanvas);
         }

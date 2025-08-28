@@ -51,10 +51,21 @@ class HandDetector:
         try:
             # Convert input to numpy array
             if format == 'base64':
+                if not image_data:
+                    return {"error": "Empty base64 image data"}
+                
                 # Decode base64 to bytes
-                image_bytes = base64.b64decode(image_data)
+                try:
+                    image_bytes = base64.b64decode(image_data)
+                except Exception as e:
+                    return {"error": f"Base64 decode failed: {str(e)}"}
+                
                 # Convert bytes to numpy array
                 np_array = np.frombuffer(image_bytes, np.uint8)
+                
+                if np_array.size == 0:
+                    return {"error": "Empty numpy array from image bytes"}
+                
                 # Decode image
                 image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
             elif format == 'numpy':

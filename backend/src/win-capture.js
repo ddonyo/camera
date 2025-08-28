@@ -32,7 +32,13 @@ class WinDevice extends EventEmitter {
         this.frameIndex = 0;
         this.captureInterval = null;
         this.mainWindow = null; // Electron 창 참조
+        this.frameHandler = null; // FrameHandler 참조 (녹화 제어용)
+        this.handRouter = null; // HandRouter 참조 (hand detection 이벤트 전달용)
         this.camInfo = null;
+
+        // 녹화 관련 속성
+        this.isRecording = false;
+        this.recordingStartTime = null;
 
         // 순환 파일 인덱스
         this.currentFileIndex = 0;
@@ -55,6 +61,33 @@ class WinDevice extends EventEmitter {
     // Electron 메인 윈도우 설정 (웹캠 캡처를 위해 필요)
     setMainWindow(window) {
         this.mainWindow = window;
+        console.log(`[WinCapture] Main window ${window ? 'set' : 'cleared'}:`, !!window);
+    }
+
+    // FrameHandler 참조 설정 (녹화 제어용)
+    setFrameHandler(frameHandler) {
+        this.frameHandler = frameHandler;
+        console.log(`[WinCapture] FrameHandler ${frameHandler ? 'set' : 'cleared'}:`, !!frameHandler);
+    }
+
+    // HandRouter 설정
+    setHandRouter(handRouter) {
+        this.handRouter = handRouter;
+        console.log('[WinCapture] HandRouter set');
+        
+        // HandRouter 이벤트를 IPC로 전달
+        if (this.handRouter) {
+            this.handRouter.on('handDetection', (data) => {
+                if (this.mainWindow && !this.mainWindow.isDestroyed() && 
+                    this.mainWindow.webContents && !this.mainWindow.webContents.isDestroyed()) {
+                    this.mainWindow.webContents.send('handDetection', data);
+                    console.log('[WinCapture] Forwarded handDetection event to renderer:', {
+                        rightHandInStartROI: data.rightHandInStartROI,
+                        leftHandInStopROI: data.leftHandInStopROI
+                    });
+                }
+            });
+        }
     }
 
     // 웹캠으로부터 프레임 캡처 및 저장
@@ -316,6 +349,83 @@ class WinDevice extends EventEmitter {
         }
 
         console.log('[WinCapture] Capture stopped');
+    }
+
+    // 녹화 시작 (HandRouter 호환성을 위한 구현)
+    async startRecording() {
+        if (this.isRecording) {
+            console.log('[WinCapture] Already recording, ignoring start request');
+            return true;
+        }
+
+        try {
+            // FrameHandler를 직접 호출하여 실제 녹화 시작
+            if (this.frameHandler) {
+                console.log('[WinCapture] Triggering actual recording via FrameHandler');
+                await this.frameHandler.enableRecording();
+                console.log('[WinCapture] FrameHandler.enableRecording() called');
+            } else {
+                console.error('[WinCapture] Cannot start recording - FrameHandler not available');
+            }
+
+            this.isRecording = true;
+            this.recordingStartTime = Date.now();
+            console.log('[WinCapture] Recording started');
+            this.emit('recordingStarted', {
+                startTime: this.recordingStartTime,
+                saveDir: this.saveDir
+            });
+            return true;
+        } catch (error) {
+            this.isRecording = false;
+            this.recordingStartTime = null;
+            console.error('[WinCapture] Failed to start recording:', error);
+            this.emit('recordingError', error);
+            return false;
+        }
+    }
+
+    // 녹화 중지 (HandRouter 호환성을 위한 구현)
+    async stopRecording() {
+        if (!this.isRecording) {
+            console.log('[WinCapture] Not recording, ignoring stop request');
+            return false;
+        }
+
+        try {
+            // FrameHandler를 직접 호출하여 실제 녹화 중지
+            if (this.frameHandler) {
+                console.log('[WinCapture] Stopping actual recording via FrameHandler');
+                await this.frameHandler.disableRecording();
+                console.log('[WinCapture] FrameHandler.disableRecording() called');
+            } else {
+                console.error('[WinCapture] Cannot stop recording - FrameHandler not available');
+            }
+
+            const duration = Date.now() - this.recordingStartTime;
+            this.isRecording = false;
+            console.log(`[WinCapture] Recording stopped after ${duration}ms`);
+            this.emit('recordingStopped', {
+                startTime: this.recordingStartTime,
+                duration: duration,
+                saveDir: this.saveDir
+            });
+            this.recordingStartTime = null;
+            return true;
+        } catch (error) {
+            console.error('[WinCapture] Failed to stop recording:', error);
+            this.emit('recordingError', error);
+            return false;
+        }
+    }
+
+    // 녹화 상태 조회 (HandRouter 호환성을 위한 구현)
+    getRecordingStatus() {
+        return {
+            isRecording: this.isRecording,
+            startTime: this.recordingStartTime,
+            duration: this.isRecording ? Date.now() - this.recordingStartTime : 0
+        };
     }
 
     // 메시지 전송 (Linux 호환성을 위한 더미 구현)

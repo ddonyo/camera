@@ -11,7 +11,7 @@ const capture =
         : require('../backend/src/win-capture');
 const { fork } = require('child_process');
 const http = require('http');
-const { initializeHandRouter } = require('../backend/src/routes/hand-detection');
+const { initializeHandRouter, getHandRouterInstance } = require('../backend/src/routes/hand-detection');
 
 let __backendProc = null;
 const BACKEND_PORT = process.env.PORT || 3000;
@@ -33,6 +33,7 @@ const WINDOW_CONFIG = {
 const PATHS = {
     LIVE_DIR: path.join(__dirname, '../frontend/public/live'), // 라이브 프레임 저장 경로
     RECORD_DIR: path.join(__dirname, '../frontend/public/record'), // 녹화 프레임 저장 경로
+    CONFIG_DIR: path.join(__dirname, '../config'), // 설정 파일 디렉토리
     PRELOAD: path.join(__dirname, '../backend/src/preload.js'), // Preload 스크립트
     INDEX: path.join(__dirname, '../frontend/public/index.html'), // 메인 HTML
     VTON_SAVE_DIR: path.join(__dirname, '../frontend/public/vton'), // vton 이미지 저장 경로 (선택적)
@@ -112,6 +113,8 @@ class FrameHandler {
             // Windows에서는 메인 윈도우 참조를 캡처 디바이스에 전달
             if (process.platform !== 'linux' && this.currentWindow) {
                 device.setMainWindow(this.currentWindow);
+                // FrameHandler도 전달하여 직접 녹화 제어 가능하게 함
+                device.setFrameHandler(this);
             }
 
             device.on('data', (msg) => {
@@ -136,7 +139,59 @@ class FrameHandler {
 
             try {
                 console.log('[Main] Initializing hand detection system...');
+                console.log('[Main] Device available for HandRouter:', !!device);
+                
                 initializeHandRouter(device);
+                console.log('[Main] initializeHandRouter called');
+                
+                // Ensure main window reference is set again after HandRouter initialization
+                if (process.platform !== 'linux' && this.currentWindow) {
+                    device.setMainWindow(this.currentWindow);
+                    device.setFrameHandler(this); // FrameHandler도 재설정
+                    console.log('[Main] Main window and FrameHandler re-assigned to capture device after HandRouter init');
+                }
+                
+                // HandRouter 인스턴스를 frame-watcher와 device에 전달
+                const handRouterInstance = getHandRouterInstance();
+                console.log('[Main] HandRouter instance retrieved:', !!handRouterInstance);
+                
+                if (handRouterInstance) {
+                    console.log('[Main] HandRouter isEnabled:', handRouterInstance.isEnabled);
+                    watcher.setHandRouter(handRouterInstance);
+                    console.log('[Main] HandRouter connected to frame-watcher');
+                    
+                    // Windows에서는 HandRouter를 device에도 설정
+                    if (process.platform !== 'linux' && device.setHandRouter) {
+                        device.setHandRouter(handRouterInstance);
+                        console.log('[Main] HandRouter connected to WinDevice');
+                    }
+                    
+                    // HandRouter 이벤트를 프론트엔드로 전달
+                    handRouterInstance.on('recordingStarted', () => {
+                        console.log('[Main] HandRouter recording started - updating UI');
+                        if (this.currentWindow && this.currentWindow.webContents) {
+                            this.currentWindow.webContents.send('recording-state-changed', { isRecording: true, source: 'gesture' });
+                        }
+                    });
+                    
+                    handRouterInstance.on('recordingStopped', () => {
+                        console.log('[Main] HandRouter recording stopped - updating UI');
+                        if (this.currentWindow && this.currentWindow.webContents) {
+                            this.currentWindow.webContents.send('recording-state-changed', { isRecording: false, source: 'gesture' });
+                        }
+                    });
+                    
+                    // HandRouter 시작
+                    try {
+                        await handRouterInstance.start();
+                        console.log('[Main] HandRouter started successfully');
+                    } catch (startError) {
+                        console.error('[Main] Failed to start HandRouter:', startError);
+                    }
+                } else {
+                    console.error('[Main] HandRouter instance is null - initialization failed');
+                }
+                
                 console.log('[Main] Hand detection system initialized successfully');
             } catch (handError) {
                 console.warn('[Main] Failed to initialize hand detection:', handError.message);
@@ -393,13 +448,20 @@ function setupIpcHandlers(win) {
         'start-live': (event, options = {}) => frameHandler.startStreaming(win, options),
         'stop-live': () => frameHandler.stopStreaming(),
         'set-delay': (event, delay) => frameHandler.setDelay(delay),
-        'start-record': () => frameHandler.enableRecording(),
-        'stop-record': () => frameHandler.disableRecording(),
+        'start-record': () => {
+            console.log('[Main] Received start-record command');
+            return frameHandler.enableRecording();
+        },
+        'stop-record': () => {
+            console.log('[Main] Received stop-record command');
+            return frameHandler.disableRecording();
+        },
         'log-message': (event, message) => console.log('APP: ' + message),
     };
 
     Object.entries(handlers).forEach(([event, handler]) => {
         ipcMain.on(event, handler);
+        console.log(`[Main] IPC handler registered for: ${event}`);
     });
 
     // 전체화면 관련 IPC 핸들러들 (handle 방식으로 추가)
@@ -438,6 +500,22 @@ function setupIpcHandlers(win) {
                 })
                 .catch((err) => reject(err));
         });
+    });
+
+    // ROI 플립 모드 업데이트 IPC 핸들러
+    ipcMain.handle('update-roi-flip-mode', async (event, flipMode) => {
+        console.log(`[Main] ROI flip mode update requested: ${flipMode}`);
+        try {
+            const roiConfigPath = path.join(PATHS.CONFIG_DIR, 'roi.json');
+            const config = JSON.parse(fs.readFileSync(roiConfigPath, 'utf8'));
+            config.flip_mode = flipMode;
+            fs.writeFileSync(roiConfigPath, JSON.stringify(config, null, 2));
+            console.log(`[Main] ROI flip mode updated to: ${flipMode}`);
+            return true;
+        } catch (error) {
+            console.error('[Main] Failed to update ROI flip mode:', error);
+            return false;
+        }
     });
 }
 

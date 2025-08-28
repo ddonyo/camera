@@ -49,6 +49,8 @@ class HandRouter extends EventEmitter {
             return;
         }
 
+        console.log('[HandRouter] Starting HandRouter...');
+
         try {
             const config = this.roiConfig.get();
             if (!config || !config.enabled) {
@@ -137,6 +139,11 @@ class HandRouter extends EventEmitter {
         const { hands, timestamp } = data;
         const config = this.roiConfig.get();
         
+        // Only log when hands are detected or ROI hit
+        if (hands.length > 0) {
+            console.log(`[HandRouter] ${hands.length} hand(s) detected`);
+        }
+        
         if (!config || hands.length === 0) {
             return;
         }
@@ -148,28 +155,51 @@ class HandRouter extends EventEmitter {
         let leftHandInStopROI = false;
 
         for (const hand of hands) {
-            if (hand.confidence < config.min_confidence) {
-                continue; // Skip low-confidence detections
-            }
-
-            const { handedness, center } = hand;
+            const { handedness, center, confidence } = hand;
             
-            // Check ROI intersections
-            if (handedness === 'Right') {
-                if (this.roiConfig.isPointInROI(center.x, center.y, 'start')) {
+            // Apply coordinate transformation based on flip_mode
+            const effectiveCenter = config.flip_mode 
+                ? { x: 1 - center.x, y: center.y } // Flip X coordinate when flip_mode is true
+                : center; // Use original coordinates when flip_mode is false
+            
+            // MediaPipe returns mirrored handedness for webcam:
+            // Physical right hand = "Left" in MediaPipe, Physical left hand = "Right" in MediaPipe
+            // 
+            // We want the effectiveHandedness to represent the PHYSICAL hand, not MediaPipe's result
+            // flip_mode false (normal): show physical hand names
+            // flip_mode true (flipped): show physical hand names (same as normal)
+            const effectiveHandedness = handedness === 'Right' ? 'Left' : 'Right'; // Always flip MediaPipe to show physical hands
+            
+            // Show hand position for debugging (use effective handedness and coordinates)
+            console.log(`[HandRouter] ${effectiveHandedness} hand at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)}) confidence: ${confidence.toFixed(3)} [original: (${center.x.toFixed(3)}, ${center.y.toFixed(3)})]`);
+            
+            if (confidence < config.min_confidence) {
+                console.log(`[HandRouter] Skipping ${effectiveHandedness} hand - low confidence (${confidence.toFixed(3)} < ${config.min_confidence})`);
+                continue; 
+            }
+            
+            // Check ROI intersections - always use same logic regardless of flip mode
+            // Right hand -> start ROI (녹화 시작), Left hand -> stop ROI (녹화 중지)
+            if (effectiveHandedness === 'Right') {
+                if (this.roiConfig.isPointInROI(effectiveCenter.x, effectiveCenter.y, 'start')) {
                     rightHandInStartROI = true;
-                    console.log(`[HandRouter] Right hand in start ROI at (${center.x.toFixed(3)}, ${center.y.toFixed(3)})`);
+                    console.log(`[HandRouter] Right hand in start ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`);
                 }
-            } else if (handedness === 'Left') {
-                if (this.roiConfig.isPointInROI(center.x, center.y, 'stop')) {
+            } else if (effectiveHandedness === 'Left') {
+                if (this.roiConfig.isPointInROI(effectiveCenter.x, effectiveCenter.y, 'stop')) {
                     leftHandInStopROI = true;
-                    console.log(`[HandRouter] Left hand in stop ROI at (${center.x.toFixed(3)}, ${center.y.toFixed(3)})`);
+                    console.log(`[HandRouter] Left hand in stop ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`);
                 }
             }
         }
 
-        // Handle trigger logic with debouncing and cooldown
+        // Handle trigger logic with debouncing and cooldown  
         this.handleTriggerLogic(rightHandInStartROI, leftHandInStopROI, config);
+        
+        // Show ROI status when hands detected
+        if (rightHandInStartROI || leftHandInStopROI) {
+            console.log(`[HandRouter] ROI HIT! Right in start: ${rightHandInStartROI}, Left in stop: ${leftHandInStopROI}`);
+        }
 
         // Emit detection event for UI feedback
         this.emit('handDetection', {

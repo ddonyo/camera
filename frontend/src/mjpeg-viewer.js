@@ -28,7 +28,7 @@ export class MJPEGViewer {
         this.playing = false; // 재생 상태 (PLAYBACK 모드)
         this.currentDirection = Direction.FORWARD; // 재생 방향
         this.repeatMode = false; // 반복 재생
-        this.flipMode = false; // 좌우 반전
+        this.flipMode = true; // 좌우 반전 (기본값)
         this.cropMode = false; // 중앙 크롭
         this.fullMode = false; // 풀스크린 모드
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
@@ -39,12 +39,27 @@ export class MJPEGViewer {
 
         this._bindEvents(); // 이벤트 바인딩
         this._setupLiveIpcListeners(); // IPC 리스너 (라이브)
+        this._forwardHandRouterEvents(); // HandRouter 이벤트 전달 설정
         setTimeout(() => {
             this._initROIOverlay();
         }, 100);
         this._updateUI(); // UI 업데이트
 
         console.log('MJPEGViewer constructor completed');
+
+        // ROI 제스처 녹화 상태 변경 리스너
+        window.addEventListener('recording-state-changed', (event) => {
+            const { isRecording, source } = event.detail;
+            console.log(`[MJPEGViewer] Recording state changed: ${isRecording} (source: ${source})`);
+            
+            if (isRecording) {
+                console.log('[MJPEGViewer] Gesture recording started - updating UI to recording mode');
+                this._switchToGestureRecordingMode();
+            } else {
+                console.log('[MJPEGViewer] Gesture recording stopped - updating UI to live mode');
+                this._switchToLiveMode();
+            }
+        });
     }
 
     // Electron API 접근
@@ -407,6 +422,9 @@ export class MJPEGViewer {
     _handleFlip() {
         this.flipMode = !this.flipMode;
         this._updateUI();
+        
+        // Update ROI flip mode
+        this._updateROIFlipMode();
 
         if (this.state === State.PLAYBACK && !this.playing) {
             this._updateFrameDisplay();
@@ -1048,11 +1066,84 @@ export class MJPEGViewer {
         }
     }
 
+    // ROI 플립 모드 업데이트
+    _updateROIFlipMode() {
+        if (this.#electronAPI) {
+            this.#electronAPI.updateROIFlipMode(this.flipMode);
+            console.log(`[MJPEGViewer] ROI flip mode updated: ${this.flipMode}`);
+        }
+    }
+
+    // 제스처 녹화 모드로 UI 전환
+    _switchToGestureRecordingMode() {
+        // 상태를 RECORD로 변경하여 "Recording" 표시
+        this.state = State.RECORD;
+        
+        // Live, Play, 재생 제어 컨트롤들 비활성화
+        this.uiController._disableButtons([
+            'liveBtn',
+            'playbackBtn', 
+            'playBtn',
+            'reverseBtn',
+            'pauseBtn',
+            'rewindBtn',
+            'fastForwardBtn',
+            'nextFrameBtn',
+            'prevFrameBtn',
+            'repeatBtn'
+        ]);
+        
+        // 녹화 관련 UI 업데이트
+        this._updateUI();
+        
+        // 메시지 표시
+        this.uiController.setMessage('🔴 Hand gesture: Recording started', MessageType.INFO);
+    }
+
+    // 라이브 모드로 UI 복원
+    _switchToLiveMode() {
+        // 상태를 LIVE로 복원
+        this.state = State.LIVE;
+        
+        // 모든 버튼 다시 활성화
+        this.uiController._enableButtons([
+            'liveBtn',
+            'playbackBtn',
+            'recordBtn',
+            'flipBtn',
+            'cropBtn',
+            'roiBtn',
+            'fullBtn'
+        ]);
+        
+        // Live 버튼 활성 클래스 추가
+        this.uiController._addActiveClass('liveBtn');
+        
+        // UI 업데이트
+        this._updateUI();
+        
+        // 메시지 표시
+        this.uiController.setMessage('⏹️ Hand gesture: Recording stopped', MessageType.INFO);
+    }
+
     // 손 감지 결과 업데이트 (백엔드에서 받은 데이터)
     _updateHandDetections(detections) {
         if (this.roiOverlay) {
             this.roiOverlay.updateHandDetections(detections);
         }
+    }
+
+    // HandRouter 이벤트를 ROI 오버레이에 전달
+    _forwardHandRouterEvents() {
+        // HandRouter에서 ROI HIT 이벤트를 받아서 ROI 오버레이에 전달
+        this.#electronAPI.on('handDetection', (data) => {
+            if (this.roiOverlay && data.rightHandInStartROI !== undefined && data.leftHandInStopROI !== undefined) {
+                this.roiOverlay.updateROIActivation({
+                    start_roi: data.rightHandInStartROI,
+                    stop_roi: data.leftHandInStopROI
+                });
+            }
+        });
     }
 
     // 손 감지 데이터 처리 (IPC에서 받은 데이터)
