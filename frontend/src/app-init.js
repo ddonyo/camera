@@ -43,6 +43,8 @@ function cleanupApp() {
     console.log('MJPEG Viewer Application cleaned up');
 }
 
+// VTON 전체화면 기능은 이제 index.html의 인라인 스크립트에서 직접 처리됨
+
 // DOM 로드 완료 시 앱 초기화
 window.addEventListener('DOMContentLoaded', () => {
     // 1) 숫자 입력 / 워드로브 / VTON 컨트롤러

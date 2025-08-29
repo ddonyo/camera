@@ -40,327 +40,45 @@
                         >
                             Camera
                         </div>
-                    </div>
-
-                    <!-- 컨트롤 패널 -->
-                    <div class="control-panel space-y-0">
-                        <!-- 진행 바 -->
-                        <div
-                            id="progressBar"
-                            class="w-full h-3 rounded progress-bar overflow-hidden bg-primary"
-                            role="progressbar"
-                            aria-label="재생 진행률"
+                        <!-- 카메라 전체화면 버튼 -->
+                        <button
+                            id="fullBtn"
+                            class="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition-colors"
+                            aria-label="카메라 풀뷰 모드 토글"
+                            title="전체화면"
                         >
-                            <div id="progress" class="h-full bg-blue-500"></div>
-                        </div>
-
-                        <!-- 컨트롤 -->
-                        <section
-                            class="grid grid-cols-3 items-center gap-md text-base control-area"
-                            aria-label="비디오 제어 패널"
-                        >
-                            <div
-                                class="control-group justify-start"
-                                role="group"
-                                aria-label="모드 제어"
-                            >
-                                <button
-                                    id="liveBtn"
-                                    class="control-btn tgl"
-                                    aria-label="라이브 모드 토글"
-                                >
-                                    <img
-                                        src="./resources/live_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                        aria-hidden="true"
-                                    /><span>Live</span>
-                                </button>
-                                <button
-                                    id="recordBtn"
-                                    class="control-btn tgl"
-                                    aria-label="녹화 모드 토글"
-                                >
-                                    <img
-                                        src="./resources/record_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                        aria-hidden="true"
-                                    /><span>Rec</span>
-                                </button>
-                                <button
-                                    id="playbackBtn"
-                                    class="control-btn tgl"
-                                    aria-label="재생 모드 진입"
-                                >
-                                    <img
-                                        src="./resources/playback_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                        aria-hidden="true"
-                                    /><span>Play</span>
-                                </button>
-                                <div
-                                    id="status"
-                                    class="inline-status"
-                                    role="status"
-                                    aria-live="polite"
-                                >
-                                    <pre
-                                        id="statusText"
-                                        class="status-text normal"
-                                    >File Path:<br/>File Name:<br/>Frame:</pre>
-                                </div>
-                            </div>
-
-                            <div
-                                class="flex gap-0 justify-center"
-                                role="group"
-                                aria-label="재생 제어"
-                            >
-                                <button
-                                    id="rewindBtn"
-                                    disabled
-                                    class="control-btn btn"
-                                    aria-label="처음으로 되감기"
-                                >
-                                    <img
-                                        src="./resources/rewind_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                    />
-                                </button>
-                                <button
-                                    id="prevFrameBtn"
-                                    disabled
-                                    class="control-btn btn"
-                                    aria-label="이전 프레임"
-                                >
-                                    <img
-                                        src="./resources/prevframe_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                    />
-                                </button>
-                                <button
-                                    id="reverseBtn"
-                                    disabled
-                                    class="control-btn tgl"
-                                    aria-label="역재생"
-                                >
-                                    <img
-                                        src="./resources/reverse_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                    />
-                                </button>
-                                <button
-                                    id="pauseBtn"
-                                    disabled
-                                    class="control-btn tgl"
-                                    aria-label="일시정지"
-                                >
-                                    <img
-                                        src="./resources/pause_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                    />
-                                </button>
-                                <button
-                                    id="playBtn"
-                                    disabled
-                                    class="control-btn tgl"
-                                    aria-label="재생"
-                                >
-                                    <img src="./resources/play_0.png" alt="" class="control-icon" />
-                                </button>
-                                <button
-                                    id="nextFrameBtn"
-                                    disabled
-                                    class="control-btn btn"
-                                    aria-label="다음 프레임"
-                                >
-                                    <img
-                                        src="./resources/nextframe_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                    />
-                                </button>
-                                <button
-                                    id="fastForwardBtn"
-                                    disabled
-                                    class="control-btn btn"
-                                    aria-label="마지막으로 빨리감기"
-                                >
-                                    <img
-                                        src="./resources/fastforward_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                    />
-                                </button>
-                            </div>
-
-                            <div
-                                class="control-group justify-end"
-                                role="group"
-                                aria-label="재생 설정"
-                            >
-                                <!-- onclick 제거, data-attr로 JS가 바인딩 -->
-                                <label class="number-input-label control-settings">
-                                    <div
-                                        class="number-input-wrapper"
-                                        data-number-input="delayInput"
-                                        data-step="1"
-                                        data-min="0"
-                                        data-max="10"
-                                    >
-                                        <input
-                                            type="number"
-                                            id="delayInput"
-                                            name="delay"
-                                            value="0"
-                                            min="0"
-                                            max="10"
-                                            disabled
-                                            aria-label="딜레이 시간 설정"
-                                        />
-                                        <div class="number-input-buttons">
-                                            <button
-                                                type="button"
-                                                class="number-input-btn up"
-                                                aria-label="딜레이 증가"
-                                            ></button>
-                                            <button
-                                                type="button"
-                                                class="number-input-btn down"
-                                                aria-label="딜레이 감소"
-                                            ></button>
-                                        </div>
-                                    </div>
-                                    <span>Delay</span>
-                                </label>
-
-                                <label class="number-input-label control-settings">
-                                    <div
-                                        class="number-input-wrapper"
-                                        data-number-input="speedInput"
-                                        data-step="0.2"
-                                        data-min="0.2"
-                                        data-max="4.0"
-                                    >
-                                        <input
-                                            type="number"
-                                            id="speedInput"
-                                            name="speed"
-                                            value="1.0"
-                                            min="0.2"
-                                            max="4.0"
-                                            step="0.2"
-                                            disabled
-                                            aria-label="재생 속도 설정"
-                                        />
-                                        <div class="number-input-buttons">
-                                            <button
-                                                type="button"
-                                                class="number-input-btn up"
-                                                aria-label="속도 증가"
-                                            ></button>
-                                            <button
-                                                type="button"
-                                                class="number-input-btn down"
-                                                aria-label="속도 감소"
-                                            ></button>
-                                        </div>
-                                    </div>
-                                    <span>Speed</span>
-                                </label>
-
-                                <button
-                                    id="repeatBtn"
-                                    disabled
-                                    class="control-base control-btn tgl control-settings"
-                                    aria-label="반복 재생 토글"
-                                >
-                                    <img
-                                        src="./resources/repeat_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                    /><span>Repeat</span>
-                                </button>
-                                <button
-                                    id="cropBtn"
-                                    class="control-base control-btn tgl control-settings"
-                                    aria-label="중앙 영역 크롭 토글"
-                                >
-                                    <svg
-                                        class="control-icon"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            d="M7 17h8v2H7v-2zm0-2h8V5h2V3c-1.1 0-2 .9-2 2H7V3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2zm10-10V3H9v2h8zm0 2v8h2V7h-2zm-8 8V7H7v8h2z"
-                                        /></svg
-                                    ><span>Crop</span>
-                                </button>
-                                <button
-                                    id="roiBtn"
-                                    class="control-base control-btn tgl control-settings"
-                                    aria-label="ROI 영역 표시 토글"
-                                >
-                                    <svg
-                                        class="control-icon"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            d="M9 11H7v6h6v-2H9v-4zm6-6v2h4v4h2V3h-6zM3 3v6h2V5h4V3H3zm10 14v2h6v-6h-2v4h-4z"
-                                        /></svg
-                                    ><span>ROI</span>
-                                </button>
-                                <button
-                                    id="flipBtn"
-                                    class="control-base control-btn tgl control-settings"
-                                    aria-label="좌우 반전 토글"
-                                >
-                                    <img
-                                        src="./resources/flip_0.png"
-                                        alt=""
-                                        class="control-icon"
-                                    /><span>Flip</span>
-                                </button>
-                                <button
-                                    id="fullBtn"
-                                    class="control-base control-btn tgl control-settings"
-                                    aria-label="카메라 풀뷰 모드 토글"
-                                    title="카메라 풀뷰"
-                                >
-                                    <svg
-                                        class="control-icon"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"
-                                        />
-                                    </svg>
-                                    <span>Full</span>
-                                </button>
-                            </div>
-                        </section>
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"
+                                />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
                 <!-- RIGHT: VTON 패널 -->
-                <div
-                    id="vton-panel"
-                    class="vton-panel rounded-xl bg-black h-full col-span-3 relative"
-                >
+                <div id="vton-panel" class="vton-panel rounded-xl bg-black col-span-3 relative">
                     <img
                         id="vtonResult"
                         src="./resources/vton/placeholder.jpg"
                         alt="VTON Result"
                         class="w-full h-full object-contain select-none"
                     />
+
+                    <!-- VTON 전체화면 버튼 (상단 우측) -->
+                    <button
+                        type="button"
+                        id="vtonFullBtn"
+                        class="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition-colors"
+                        aria-label="VTON 전체화면"
+                        title="전체화면"
+                    >
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"
+                            />
+                        </svg>
+                    </button>
 
                     <!-- 로딩 오버레이 -->
                     <div
@@ -393,27 +111,6 @@
                         Failed to generate. Try again.
                     </div>
 
-                    <!-- VTON 모드 선택 -->
-                    <div class="absolute bottom-3 left-3 right-3">
-                        <div
-                            class="vton-mode-selector bg-black/80 backdrop-blur-sm rounded-lg p-3 border border-gray-600 flex items-center gap-3"
-                        >
-                            <label
-                                for="vtonModeSelect"
-                                class="text-xs text-white font-medium whitespace-nowrap"
-                                >VTON Mode</label
-                            >
-                            <select
-                                id="vtonModeSelect"
-                                class="vton-mode-select flex-1 px-3 py-2 text-xs rounded bg-gray-700 text-white border border-gray-500 focus:border-blue-500 focus:outline-none"
-                            >
-                                <option value="performance">Performance</option>
-                                <option value="balanced" selected>Balanced</option>
-                                <option value="quality">Quality</option>
-                            </select>
-                        </div>
-                    </div>
-
                     <div
                         class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white"
                     >
@@ -421,6 +118,248 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 컨트롤 패널: 좌·우 공용 -->
+            <div class="control-panel space-y-0">
+                <!-- 진행 바 -->
+                <div
+                    id="progressBar"
+                    class="w-full h-3 rounded progress-bar overflow-hidden bg-primary"
+                    role="progressbar"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="0"
+                    aria-label="재생 진행률"
+                >
+                    <div id="progressBarFill" class="h-full bg-accent"></div>
+                </div>
+
+                <!-- 컨트롤 -->
+                <section
+                    class="grid grid-cols-3 items-center gap-md text-base control-area"
+                    aria-label="비디오 제어 패널"
+                >
+                    <div class="control-group justify-start" role="group" aria-label="모드 선택">
+                        <button
+                            id="liveBtn"
+                            class="control-btn tgl active"
+                            aria-label="라이브 모드 토글"
+                            aria-pressed="true"
+                        >
+                            <img
+                                src="./resources/live_0.png"
+                                alt=""
+                                class="control-icon"
+                                aria-hidden="true"
+                            /><span>Live</span>
+                        </button>
+                        <button id="recordBtn" class="control-btn tgl" aria-label="녹화 모드 토글">
+                            <img
+                                src="./resources/record_0.png"
+                                alt=""
+                                class="control-icon"
+                                aria-hidden="true"
+                            /><span>Rec</span>
+                        </button>
+                        <button
+                            id="playbackBtn"
+                            class="control-btn tgl"
+                            aria-label="재생 모드 진입"
+                        >
+                            <img
+                                src="./resources/playback_0.png"
+                                alt=""
+                                class="control-icon"
+                                aria-hidden="true"
+                            /><span>Play</span>
+                        </button>
+                        <div class="status">
+                            <span id="statusText" class="status-text">Status:</span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-0 justify-center" role="group" aria-label="재생 제어">
+                        <button
+                            id="rewindBtn"
+                            disabled
+                            class="control-btn btn"
+                            aria-label="처음으로 되감기"
+                        >
+                            <img src="./resources/rewind_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button
+                            id="prevFrameBtn"
+                            disabled
+                            class="control-btn btn"
+                            aria-label="이전 프레임"
+                        >
+                            <img src="./resources/prevframe_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button
+                            id="reverseBtn"
+                            disabled
+                            class="control-btn tgl"
+                            aria-label="역재생"
+                        >
+                            <img src="./resources/reverse_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button
+                            id="pauseBtn"
+                            disabled
+                            class="control-btn tgl"
+                            aria-label="일시정지"
+                        >
+                            <img src="./resources/pause_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button id="playBtn" disabled class="control-btn tgl" aria-label="재생">
+                            <img src="./resources/play_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button
+                            id="nextFrameBtn"
+                            disabled
+                            class="control-btn btn"
+                            aria-label="다음 프레임"
+                        >
+                            <img src="./resources/nextframe_0.png" alt="" class="control-icon" />
+                        </button>
+                        <button
+                            id="fastForwardBtn"
+                            disabled
+                            class="control-btn btn"
+                            aria-label="마지막으로 빨리감기"
+                        >
+                            <img src="./resources/fastforward_0.png" alt="" class="control-icon" />
+                        </button>
+                    </div>
+
+                    <div class="control-group justify-end" role="group" aria-label="재생 설정">
+                        <!-- onclick 제거, data-attr로 JS가 바인딩 -->
+                        <label class="number-input-label control-settings">
+                            <div
+                                class="number-input-wrapper"
+                                data-number-input="delayInput"
+                                data-step="1"
+                                data-min="0"
+                                data-max="10"
+                            >
+                                <input
+                                    type="number"
+                                    id="delayInput"
+                                    name="delay"
+                                    value="0"
+                                    min="0"
+                                    max="10"
+                                    disabled
+                                    aria-label="딜레이 시간 설정"
+                                />
+                                <div class="number-input-buttons">
+                                    <button
+                                        type="button"
+                                        class="number-input-btn up"
+                                        aria-label="딜레이 증가"
+                                    ></button>
+                                    <button
+                                        type="button"
+                                        class="number-input-btn down"
+                                        aria-label="딜레이 감소"
+                                    ></button>
+                                </div>
+                            </div>
+                            <span>Delay</span>
+                        </label>
+
+                        <label class="number-input-label control-settings">
+                            <div
+                                class="number-input-wrapper"
+                                data-number-input="speedInput"
+                                data-step="0.2"
+                                data-min="0.2"
+                                data-max="4.0"
+                            >
+                                <input
+                                    type="number"
+                                    id="speedInput"
+                                    name="speed"
+                                    value="1.0"
+                                    min="0.2"
+                                    max="4.0"
+                                    step="0.2"
+                                    disabled
+                                    aria-label="재생 속도 설정"
+                                />
+                                <div class="number-input-buttons">
+                                    <button
+                                        type="button"
+                                        class="number-input-btn up"
+                                        aria-label="속도 증가"
+                                    ></button>
+                                    <button
+                                        type="button"
+                                        class="number-input-btn down"
+                                        aria-label="속도 감소"
+                                    ></button>
+                                </div>
+                            </div>
+                            <span>Speed</span>
+                        </label>
+
+                        <button
+                            id="repeatBtn"
+                            disabled
+                            class="control-base control-btn tgl control-settings"
+                            aria-label="반복 재생 토글"
+                        >
+                            <img src="./resources/repeat_0.png" alt="" class="control-icon" /><span
+                                >Repeat</span
+                            >
+                        </button>
+                        <button
+                            id="cropBtn"
+                            class="control-base control-btn tgl control-settings"
+                            aria-label="중앙 영역 크롭 토글"
+                        >
+                            <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M7 17h8v2H7v-2zm0-2h8V5h2V3c-1.1 0-2 .9-2 2H7V3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2zm10-10V3H9v2h8zm0 2v8h2V7h-2zm-8 8V7H7v8h2z"
+                                /></svg
+                            ><span>Crop</span>
+                        </button>
+                        <button
+                            id="roiBtn"
+                            class="control-base control-btn tgl control-settings"
+                            aria-label="ROI 영역 표시 토글"
+                        >
+                            <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
+                                /></svg
+                            ><span>ROI</span>
+                        </button>
+                        <button
+                            id="flipBtn"
+                            class="control-base control-btn tgl control-settings"
+                            aria-label="좌우 반전 토글"
+                        >
+                            <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM3 5v14c0 1.1.9 2 2 2h4v-2H5V5h4V3H5c-1.1 0-2 .9-2 2zm16-2v2h2c0-1.1-.9-2-2-2zm-8 20h2V1h-2v22zm8-6h2v-2h-2v2zM15 5h2V3h-2v2zm4 8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2z"
+                                /></svg
+                            ><span>Flip</span>
+                        </button>
+                        <div class="control-base control-settings flex flex-col items-center">
+                            <select
+                                id="vtonModeSelect"
+                                class="px-2 py-1 text-xs rounded bg-gray-700 text-white border border-gray-500 focus:border-blue-500 focus:outline-none mb-1"
+                            >
+                                <option value="performance">Perf</option>
+                                <option value="balanced" selected>Bal</option>
+                                <option value="quality">Qual</option>
+                            </select>
+                            <span class="text-xs">VTON</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
 
             <!-- 하단 Wardrobe -->
             <section aria-label="Wardrobe" class="wardrobe-section space-y-0 -mt-1">
@@ -444,6 +383,119 @@
                 >
             </p>
         </footer>
+
+        <!-- VTON 전체화면 버튼 이벤트 -->
+        <script>
+            (function () {
+                // VTON 전체화면 기능 초기화
+                function initVtonFullscreen() {
+                    console.log('[VTON Full] Initializing...');
+
+                    var vtonFullBtn = document.getElementById('vtonFullBtn');
+                    if (!vtonFullBtn) {
+                        console.error('[VTON Full] Button not found!');
+                        return;
+                    }
+
+                    console.log('[VTON Full] Button found:', vtonFullBtn);
+
+                    // 버튼이 이미 초기화되었는지 확인
+                    if (vtonFullBtn.hasAttribute('data-initialized')) {
+                        console.log('[VTON Full] Already initialized');
+                        return;
+                    }
+
+                    // 초기화 마크
+                    vtonFullBtn.setAttribute('data-initialized', 'true');
+
+                    // 버튼 활성화
+                    vtonFullBtn.disabled = false;
+                    vtonFullBtn.style.pointerEvents = 'auto';
+                    vtonFullBtn.style.cursor = 'pointer';
+
+                    // 전체화면 상태 변수
+                    var vtonFullMode = false;
+
+                    // 클릭 이벤트 핸들러 (addEventListener 사용)
+                    vtonFullBtn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        console.log('[VTON Full] Button clicked!');
+
+                        // 전체화면 토글
+                        vtonFullMode = !vtonFullMode;
+                        var mainContainer = document.getElementById('mainContainer');
+
+                        if (!mainContainer) {
+                            console.error('[VTON Full] mainContainer not found!');
+                            return;
+                        }
+
+                        if (vtonFullMode) {
+                            // 전체화면 진입
+                            console.log('[VTON Full] Entering fullscreen mode');
+                            mainContainer.classList.add('vton-fullscreen');
+                            vtonFullBtn.classList.add('active');
+
+                            // 아이콘 변경 (종료 아이콘)
+                            var svg = vtonFullBtn.querySelector('svg path');
+                            if (svg) {
+                                svg.setAttribute(
+                                    'd',
+                                    'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z'
+                                );
+                            }
+
+                            // aria-label 업데이트
+                            vtonFullBtn.setAttribute('aria-label', 'VTON 전체화면 종료');
+                            vtonFullBtn.setAttribute('title', '전체화면 종료');
+                        } else {
+                            // 전체화면 종료
+                            console.log('[VTON Full] Exiting fullscreen mode');
+                            mainContainer.classList.remove('vton-fullscreen');
+                            vtonFullBtn.classList.remove('active');
+
+                            // 아이콘 복원
+                            var svg = vtonFullBtn.querySelector('svg path');
+                            if (svg) {
+                                svg.setAttribute(
+                                    'd',
+                                    'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z'
+                                );
+                            }
+
+                            // aria-label 복원
+                            vtonFullBtn.setAttribute('aria-label', 'VTON 전체화면');
+                            vtonFullBtn.setAttribute('title', '전체화면');
+                        }
+                    });
+
+                    console.log('[VTON Full] Event listener attached');
+                    console.log('[VTON Full] Button state:');
+                    console.log('  - Disabled:', vtonFullBtn.disabled);
+                    console.log('  - Display:', window.getComputedStyle(vtonFullBtn).display);
+                    console.log(
+                        '  - Pointer-events:',
+                        window.getComputedStyle(vtonFullBtn).pointerEvents
+                    );
+                    console.log('  - Z-index:', window.getComputedStyle(vtonFullBtn).zIndex);
+                }
+
+                // DOM이 준비되면 초기화
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initVtonFullscreen);
+                } else {
+                    // DOM이 이미 로드된 경우
+                    initVtonFullscreen();
+                }
+
+                // 다른 스크립트가 나중에 DOM을 수정할 수 있으므로 추가 타이밍에도 시도
+                setTimeout(initVtonFullscreen, 500);
+                setTimeout(initVtonFullscreen, 1000);
+                setTimeout(initVtonFullscreen, 2000);
+            })();
+        </script>
 
         <!-- 초기화 엔트리 -->
         <script type="module" src="../src/app-init.js"></script>
