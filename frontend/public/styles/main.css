@@ -1033,7 +1033,8 @@ input[type='number']:disabled {
 }
 
 /* 카메라 영역 숨기기 */
-#mainContainer.vton-fullscreen .camera-container {
+#mainContainer.vton-fullscreen .camera-container,
+#mainContainer.vton-fullscreen .col-span-7 {
     display: none !important;
 }
 
@@ -1044,15 +1045,17 @@ input[type='number']:disabled {
 
 /* VTON 패널을 전체 크기로 확장 */
 #mainContainer.vton-fullscreen #vton-panel {
+    display: flex !important; /* Override any inline display:none */
     flex: 1 !important;
     width: 100% !important;
     height: 100% !important;
     max-height: none !important;
+    aspect-ratio: unset !important; /* Remove aspect ratio in fullscreen */
     border-radius: 0 !important;
-    display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     position: relative !important;
+    grid-column: 1 / -1 !important; /* Span full grid width */
 }
 
 /* VTON 이미지 - 비율 유지하면서 최대 크기로 표시 */

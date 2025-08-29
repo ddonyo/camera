@@ -387,37 +387,76 @@
         <!-- VTON 전체화면 버튼 이벤트 -->
         <script>
             (function () {
+                console.log('[VTON Full] Script loaded');
+
                 // VTON 전체화면 기능 초기화
                 function initVtonFullscreen() {
-                    console.log('[VTON Full] Initializing...');
+                    console.log('[VTON Full] Initializing at', new Date().toISOString());
 
                     var vtonFullBtn = document.getElementById('vtonFullBtn');
+                    console.log('[VTON Full] Looking for button with ID: vtonFullBtn');
+                    console.log('[VTON Full] Button element:', vtonFullBtn);
+
                     if (!vtonFullBtn) {
                         console.error('[VTON Full] Button not found!');
+                        // Try to find any button with vton in id
+                        var allButtons = document.querySelectorAll('button[id*="vton"]');
+                        console.log('[VTON Full] Found buttons with vton in ID:', allButtons);
                         return;
                     }
 
                     console.log('[VTON Full] Button found:', vtonFullBtn);
+                    console.log('[VTON Full] Button ID:', vtonFullBtn.id);
+                    console.log('[VTON Full] Button className:', vtonFullBtn.className);
 
-                    // 버튼이 이미 초기화되었는지 확인
-                    if (vtonFullBtn.hasAttribute('data-initialized')) {
-                        console.log('[VTON Full] Already initialized');
+                    // 버튼이 이미 초기화되었는지 확인 - 하지만 disabled 상태면 재초기화
+                    if (vtonFullBtn.hasAttribute('data-initialized') && !vtonFullBtn.disabled) {
+                        console.log('[VTON Full] Already initialized and enabled');
                         return;
+                    }
+
+                    if (vtonFullBtn.disabled) {
+                        console.log('[VTON Full] Button is disabled, re-enabling...');
                     }
 
                     // 초기화 마크
                     vtonFullBtn.setAttribute('data-initialized', 'true');
 
-                    // 버튼 활성화
+                    // 버튼 활성화 - disabled 속성 완전 제거
                     vtonFullBtn.disabled = false;
+                    vtonFullBtn.removeAttribute('disabled'); // Force remove disabled attribute
                     vtonFullBtn.style.pointerEvents = 'auto';
                     vtonFullBtn.style.cursor = 'pointer';
+
+                    console.log('[VTON Full] After enabling - disabled:', vtonFullBtn.disabled);
+                    console.log(
+                        '[VTON Full] After enabling - hasAttribute(disabled):',
+                        vtonFullBtn.hasAttribute('disabled')
+                    );
 
                     // 전체화면 상태 변수
                     var vtonFullMode = false;
 
+                    // Test with simple onclick first
+                    vtonFullBtn.onclick = function () {
+                        console.log('[VTON Full] ONCLICK FIRED!');
+                    };
+
                     // 클릭 이벤트 핸들러 (addEventListener 사용)
                     vtonFullBtn.addEventListener('click', function (e) {
+                        console.log('[VTON Full] ===== BUTTON CLICK EVENT FIRED =====');
+                        console.log('[VTON Full] Event type:', e.type);
+                        console.log('[VTON Full] Target:', e.target);
+                        console.log('[VTON Full] Current vtonFullMode:', vtonFullMode);
+
+                        // Check camera fullMode state
+                        if (window.mjpegViewer) {
+                            console.log(
+                                '[VTON Full] Camera fullMode state:',
+                                window.mjpegViewer.fullMode
+                            );
+                        }
+
                         e.preventDefault();
                         e.stopPropagation();
 
@@ -425,7 +464,14 @@
 
                         // 전체화면 토글
                         vtonFullMode = !vtonFullMode;
+                        console.log('[VTON Full] New vtonFullMode:', vtonFullMode);
+
                         var mainContainer = document.getElementById('mainContainer');
+                        console.log('[VTON Full] mainContainer found:', mainContainer);
+                        console.log(
+                            '[VTON Full] mainContainer classes before:',
+                            mainContainer ? mainContainer.className : 'null'
+                        );
 
                         if (!mainContainer) {
                             console.error('[VTON Full] mainContainer not found!');
@@ -435,8 +481,182 @@
                         if (vtonFullMode) {
                             // 전체화면 진입
                             console.log('[VTON Full] Entering fullscreen mode');
-                            mainContainer.classList.add('vton-fullscreen');
+
+                            // AGGRESSIVE CLEANUP - Clear ALL inline styles from ALL elements
+                            console.log('[VTON Full] Starting aggressive inline style cleanup...');
+
+                            // Log current state before cleanup
+                            var mainGridSection = document.querySelector('.main-grid-section');
+                            var vtonPanel = document.getElementById('vton-panel');
+                            var cameraContainer = document.querySelector('.camera-container');
+                            var colSpan7 = document.querySelector('.col-span-7');
+                            var canvas = document.querySelector('.camera-container canvas');
+
+                            console.log('[VTON Full] BEFORE cleanup - inline styles:');
+                            if (mainGridSection) {
+                                console.log(
+                                    '  mainGridSection.style:',
+                                    mainGridSection.getAttribute('style')
+                                );
+                            }
+                            if (vtonPanel) {
+                                console.log('  vtonPanel.style:', vtonPanel.getAttribute('style'));
+                            }
+                            if (cameraContainer) {
+                                console.log(
+                                    '  cameraContainer.style:',
+                                    cameraContainer.getAttribute('style')
+                                );
+                            }
+                            if (colSpan7) {
+                                console.log('  colSpan7.style:', colSpan7.getAttribute('style'));
+                            }
+
+                            // NUCLEAR OPTION: Remove ALL inline styles completely
+                            if (mainGridSection) {
+                                mainGridSection.removeAttribute('style');
+                                console.log(
+                                    '[VTON Full] Removed ALL inline styles from main-grid-section'
+                                );
+                            }
+
+                            if (vtonPanel) {
+                                vtonPanel.removeAttribute('style');
+                                console.log(
+                                    '[VTON Full] Removed ALL inline styles from vton-panel'
+                                );
+                            }
+
+                            if (cameraContainer) {
+                                cameraContainer.removeAttribute('style');
+                                console.log(
+                                    '[VTON Full] Removed ALL inline styles from camera-container'
+                                );
+                            }
+
+                            if (colSpan7) {
+                                colSpan7.removeAttribute('style');
+                                console.log(
+                                    '[VTON Full] Removed ALL inline styles from col-span-7'
+                                );
+                            }
+
+                            if (canvas) {
+                                canvas.removeAttribute('style');
+                                console.log('[VTON Full] Removed ALL inline styles from canvas');
+                            }
+
+                            // Also clear any wardrobe and control panel inline styles
+                            var wardrobePanel = document.getElementById('wardrobe-panel');
+                            if (wardrobePanel) {
+                                wardrobePanel.removeAttribute('style');
+                                console.log(
+                                    '[VTON Full] Removed ALL inline styles from wardrobe-panel'
+                                );
+                            }
+
+                            var controlPanel = document.querySelector('.control-panel');
+                            if (controlPanel) {
+                                controlPanel.removeAttribute('style');
+                                console.log(
+                                    '[VTON Full] Removed ALL inline styles from control-panel'
+                                );
+                            }
+
+                            // Log state after cleanup
+                            console.log('[VTON Full] AFTER cleanup - inline styles:');
+                            if (mainGridSection) {
+                                console.log(
+                                    '  mainGridSection.style:',
+                                    mainGridSection.getAttribute('style') || 'NONE'
+                                );
+                            }
+                            if (vtonPanel) {
+                                console.log(
+                                    '  vtonPanel.style:',
+                                    vtonPanel.getAttribute('style') || 'NONE'
+                                );
+                            }
+
+                            // Remove camera fullscreen classes that might interfere
+                            console.log('[VTON Full] Removing camera fullscreen classes...');
+                            mainContainer.classList.remove('fullscreen-mode');
+                            mainContainer.classList.remove('fullscreen-entering');
+                            mainContainer.classList.remove('fullscreen-exiting');
+
+                            // Also reset camera fullMode flag if mjpegViewer exists
+                            if (window.mjpegViewer && window.mjpegViewer.fullMode) {
+                                console.log('[VTON Full] Resetting camera fullMode flag');
+                                window.mjpegViewer.fullMode = false;
+                                // Update UI to reflect the change
+                                if (window.mjpegViewer.uiController) {
+                                    window.mjpegViewer._updateUI();
+                                }
+                            }
+
+                            // Apply VTON fullscreen with forced inline styles
+                            setTimeout(function () {
+                                console.log(
+                                    '[VTON Full] Applying vton-fullscreen with forced styles...'
+                                );
+
+                                // Add the class
+                                mainContainer.classList.add('vton-fullscreen');
+                                console.log('[VTON Full] Added vton-fullscreen class');
+
+                                // FORCE inline styles to ensure visibility
+                                // These will override any residual camera fullscreen styles
+                                if (vtonPanel) {
+                                    vtonPanel.style.cssText =
+                                        'display: flex !important; flex: 1 !important; width: 100% !important; height: 100% !important;';
+                                    console.log(
+                                        '[VTON Full] Forced VTON panel visibility with inline styles'
+                                    );
+                                }
+
+                                if (mainGridSection) {
+                                    mainGridSection.style.cssText =
+                                        'display: grid !important; grid-template-columns: 1fr !important;';
+                                    console.log(
+                                        '[VTON Full] Forced grid layout with inline styles'
+                                    );
+                                }
+
+                                // Hide camera container
+                                if (cameraContainer) {
+                                    cameraContainer.style.cssText = 'display: none !important;';
+                                    console.log('[VTON Full] Forced camera container to hide');
+                                }
+
+                                if (colSpan7) {
+                                    colSpan7.style.cssText = 'display: none !important;';
+                                    console.log('[VTON Full] Forced camera column to hide');
+                                }
+
+                                // Check result
+                                setTimeout(function () {
+                                    console.log('[VTON Full] Final verification:');
+                                    console.log(
+                                        '  mainContainer classes:',
+                                        mainContainer.className
+                                    );
+                                    console.log(
+                                        '  vton-fullscreen class present:',
+                                        mainContainer.classList.contains('vton-fullscreen')
+                                    );
+
+                                    if (vtonPanel) {
+                                        var vtonPanelComputed = window.getComputedStyle(vtonPanel);
+                                        console.log('[VTON Full] VTON panel computed styles:');
+                                        console.log('  display:', vtonPanelComputed.display);
+                                        console.log('  width:', vtonPanelComputed.width);
+                                        console.log('  height:', vtonPanelComputed.height);
+                                        console.log('  visibility:', vtonPanelComputed.visibility);
+                                    }
+                                }, 100);
+                            }, 50);
                             vtonFullBtn.classList.add('active');
+                            console.log('[VTON Full] Added active class to button');
 
                             // 아이콘 변경 (종료 아이콘)
                             var svg = vtonFullBtn.querySelector('svg path');
@@ -455,6 +675,24 @@
                             console.log('[VTON Full] Exiting fullscreen mode');
                             mainContainer.classList.remove('vton-fullscreen');
                             vtonFullBtn.classList.remove('active');
+
+                            // Clear all inline styles we added
+                            var elementsToClean = [
+                                document.getElementById('vton-panel'),
+                                document.querySelector('.main-grid-section'),
+                                document.querySelector('.camera-container'),
+                                document.querySelector('.col-span-7'),
+                            ];
+
+                            elementsToClean.forEach(function (elem) {
+                                if (elem) {
+                                    elem.removeAttribute('style');
+                                    console.log(
+                                        '[VTON Full] Cleared inline styles from',
+                                        elem.className || elem.id
+                                    );
+                                }
+                            });
 
                             // 아이콘 복원
                             var svg = vtonFullBtn.querySelector('svg path');
@@ -484,16 +722,38 @@
 
                 // DOM이 준비되면 초기화
                 if (document.readyState === 'loading') {
+                    console.log('[VTON Full] Waiting for DOMContentLoaded');
                     document.addEventListener('DOMContentLoaded', initVtonFullscreen);
                 } else {
+                    console.log('[VTON Full] DOM already loaded, initializing now');
                     // DOM이 이미 로드된 경우
                     initVtonFullscreen();
                 }
 
                 // 다른 스크립트가 나중에 DOM을 수정할 수 있으므로 추가 타이밍에도 시도
-                setTimeout(initVtonFullscreen, 500);
-                setTimeout(initVtonFullscreen, 1000);
-                setTimeout(initVtonFullscreen, 2000);
+                setTimeout(function () {
+                    console.log('[VTON Full] Trying init after 500ms');
+                    initVtonFullscreen();
+                }, 500);
+                setTimeout(function () {
+                    console.log('[VTON Full] Trying init after 1000ms');
+                    initVtonFullscreen();
+                }, 1000);
+                setTimeout(function () {
+                    console.log('[VTON Full] Trying init after 2000ms');
+                    initVtonFullscreen();
+
+                    // Final check - directly test the button
+                    var btn = document.getElementById('vtonFullBtn');
+                    console.log('[VTON Full] Final check - button exists?', !!btn);
+                    if (btn) {
+                        console.log('[VTON Full] Button properties:');
+                        console.log('  - disabled:', btn.disabled);
+                        console.log('  - onclick:', btn.onclick);
+                        console.log('  - style.pointerEvents:', btn.style.pointerEvents);
+                        console.log('  - className:', btn.className);
+                    }
+                }, 2000);
             })();
         </script>
 
