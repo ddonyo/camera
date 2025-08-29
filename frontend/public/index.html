@@ -340,11 +340,9 @@
                             class="control-base control-btn tgl control-settings"
                             aria-label="좌우 반전 토글"
                         >
-                            <svg class="control-icon" viewBox="0 0 24 24" fill="currentColor">
-                                <path
-                                    d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM3 5v14c0 1.1.9 2 2 2h4v-2H5V5h4V3H5c-1.1 0-2 .9-2 2zm16-2v2h2c0-1.1-.9-2-2-2zm-8 20h2V1h-2v22zm8-6h2v-2h-2v2zM15 5h2V3h-2v2zm4 8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2z"
-                                /></svg
-                            ><span>Flip</span>
+                            <img src="./resources/flip_0.png" alt="" class="control-icon" /><span
+                                >Flip</span
+                            >
                         </button>
                         <div class="control-base control-settings flex flex-col items-center">
                             <select
@@ -384,278 +382,31 @@
             </p>
         </footer>
 
-        <!-- VTON 전체화면 버튼 이벤트 -->
+        <!-- VTON 버튼 활성화 (Fullscreen Manager가 처리) -->
         <script>
             (function () {
-                console.log('[VTON Full] Script loaded');
+                console.log('[VTON Button] Ensuring button is enabled');
 
-                // VTON 전체화면 기능 초기화
-                function initVtonFullscreen() {
-                    console.log('[VTON Full] Initializing at', new Date().toISOString());
-
+                // VTON 버튼이 비활성화되지 않도록 보장
+                function ensureVtonButtonEnabled() {
                     var vtonFullBtn = document.getElementById('vtonFullBtn');
-                    console.log('[VTON Full] Looking for button with ID: vtonFullBtn');
-                    console.log('[VTON Full] Button element:', vtonFullBtn);
-
-                    if (!vtonFullBtn) {
-                        console.error('[VTON Full] Button not found!');
-                        // Try to find any button with vton in id
-                        var allButtons = document.querySelectorAll('button[id*="vton"]');
-                        console.log('[VTON Full] Found buttons with vton in ID:', allButtons);
-                        return;
+                    if (vtonFullBtn && vtonFullBtn.disabled) {
+                        vtonFullBtn.disabled = false;
+                        vtonFullBtn.removeAttribute('disabled');
+                        console.log('[VTON Button] Button enabled');
                     }
-
-                    console.log('[VTON Full] Button found:', vtonFullBtn);
-                    console.log('[VTON Full] Button ID:', vtonFullBtn.id);
-                    console.log('[VTON Full] Button className:', vtonFullBtn.className);
-
-                    // 버튼이 이미 초기화되었는지 확인 - 하지만 disabled 상태면 재초기화
-                    if (vtonFullBtn.hasAttribute('data-initialized') && !vtonFullBtn.disabled) {
-                        console.log('[VTON Full] Already initialized and enabled');
-                        return;
-                    }
-
-                    if (vtonFullBtn.disabled) {
-                        console.log('[VTON Full] Button is disabled, re-enabling...');
-                    }
-
-                    // 초기화 마크
-                    vtonFullBtn.setAttribute('data-initialized', 'true');
-
-                    // 버튼 활성화 - disabled 속성 완전 제거
-                    vtonFullBtn.disabled = false;
-                    vtonFullBtn.removeAttribute('disabled'); // Force remove disabled attribute
-                    vtonFullBtn.style.pointerEvents = 'auto';
-                    vtonFullBtn.style.cursor = 'pointer';
-
-                    console.log('[VTON Full] After enabling - disabled:', vtonFullBtn.disabled);
-                    console.log(
-                        '[VTON Full] After enabling - hasAttribute(disabled):',
-                        vtonFullBtn.hasAttribute('disabled')
-                    );
-
-                    // 전체화면 상태 변수
-                    var vtonFullMode = false;
-
-                    // Test with simple onclick first
-                    vtonFullBtn.onclick = function () {
-                        console.log('[VTON Full] ONCLICK FIRED!');
-                    };
-
-                    // 클릭 이벤트 핸들러 - 카메라와 동일한 방식으로 구현
-                    vtonFullBtn.addEventListener('click', function (e) {
-                        console.log('[VTON Full] Button clicked');
-                        e.preventDefault();
-
-                        // 카메라 전체화면이 켜져있으면 먼저 종료
-                        if (window.mjpegViewer && window.mjpegViewer.fullMode) {
-                            console.log('[VTON Full] Exiting camera fullMode first');
-                            window.mjpegViewer._handleFull();
-                        }
-
-                        // 전체화면 토글
-                        vtonFullMode = !vtonFullMode;
-                        console.log('[VTON Full] Mode toggled:', vtonFullMode);
-
-                        // DOM 요소들
-                        var mainGridSection = document.querySelector('.main-grid-section');
-                        var vtonPanel = document.getElementById('vton-panel');
-                        var cameraColumn = document.querySelector('.col-span-7');
-                        var cameraContainer = document.querySelector('.camera-container');
-                        var wardrobe = document.querySelector('.wardrobe-section');
-                        var controlPanel = document.querySelector('.control-panel');
-                        var progressBar = document.querySelector('.progress-bar');
-
-                        if (vtonFullMode) {
-                            console.log('[VTON Full] Entering fullscreen mode');
-
-                            // 카메라 영역과 워드로브 숨기기
-                            if (cameraColumn) {
-                                cameraColumn.style.display = 'none';
-                                console.log('[VTON Full] Hidden camera column');
-                            }
-
-                            if (wardrobe) {
-                                wardrobe.style.display = 'none';
-                                console.log('[VTON Full] Hidden wardrobe');
-                            }
-
-                            // 프로그레스 바 숨기기
-                            if (progressBar) {
-                                progressBar.style.display = 'none';
-                                console.log('[VTON Full] Hidden progress bar');
-                            }
-
-                            // main-grid-section을 flex로 변경
-                            if (mainGridSection) {
-                                mainGridSection.style.display = 'flex';
-                                mainGridSection.style.gridTemplateColumns = 'none';
-                                console.log('[VTON Full] Changed to flex layout');
-                            }
-
-                            // VTON 패널을 전체 화면으로 확장
-                            if (vtonPanel) {
-                                vtonPanel.style.display = 'flex';
-                                vtonPanel.style.width = '100%';
-                                vtonPanel.style.height = 'calc(100vh - 100px)';
-                                vtonPanel.style.flex = 'none';
-                                vtonPanel.style.alignItems = 'center';
-                                vtonPanel.style.justifyContent = 'center';
-                                vtonPanel.style.maxHeight = 'none';
-                                vtonPanel.style.aspectRatio = 'unset';
-                                console.log('[VTON Full] Expanded VTON panel');
-                            }
-
-                            // VTON 이미지 비율 유지하며 최대 크기로
-                            var vtonResult = document.getElementById('vtonResult');
-                            if (vtonResult) {
-                                vtonResult.style.width = '100%';
-                                vtonResult.style.height = '100%';
-                                vtonResult.style.objectFit = 'contain';
-                                console.log('[VTON Full] Set VTON image to contain');
-                            }
-
-                            // 컨트롤 패널 스타일 (카메라와 동일)
-                            if (controlPanel) {
-                                controlPanel.style.minHeight = '120px';
-                                controlPanel.style.paddingBottom = '30px';
-                                controlPanel.style.marginBottom = '30px';
-                                controlPanel.style.backgroundColor = '#374151';
-                                controlPanel.style.borderRadius = '12px';
-                                controlPanel.style.padding = '16px';
-                            }
-
-                            // 버튼 상태 업데이트
-                            vtonFullBtn.classList.add('active');
-
-                            // 아이콘 변경 (종료 아이콘)
-                            var svg = vtonFullBtn.querySelector('svg path');
-                            if (svg) {
-                                svg.setAttribute(
-                                    'd',
-                                    'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z'
-                                );
-                            }
-                            vtonFullBtn.setAttribute('title', '전체화면 종료');
-                        } else {
-                            console.log('[VTON Full] Exiting fullscreen mode');
-
-                            // 카메라 영역과 워드로브 복원
-                            if (cameraColumn) {
-                                cameraColumn.style.display = '';
-                                console.log('[VTON Full] Restored camera column');
-                            }
-
-                            if (wardrobe) {
-                                wardrobe.style.display = '';
-                                console.log('[VTON Full] Restored wardrobe');
-                            }
-
-                            // 프로그레스 바 복원
-                            if (progressBar) {
-                                progressBar.style.display = '';
-                                console.log('[VTON Full] Restored progress bar');
-                            }
-
-                            // main-grid-section을 원래 grid로 복원
-                            if (mainGridSection) {
-                                mainGridSection.style.display = '';
-                                mainGridSection.style.gridTemplateColumns = '';
-                                console.log('[VTON Full] Restored grid layout');
-                            }
-
-                            // VTON 패널 스타일 복원
-                            if (vtonPanel) {
-                                vtonPanel.style.display = '';
-                                vtonPanel.style.width = '';
-                                vtonPanel.style.height = '';
-                                vtonPanel.style.flex = '';
-                                vtonPanel.style.alignItems = '';
-                                vtonPanel.style.justifyContent = '';
-                                vtonPanel.style.maxHeight = '';
-                                vtonPanel.style.aspectRatio = '';
-                                console.log('[VTON Full] Restored VTON panel');
-                            }
-
-                            // VTON 이미지 스타일 복원
-                            var vtonResult = document.getElementById('vtonResult');
-                            if (vtonResult) {
-                                vtonResult.style.width = '';
-                                vtonResult.style.height = '';
-                                vtonResult.style.objectFit = '';
-                                console.log('[VTON Full] Restored VTON image');
-                            }
-
-                            // 컨트롤 패널 스타일 복원
-                            if (controlPanel) {
-                                controlPanel.style.minHeight = '';
-                                controlPanel.style.paddingBottom = '';
-                                controlPanel.style.marginBottom = '';
-                                controlPanel.style.backgroundColor = '';
-                                controlPanel.style.borderRadius = '';
-                                controlPanel.style.padding = '';
-                            }
-
-                            // 버튼 상태 복원
-                            vtonFullBtn.classList.remove('active');
-
-                            // 아이콘 복원
-                            var svg = vtonFullBtn.querySelector('svg path');
-                            if (svg) {
-                                svg.setAttribute(
-                                    'd',
-                                    'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z'
-                                );
-                            }
-                            vtonFullBtn.setAttribute('title', '전체화면');
-                        }
-                    });
-
-                    console.log('[VTON Full] Event listener attached');
-                    console.log('[VTON Full] Button state:');
-                    console.log('  - Disabled:', vtonFullBtn.disabled);
-                    console.log('  - Display:', window.getComputedStyle(vtonFullBtn).display);
-                    console.log(
-                        '  - Pointer-events:',
-                        window.getComputedStyle(vtonFullBtn).pointerEvents
-                    );
-                    console.log('  - Z-index:', window.getComputedStyle(vtonFullBtn).zIndex);
                 }
 
-                // DOM이 준비되면 초기화
+                // DOM 로드 후 실행
                 if (document.readyState === 'loading') {
-                    console.log('[VTON Full] Waiting for DOMContentLoaded');
-                    document.addEventListener('DOMContentLoaded', initVtonFullscreen);
+                    document.addEventListener('DOMContentLoaded', ensureVtonButtonEnabled);
                 } else {
-                    console.log('[VTON Full] DOM already loaded, initializing now');
-                    // DOM이 이미 로드된 경우
-                    initVtonFullscreen();
+                    ensureVtonButtonEnabled();
                 }
 
-                // 다른 스크립트가 나중에 DOM을 수정할 수 있으므로 추가 타이밍에도 시도
-                setTimeout(function () {
-                    console.log('[VTON Full] Trying init after 500ms');
-                    initVtonFullscreen();
-                }, 500);
-                setTimeout(function () {
-                    console.log('[VTON Full] Trying init after 1000ms');
-                    initVtonFullscreen();
-                }, 1000);
-                setTimeout(function () {
-                    console.log('[VTON Full] Trying init after 2000ms');
-                    initVtonFullscreen();
-
-                    // Final check - directly test the button
-                    var btn = document.getElementById('vtonFullBtn');
-                    console.log('[VTON Full] Final check - button exists?', !!btn);
-                    if (btn) {
-                        console.log('[VTON Full] Button properties:');
-                        console.log('  - disabled:', btn.disabled);
-                        console.log('  - onclick:', btn.onclick);
-                        console.log('  - style.pointerEvents:', btn.style.pointerEvents);
-                        console.log('  - className:', btn.className);
-                    }
-                }, 2000);
+                // 다른 스크립트가 버튼을 비활성화할 수 있으므로 추가 체크
+                setTimeout(ensureVtonButtonEnabled, 500);
+                setTimeout(ensureVtonButtonEnabled, 1000);
             })();
         </script>
 

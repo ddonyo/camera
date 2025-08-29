@@ -30,6 +30,7 @@ export class MJPEGViewer {
         this.repeatMode = false; // 반복 재생
         this.flipMode = true; // 좌우 반전 (기본값)
         this.cropMode = false; // 중앙 크롭
+        this.roiMode = true; // ROI 오버레이 표시 (기본값: 활성화)
         this.fullMode = false; // 풀스크린 모드
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
         this.liveFrameCount = 0; // 라이브 프레임 카운터
@@ -499,6 +500,19 @@ export class MJPEGViewer {
 
     // Full 버튼 이벤트 핸들러
     _handleFull() {
+        // fullscreen-manager가 있고, 이미 처리 중이 아니면 사용
+        if (window.fullscreenManager && !this._isHandlingFullscreen) {
+            console.log('[Full] Using fullscreen-manager');
+            this._isHandlingFullscreen = true;
+            window.fullscreenManager.toggleCameraFullscreen();
+            // 플래그 리셋
+            setTimeout(() => {
+                this._isHandlingFullscreen = false;
+            }, 100);
+            return;
+        }
+
+        // fullscreen-manager에서 호출한 경우 또는 fallback
         this.fullMode = !this.fullMode;
         console.log('[Full] Full mode toggled:', this.fullMode);
 
@@ -526,11 +540,14 @@ export class MJPEGViewer {
                 fullBtn.setAttribute('title', '전체화면 종료');
             }
 
-            // VTON 패널과 Wardrobe 숨기기
+            // VTON 패널과 Wardrobe는 숨기지 않음 (카메라가 화면을 덮으므로 불필요)
+            // 이렇게 하면 VTON 전체화면 전환시 충돌 방지
+            /*
             if (vtonPanel) {
                 vtonPanel.style.display = 'none';
                 console.log('[Full] Hidden vton-panel');
             }
+            */
 
             if (wardrobe) {
                 wardrobe.style.display = 'none';
@@ -653,11 +670,13 @@ export class MJPEGViewer {
                 fullBtn.setAttribute('title', '전체화면');
             }
 
-            // VTON 패널과 Wardrobe 표시
+            // VTON 패널은 원래 숨기지 않았으므로 복원 불필요
+            /*
             if (vtonPanel) {
                 vtonPanel.style.display = '';
                 console.log('[Full] Shown vton-panel');
             }
+            */
 
             if (wardrobe) {
                 wardrobe.style.display = '';
@@ -934,6 +953,7 @@ export class MJPEGViewer {
             hasFrames,
             this.flipMode,
             this.cropMode,
+            this.roiMode,
             this.fullMode,
             this.isLoadingFrames // 프레임 로딩 상태 추가
         );
@@ -1130,12 +1150,12 @@ export class MJPEGViewer {
     _toggleROIOverlay() {
         if (this.roiOverlay) {
             this.roiOverlay.toggle();
-            const isEnabled = this.roiOverlay.isEnabled;
-            this.uiController.setMessage(
-                `ROI 오버레이 ${isEnabled ? '활성화됨' : '비활성화됨'}`,
-                MessageType.INFO
-            );
-            console.log(`[MJPEGViewer] ROI overlay ${isEnabled ? 'enabled' : 'disabled'}`);
+            this.roiMode = this.roiOverlay.isEnabled;
+
+            console.log(`[MJPEGViewer] ROI overlay ${this.roiMode ? 'enabled' : 'disabled'}`);
+
+            // UI 업데이트 (Crop, Flip과 동일한 방식)
+            this._updateUI();
         }
     }
 

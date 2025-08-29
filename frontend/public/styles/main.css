@@ -522,9 +522,14 @@ body {
 
 /* ROI 버튼 */
 #roiBtn:hover:not(:disabled) .control-icon,
-#roiBtn:active:not(:disabled) .control-icon,
-#roiBtn.active .control-icon {
+#roiBtn:active:not(:disabled) .control-icon {
     color: #fbbf24; /* 주황색 - ROI 영역 표시를 나타냄 */
+}
+
+/* ROI 버튼 활성화 상태 */
+#roiBtn.active .control-icon {
+    color: #f59e0b !important; /* 더 진한 주황색 */
+    filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.6)); /* 빛나는 효과 */
 }
 
 /* ROI 감지 활성화 효과 */
@@ -959,6 +964,8 @@ input[type='number']:disabled {
 
 /* Crop 모드에서 생성된 VTON 결과 - 패널에 맞게 확대 */
 #vtonResult[data-crop-generated='true'] {
+    width: 100% !important;
+    height: 100% !important;
     object-fit: cover !important; /* crop으로 생성된 경우 패널을 꽉 채움 */
 }
 
@@ -1025,11 +1032,11 @@ input[type='number']:disabled {
     flex-direction: column !important;
 }
 
-/* 그리드를 1열로 변경 */
+/* 그리드를 flex로 변경 (카메라와 동일) */
 #mainContainer.vton-fullscreen .main-grid-section {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
+    display: flex !important;
     flex: 1 !important;
+    width: 100% !important;
 }
 
 /* 카메라 영역 숨기기 */
@@ -1048,16 +1055,15 @@ input[type='number']:disabled {
     display: flex !important; /* Override any inline display:none */
     visibility: visible !important; /* Ensure visibility */
     opacity: 1 !important; /* Ensure opacity */
-    flex: 1 !important;
+    flex: none !important; /* flex 제거 */
     width: 100% !important;
-    height: 100% !important;
+    height: calc(100vh - 140px) !important; /* 카메라와 동일한 높이 */
     max-height: none !important;
     aspect-ratio: unset !important; /* Remove aspect ratio in fullscreen */
     border-radius: 0 !important;
     align-items: center !important;
     justify-content: center !important;
     position: relative !important;
-    grid-column: 1 / -1 !important; /* Span full grid width */
 }
 
 /* 카메라 fullMode의 인라인 스타일 오버라이드 */
@@ -1075,15 +1081,22 @@ input[type='number']:disabled {
     object-fit: contain !important;
 }
 
-/* 워드로브 섹션은 유지 */
-/* #mainContainer.vton-fullscreen .wardrobe-section {
-    display: none !important;
-} */
+/* Crop 모드에서 생성된 VTON 결과 - 전체화면에서도 패널에 맞게 확대 */
+#mainContainer.vton-fullscreen #vtonResult[data-crop-generated='true'] {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important; /* crop으로 생성된 경우 패널을 꽉 채움 */
+}
 
-/* VTON Result 라벨 숨기기 */
-#mainContainer.vton-fullscreen .absolute.left-3.top-3 {
+/* 워드로브 섹션 숨기기 (카메라와 동일) */
+#mainContainer.vton-fullscreen .wardrobe-section {
     display: none !important;
 }
+
+/* VTON Result 라벨 유지 (카메라와 동일) */
+/* #mainContainer.vton-fullscreen .absolute.left-3.top-3 {
+    display: none !important;
+} */
 
 /* 전체화면 버튼 활성 상태 */
 #vtonFullBtn.active,

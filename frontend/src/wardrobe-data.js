@@ -1,9 +1,13 @@
 // frontend/src/wardrobe-data.js
 export const WARDROBE_ITEMS = [
     { id: 'denim-jacket', img: './resources/wardrobe/denim_jacket.webp', label: 'Denim Jacket' },
-    { id: 'golf-polo', img: './resources/wardrobe/golf_polo.png', label: 'Golf Polo' },
     { id: 'formula-shirt', img: './resources/wardrobe/formula_shirt.jpg', label: 'Formula Shirt' },
-    { id: 'hawaiian-shirt', img: './resources/wardrobe/hawaiian_shirt.webp', label: 'Hawaiian Shirt' },
+    {
+        id: 'hawaiian-shirt',
+        img: './resources/wardrobe/hawaiian_shirt.webp',
+        label: 'Hawaiian Shirt',
+    },
+    { id: 'golf-polo', img: './resources/wardrobe/golf_polo.png', label: 'Golf Polo Shirt' },
     {
         id: 'red-polo-shirt',
         img: './resources/wardrobe/red_polo_shirt.png',

@@ -60,6 +60,7 @@ export class UIController {
         hasFrames = false,
         flipMode = false,
         cropMode = false,
+        roiMode = false,
         fullMode = false,
         isLoadingFrames = false
     ) {
@@ -76,6 +77,7 @@ export class UIController {
         this._applyRepeatMode(repeatMode);
         this._applyFlipMode(flipMode);
         this._applyCropMode(cropMode);
+        this._applyRoiMode(roiMode);
         this._applyFullMode(fullMode);
         this._applyProgressBarState(state, hasFrames);
     }
@@ -87,7 +89,7 @@ export class UIController {
         console.log('[UIController] Frame loading in progress - all buttons disabled');
     }
 
-    // 모든 버튼 비활성화
+    // 모든 버튼 비활성화 (전체화면 버튼 제외)
     _disableAllButtons() {
         this._toggleAllButtons(true);
         this._toggleSpeedElements(true);
@@ -204,6 +206,12 @@ export class UIController {
         }
     }
 
+    // ROI 모드 활성화 시 roiBtn에 활성 클래스 적용
+    _applyRoiMode(roiMode) {
+        if (roiMode) {
+            this._addActiveClass('roiBtn');
+        }
+    }
 
     // Full 모드 활성화 시 fullBtn에 활성 클래스 적용
     _applyFullMode(fullMode) {
@@ -332,11 +340,19 @@ export class UIController {
         console.log('UIController destroyed');
     }
 
-    // 모든 버튼 토글 (활성화/비활성화)
+    // 모든 버튼 토글 (활성화/비활성화) - 전체화면 버튼 제외
     _toggleAllButtons(disable) {
+        // 전체화면 버튼 ID 목록
+        const fullscreenButtonIds = ['fullBtn', 'vtonFullBtn', 'electronFullscreenBtn'];
+
         Object.values(this.elements)
             .filter((el) => el?.tagName === UIController.#CONSTANTS.TAGS.BUTTON)
             .forEach((el) => {
+                // 전체화면 버튼은 건드리지 않음
+                if (fullscreenButtonIds.includes(el.id)) {
+                    return;
+                }
+
                 el.disabled = disable;
                 if (disable) {
                     el.classList.remove(Config.CLASSES.ACTIVE);
@@ -363,9 +379,15 @@ export class UIController {
 
     // 지정된 버튼들 활성화
     _enableButtons(buttonKeys) {
+        // 전체화면 버튼 ID 목록
+        const fullscreenButtonIds = ['fullBtn', 'vtonFullBtn', 'electronFullscreenBtn'];
+
         buttonKeys.forEach((key) => {
             if (this.elements[key]) {
-                this.elements[key].disabled = false;
+                // 전체화면 버튼은 항상 활성화 상태 유지
+                if (!fullscreenButtonIds.includes(key)) {
+                    this.elements[key].disabled = false;
+                }
             }
         });
     }
@@ -407,4 +429,3 @@ export class UIController {
         }
     }
 }
-
