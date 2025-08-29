@@ -508,9 +508,23 @@ export class MJPEGViewer {
         const vtonPanel = document.getElementById('vton-panel');
         const wardrobe = document.querySelector('.wardrobe-section');
         const controlPanel = document.querySelector('.control-panel');
+        const fullBtn = document.getElementById('fullBtn');
 
         if (this.fullMode) {
             console.log('[Full] Entering Full mode');
+
+            // 버튼 아이콘 변경 (종료 아이콘)
+            if (fullBtn) {
+                fullBtn.classList.add('active');
+                const svg = fullBtn.querySelector('svg path');
+                if (svg) {
+                    svg.setAttribute(
+                        'd',
+                        'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z'
+                    );
+                }
+                fullBtn.setAttribute('title', '전체화면 종료');
+            }
 
             // VTON 패널과 Wardrobe 숨기기
             if (vtonPanel) {
@@ -625,6 +639,19 @@ export class MJPEGViewer {
             }
         } else {
             console.log('[Full] Exiting Full mode');
+
+            // 버튼 아이콘 복원
+            if (fullBtn) {
+                fullBtn.classList.remove('active');
+                const svg = fullBtn.querySelector('svg path');
+                if (svg) {
+                    svg.setAttribute(
+                        'd',
+                        'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z'
+                    );
+                }
+                fullBtn.setAttribute('title', '전체화면');
+            }
 
             // VTON 패널과 Wardrobe 표시
             if (vtonPanel) {

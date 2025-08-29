@@ -442,221 +442,91 @@
                         console.log('[VTON Full] ONCLICK FIRED!');
                     };
 
-                    // 클릭 이벤트 핸들러 (addEventListener 사용)
+                    // 클릭 이벤트 핸들러 - 카메라와 동일한 방식으로 구현
                     vtonFullBtn.addEventListener('click', function (e) {
-                        console.log('[VTON Full] ===== BUTTON CLICK EVENT FIRED =====');
-                        console.log('[VTON Full] Event type:', e.type);
-                        console.log('[VTON Full] Target:', e.target);
-                        console.log('[VTON Full] Current vtonFullMode:', vtonFullMode);
-
-                        // Check camera fullMode state
-                        if (window.mjpegViewer) {
-                            console.log(
-                                '[VTON Full] Camera fullMode state:',
-                                window.mjpegViewer.fullMode
-                            );
-                        }
-
+                        console.log('[VTON Full] Button clicked');
                         e.preventDefault();
-                        e.stopPropagation();
 
-                        console.log('[VTON Full] Button clicked!');
+                        // 카메라 전체화면이 켜져있으면 먼저 종료
+                        if (window.mjpegViewer && window.mjpegViewer.fullMode) {
+                            console.log('[VTON Full] Exiting camera fullMode first');
+                            window.mjpegViewer._handleFull();
+                        }
 
                         // 전체화면 토글
                         vtonFullMode = !vtonFullMode;
-                        console.log('[VTON Full] New vtonFullMode:', vtonFullMode);
+                        console.log('[VTON Full] Mode toggled:', vtonFullMode);
 
-                        var mainContainer = document.getElementById('mainContainer');
-                        console.log('[VTON Full] mainContainer found:', mainContainer);
-                        console.log(
-                            '[VTON Full] mainContainer classes before:',
-                            mainContainer ? mainContainer.className : 'null'
-                        );
-
-                        if (!mainContainer) {
-                            console.error('[VTON Full] mainContainer not found!');
-                            return;
-                        }
+                        // DOM 요소들
+                        var mainGridSection = document.querySelector('.main-grid-section');
+                        var vtonPanel = document.getElementById('vton-panel');
+                        var cameraColumn = document.querySelector('.col-span-7');
+                        var cameraContainer = document.querySelector('.camera-container');
+                        var wardrobe = document.querySelector('.wardrobe-section');
+                        var controlPanel = document.querySelector('.control-panel');
+                        var progressBar = document.querySelector('.progress-bar');
 
                         if (vtonFullMode) {
-                            // 전체화면 진입
                             console.log('[VTON Full] Entering fullscreen mode');
 
-                            // AGGRESSIVE CLEANUP - Clear ALL inline styles from ALL elements
-                            console.log('[VTON Full] Starting aggressive inline style cleanup...');
+                            // 카메라 영역과 워드로브 숨기기
+                            if (cameraColumn) {
+                                cameraColumn.style.display = 'none';
+                                console.log('[VTON Full] Hidden camera column');
+                            }
 
-                            // Log current state before cleanup
-                            var mainGridSection = document.querySelector('.main-grid-section');
-                            var vtonPanel = document.getElementById('vton-panel');
-                            var cameraContainer = document.querySelector('.camera-container');
-                            var colSpan7 = document.querySelector('.col-span-7');
-                            var canvas = document.querySelector('.camera-container canvas');
+                            if (wardrobe) {
+                                wardrobe.style.display = 'none';
+                                console.log('[VTON Full] Hidden wardrobe');
+                            }
 
-                            console.log('[VTON Full] BEFORE cleanup - inline styles:');
+                            // 프로그레스 바 숨기기
+                            if (progressBar) {
+                                progressBar.style.display = 'none';
+                                console.log('[VTON Full] Hidden progress bar');
+                            }
+
+                            // main-grid-section을 flex로 변경
                             if (mainGridSection) {
-                                console.log(
-                                    '  mainGridSection.style:',
-                                    mainGridSection.getAttribute('style')
-                                );
+                                mainGridSection.style.display = 'flex';
+                                mainGridSection.style.gridTemplateColumns = 'none';
+                                console.log('[VTON Full] Changed to flex layout');
                             }
+
+                            // VTON 패널을 전체 화면으로 확장
                             if (vtonPanel) {
-                                console.log('  vtonPanel.style:', vtonPanel.getAttribute('style'));
-                            }
-                            if (cameraContainer) {
-                                console.log(
-                                    '  cameraContainer.style:',
-                                    cameraContainer.getAttribute('style')
-                                );
-                            }
-                            if (colSpan7) {
-                                console.log('  colSpan7.style:', colSpan7.getAttribute('style'));
-                            }
-
-                            // NUCLEAR OPTION: Remove ALL inline styles completely
-                            if (mainGridSection) {
-                                mainGridSection.removeAttribute('style');
-                                console.log(
-                                    '[VTON Full] Removed ALL inline styles from main-grid-section'
-                                );
+                                vtonPanel.style.display = 'flex';
+                                vtonPanel.style.width = '100%';
+                                vtonPanel.style.height = 'calc(100vh - 100px)';
+                                vtonPanel.style.flex = 'none';
+                                vtonPanel.style.alignItems = 'center';
+                                vtonPanel.style.justifyContent = 'center';
+                                vtonPanel.style.maxHeight = 'none';
+                                vtonPanel.style.aspectRatio = 'unset';
+                                console.log('[VTON Full] Expanded VTON panel');
                             }
 
-                            if (vtonPanel) {
-                                vtonPanel.removeAttribute('style');
-                                console.log(
-                                    '[VTON Full] Removed ALL inline styles from vton-panel'
-                                );
+                            // VTON 이미지 비율 유지하며 최대 크기로
+                            var vtonResult = document.getElementById('vtonResult');
+                            if (vtonResult) {
+                                vtonResult.style.width = '100%';
+                                vtonResult.style.height = '100%';
+                                vtonResult.style.objectFit = 'contain';
+                                console.log('[VTON Full] Set VTON image to contain');
                             }
 
-                            if (cameraContainer) {
-                                cameraContainer.removeAttribute('style');
-                                console.log(
-                                    '[VTON Full] Removed ALL inline styles from camera-container'
-                                );
-                            }
-
-                            if (colSpan7) {
-                                colSpan7.removeAttribute('style');
-                                console.log(
-                                    '[VTON Full] Removed ALL inline styles from col-span-7'
-                                );
-                            }
-
-                            if (canvas) {
-                                canvas.removeAttribute('style');
-                                console.log('[VTON Full] Removed ALL inline styles from canvas');
-                            }
-
-                            // Also clear any wardrobe and control panel inline styles
-                            var wardrobePanel = document.getElementById('wardrobe-panel');
-                            if (wardrobePanel) {
-                                wardrobePanel.removeAttribute('style');
-                                console.log(
-                                    '[VTON Full] Removed ALL inline styles from wardrobe-panel'
-                                );
-                            }
-
-                            var controlPanel = document.querySelector('.control-panel');
+                            // 컨트롤 패널 스타일 (카메라와 동일)
                             if (controlPanel) {
-                                controlPanel.removeAttribute('style');
-                                console.log(
-                                    '[VTON Full] Removed ALL inline styles from control-panel'
-                                );
+                                controlPanel.style.minHeight = '120px';
+                                controlPanel.style.paddingBottom = '30px';
+                                controlPanel.style.marginBottom = '30px';
+                                controlPanel.style.backgroundColor = '#374151';
+                                controlPanel.style.borderRadius = '12px';
+                                controlPanel.style.padding = '16px';
                             }
 
-                            // Log state after cleanup
-                            console.log('[VTON Full] AFTER cleanup - inline styles:');
-                            if (mainGridSection) {
-                                console.log(
-                                    '  mainGridSection.style:',
-                                    mainGridSection.getAttribute('style') || 'NONE'
-                                );
-                            }
-                            if (vtonPanel) {
-                                console.log(
-                                    '  vtonPanel.style:',
-                                    vtonPanel.getAttribute('style') || 'NONE'
-                                );
-                            }
-
-                            // Remove camera fullscreen classes that might interfere
-                            console.log('[VTON Full] Removing camera fullscreen classes...');
-                            mainContainer.classList.remove('fullscreen-mode');
-                            mainContainer.classList.remove('fullscreen-entering');
-                            mainContainer.classList.remove('fullscreen-exiting');
-
-                            // Also reset camera fullMode flag if mjpegViewer exists
-                            if (window.mjpegViewer && window.mjpegViewer.fullMode) {
-                                console.log('[VTON Full] Resetting camera fullMode flag');
-                                window.mjpegViewer.fullMode = false;
-                                // Update UI to reflect the change
-                                if (window.mjpegViewer.uiController) {
-                                    window.mjpegViewer._updateUI();
-                                }
-                            }
-
-                            // Apply VTON fullscreen with forced inline styles
-                            setTimeout(function () {
-                                console.log(
-                                    '[VTON Full] Applying vton-fullscreen with forced styles...'
-                                );
-
-                                // Add the class
-                                mainContainer.classList.add('vton-fullscreen');
-                                console.log('[VTON Full] Added vton-fullscreen class');
-
-                                // FORCE inline styles to ensure visibility
-                                // These will override any residual camera fullscreen styles
-                                if (vtonPanel) {
-                                    vtonPanel.style.cssText =
-                                        'display: flex !important; flex: 1 !important; width: 100% !important; height: 100% !important;';
-                                    console.log(
-                                        '[VTON Full] Forced VTON panel visibility with inline styles'
-                                    );
-                                }
-
-                                if (mainGridSection) {
-                                    mainGridSection.style.cssText =
-                                        'display: grid !important; grid-template-columns: 1fr !important;';
-                                    console.log(
-                                        '[VTON Full] Forced grid layout with inline styles'
-                                    );
-                                }
-
-                                // Hide camera container
-                                if (cameraContainer) {
-                                    cameraContainer.style.cssText = 'display: none !important;';
-                                    console.log('[VTON Full] Forced camera container to hide');
-                                }
-
-                                if (colSpan7) {
-                                    colSpan7.style.cssText = 'display: none !important;';
-                                    console.log('[VTON Full] Forced camera column to hide');
-                                }
-
-                                // Check result
-                                setTimeout(function () {
-                                    console.log('[VTON Full] Final verification:');
-                                    console.log(
-                                        '  mainContainer classes:',
-                                        mainContainer.className
-                                    );
-                                    console.log(
-                                        '  vton-fullscreen class present:',
-                                        mainContainer.classList.contains('vton-fullscreen')
-                                    );
-
-                                    if (vtonPanel) {
-                                        var vtonPanelComputed = window.getComputedStyle(vtonPanel);
-                                        console.log('[VTON Full] VTON panel computed styles:');
-                                        console.log('  display:', vtonPanelComputed.display);
-                                        console.log('  width:', vtonPanelComputed.width);
-                                        console.log('  height:', vtonPanelComputed.height);
-                                        console.log('  visibility:', vtonPanelComputed.visibility);
-                                    }
-                                }, 100);
-                            }, 50);
+                            // 버튼 상태 업데이트
                             vtonFullBtn.classList.add('active');
-                            console.log('[VTON Full] Added active class to button');
 
                             // 아이콘 변경 (종료 아이콘)
                             var svg = vtonFullBtn.querySelector('svg path');
@@ -666,33 +536,68 @@
                                     'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z'
                                 );
                             }
-
-                            // aria-label 업데이트
-                            vtonFullBtn.setAttribute('aria-label', 'VTON 전체화면 종료');
                             vtonFullBtn.setAttribute('title', '전체화면 종료');
                         } else {
-                            // 전체화면 종료
                             console.log('[VTON Full] Exiting fullscreen mode');
-                            mainContainer.classList.remove('vton-fullscreen');
+
+                            // 카메라 영역과 워드로브 복원
+                            if (cameraColumn) {
+                                cameraColumn.style.display = '';
+                                console.log('[VTON Full] Restored camera column');
+                            }
+
+                            if (wardrobe) {
+                                wardrobe.style.display = '';
+                                console.log('[VTON Full] Restored wardrobe');
+                            }
+
+                            // 프로그레스 바 복원
+                            if (progressBar) {
+                                progressBar.style.display = '';
+                                console.log('[VTON Full] Restored progress bar');
+                            }
+
+                            // main-grid-section을 원래 grid로 복원
+                            if (mainGridSection) {
+                                mainGridSection.style.display = '';
+                                mainGridSection.style.gridTemplateColumns = '';
+                                console.log('[VTON Full] Restored grid layout');
+                            }
+
+                            // VTON 패널 스타일 복원
+                            if (vtonPanel) {
+                                vtonPanel.style.display = '';
+                                vtonPanel.style.width = '';
+                                vtonPanel.style.height = '';
+                                vtonPanel.style.flex = '';
+                                vtonPanel.style.alignItems = '';
+                                vtonPanel.style.justifyContent = '';
+                                vtonPanel.style.maxHeight = '';
+                                vtonPanel.style.aspectRatio = '';
+                                console.log('[VTON Full] Restored VTON panel');
+                            }
+
+                            // VTON 이미지 스타일 복원
+                            var vtonResult = document.getElementById('vtonResult');
+                            if (vtonResult) {
+                                vtonResult.style.width = '';
+                                vtonResult.style.height = '';
+                                vtonResult.style.objectFit = '';
+                                console.log('[VTON Full] Restored VTON image');
+                            }
+
+                            // 컨트롤 패널 스타일 복원
+                            if (controlPanel) {
+                                controlPanel.style.minHeight = '';
+                                controlPanel.style.paddingBottom = '';
+                                controlPanel.style.marginBottom = '';
+                                controlPanel.style.backgroundColor = '';
+                                controlPanel.style.borderRadius = '';
+                                controlPanel.style.padding = '';
+                            }
+
+                            // 버튼 상태 복원
                             vtonFullBtn.classList.remove('active');
-
-                            // Clear all inline styles we added
-                            var elementsToClean = [
-                                document.getElementById('vton-panel'),
-                                document.querySelector('.main-grid-section'),
-                                document.querySelector('.camera-container'),
-                                document.querySelector('.col-span-7'),
-                            ];
-
-                            elementsToClean.forEach(function (elem) {
-                                if (elem) {
-                                    elem.removeAttribute('style');
-                                    console.log(
-                                        '[VTON Full] Cleared inline styles from',
-                                        elem.className || elem.id
-                                    );
-                                }
-                            });
 
                             // 아이콘 복원
                             var svg = vtonFullBtn.querySelector('svg path');
@@ -702,9 +607,6 @@
                                     'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z'
                                 );
                             }
-
-                            // aria-label 복원
-                            vtonFullBtn.setAttribute('aria-label', 'VTON 전체화면');
                             vtonFullBtn.setAttribute('title', '전체화면');
                         }
                     });
