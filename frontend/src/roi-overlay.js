@@ -611,6 +611,9 @@ export class ROIOverlay {
 
     // Dwell progress 업데이트
     updateDwellProgress(progressData) {
+        const previousStartActive = this.dwellProgress.startActive;
+        const previousStopActive = this.dwellProgress.stopActive;
+
         this.dwellProgress = {
             start: progressData.start || 0,
             stop: progressData.stop || 0,
@@ -619,8 +622,17 @@ export class ROIOverlay {
         };
 
         // Progress가 변경되면 다시 렌더링
-        if (this.isEnabled && (this.dwellProgress.startActive || this.dwellProgress.stopActive)) {
-            this.render();
+        // 손이 ROI를 벗어났을 때도 렌더링하여 UI를 깨끗하게 지움
+        if (this.isEnabled) {
+            // 손이 ROI에 있거나, 방금 벗어났을 때 렌더링
+            if (
+                this.dwellProgress.startActive ||
+                this.dwellProgress.stopActive ||
+                (previousStartActive && !this.dwellProgress.startActive) ||
+                (previousStopActive && !this.dwellProgress.stopActive)
+            ) {
+                this.render();
+            }
         }
     }
 

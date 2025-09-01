@@ -35,6 +35,7 @@ class WinDevice extends EventEmitter {
         this.frameHandler = null; // FrameHandler 참조 (녹화 제어용)
         this.handRouter = null; // HandRouter 참조 (hand detection 이벤트 전달용)
         this.camInfo = null;
+        this.debugMode = process.env.HAND_DEBUG === 'true'; // Debug mode for verbose logging
 
         // 녹화 관련 속성
         this.isRecording = false;
@@ -88,10 +89,12 @@ class WinDevice extends EventEmitter {
                     !this.mainWindow.webContents.isDestroyed()
                 ) {
                     this.mainWindow.webContents.send('handDetection', data);
-                    console.log('[WinCapture] Forwarded handDetection event to renderer:', {
-                        rightHandInStartROI: data.rightHandInStartROI,
-                        leftHandInStopROI: data.leftHandInStopROI,
-                    });
+                    if (this.debugMode) {
+                        console.log('[WinCapture] Forwarded handDetection event to renderer:', {
+                            rightHandInStartROI: data.rightHandInStartROI,
+                            leftHandInStopROI: data.leftHandInStopROI,
+                        });
+                    }
                 }
             });
         }
