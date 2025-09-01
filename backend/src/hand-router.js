@@ -39,6 +39,9 @@ class HandRouter extends EventEmitter {
         this.DWELL_TIME_MS = 1000; // 1초 dwell time
         this.dwellUpdateInterval = null;
 
+        // Debug mode - Enable verbose logging with HAND_DEBUG=true
+        this.debugMode = process.env.HAND_DEBUG === 'true';
+
         // Statistics
         this.stats = {
             framesProcessed: 0,
@@ -163,8 +166,8 @@ class HandRouter extends EventEmitter {
         const { hands, timestamp } = data;
         const config = this.roiConfig.get();
 
-        // Only log when hands are detected or ROI hit
-        if (hands.length > 0) {
+        // Only log hand count in debug mode
+        if (this.debugMode && hands.length > 0) {
             console.log(`[HandRouter] ${hands.length} hand(s) detected`);
         }
 
@@ -194,15 +197,19 @@ class HandRouter extends EventEmitter {
             // flip_mode true (flipped): show physical hand names (same as normal)
             const effectiveHandedness = handedness === 'Right' ? 'Left' : 'Right'; // Always flip MediaPipe to show physical hands
 
-            // Show hand position for debugging (use effective handedness and coordinates)
-            console.log(
-                `[HandRouter] ${effectiveHandedness} hand at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)}) confidence: ${confidence.toFixed(3)} [original: (${center.x.toFixed(3)}, ${center.y.toFixed(3)})]`
-            );
+            // Show hand position only in debug mode
+            if (this.debugMode) {
+                console.log(
+                    `[HandRouter] ${effectiveHandedness} hand at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)}) confidence: ${confidence.toFixed(3)} [original: (${center.x.toFixed(3)}, ${center.y.toFixed(3)})]`
+                );
+            }
 
             if (confidence < config.min_confidence) {
-                console.log(
-                    `[HandRouter] Skipping ${effectiveHandedness} hand - low confidence (${confidence.toFixed(3)} < ${config.min_confidence})`
-                );
+                if (this.debugMode) {
+                    console.log(
+                        `[HandRouter] Skipping ${effectiveHandedness} hand - low confidence (${confidence.toFixed(3)} < ${config.min_confidence})`
+                    );
+                }
                 continue;
             }
 
@@ -211,15 +218,17 @@ class HandRouter extends EventEmitter {
             if (effectiveHandedness === 'Right') {
                 if (this.roiConfig.isPointInROI(effectiveCenter.x, effectiveCenter.y, 'start')) {
                     rightHandInStartROI = true;
+                    // Always log ROI hits
                     console.log(
-                        `[HandRouter] Right hand in start ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
+                        `[HandRouter] Right hand in START ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
                     );
                 }
             } else if (effectiveHandedness === 'Left') {
                 if (this.roiConfig.isPointInROI(effectiveCenter.x, effectiveCenter.y, 'stop')) {
                     leftHandInStopROI = true;
+                    // Always log ROI hits
                     console.log(
-                        `[HandRouter] Left hand in stop ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
+                        `[HandRouter] Left hand in STOP ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
                     );
                 }
             }
@@ -228,8 +237,8 @@ class HandRouter extends EventEmitter {
         // Handle trigger logic with debouncing and cooldown
         this.handleTriggerLogic(rightHandInStartROI, leftHandInStopROI, config);
 
-        // Show ROI status when hands detected
-        if (rightHandInStartROI || leftHandInStopROI) {
+        // Show ROI status only in debug mode (already logged above when ROI hit)
+        if (this.debugMode && (rightHandInStartROI || leftHandInStopROI)) {
             console.log(
                 `[HandRouter] ROI HIT! Right in start: ${rightHandInStartROI}, Left in stop: ${leftHandInStopROI}`
             );
@@ -255,6 +264,7 @@ class HandRouter extends EventEmitter {
                 this.dwellState.start.enteredTime = now;
                 this.dwellState.start.progress = 0;
 
+                // Always log ROI entry/dwell events
                 console.log('[HandRouter] Right hand entered START ROI - starting dwell timer');
 
                 // Start progress update for visual feedback
@@ -283,7 +293,9 @@ class HandRouter extends EventEmitter {
         } else {
             // Hand left START ROI
             if (this.dwellState.start.isInROI) {
-                console.log('[HandRouter] Right hand left START ROI - resetting dwell');
+                if (this.debugMode) {
+                    console.log('[HandRouter] Right hand left START ROI - resetting dwell');
+                }
                 this.dwellState.start.isInROI = false;
                 this.dwellState.start.progress = 0;
 
@@ -304,6 +316,7 @@ class HandRouter extends EventEmitter {
                 this.dwellState.stop.enteredTime = now;
                 this.dwellState.stop.progress = 0;
 
+                // Always log ROI entry/dwell events
                 console.log('[HandRouter] Left hand entered STOP ROI - starting dwell timer');
 
                 // Start progress update for visual feedback
@@ -332,7 +345,9 @@ class HandRouter extends EventEmitter {
         } else {
             // Hand left STOP ROI
             if (this.dwellState.stop.isInROI) {
-                console.log('[HandRouter] Left hand left STOP ROI - resetting dwell');
+                if (this.debugMode) {
+                    console.log('[HandRouter] Left hand left STOP ROI - resetting dwell');
+                }
                 this.dwellState.stop.isInROI = false;
                 this.dwellState.stop.progress = 0;
 

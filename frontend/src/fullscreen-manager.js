@@ -59,10 +59,6 @@ export class FullscreenManager {
             if (!this.vtonFullBtn.hasAttribute('data-fs-initialized')) {
                 this.vtonFullBtn.setAttribute('data-fs-initialized', 'true');
 
-                // 버튼 활성화
-                this.vtonFullBtn.disabled = false;
-                this.vtonFullBtn.removeAttribute('disabled');
-
                 // 클릭 이벤트 등록
                 this.vtonFullBtn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -71,10 +67,6 @@ export class FullscreenManager {
                 });
                 console.log('[FullscreenManager] VTON fullscreen button event listener attached');
             }
-        } else {
-            console.log('[FullscreenManager] VTON button not found, retrying...');
-            // 버튼이 나중에 생성될 수 있으므로 재시도
-            setTimeout(() => this._retryVtonButton(), 500);
         }
 
         // 키보드 이벤트 등록 (즉시 등록)
@@ -82,28 +74,6 @@ export class FullscreenManager {
 
         // 마우스 이벤트 등록 (즉시 등록)
         this._bindMouseEvents();
-    }
-
-    // VTON 버튼 재시도
-    _retryVtonButton() {
-        if (!this.vtonFullBtn) {
-            this.vtonFullBtn = document.getElementById('vtonFullBtn');
-            if (this.vtonFullBtn && !this.vtonFullBtn.hasAttribute('data-fs-initialized')) {
-                this.vtonFullBtn.setAttribute('data-fs-initialized', 'true');
-
-                // 버튼 활성화
-                this.vtonFullBtn.disabled = false;
-                this.vtonFullBtn.removeAttribute('disabled');
-
-                // 클릭 이벤트 등록
-                this.vtonFullBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log('[FullscreenManager] VTON button clicked (retry)');
-                    this.toggleVtonFullscreen();
-                });
-                console.log('[FullscreenManager] VTON button event listener attached (retry)');
-            }
-        }
     }
 
     // 키보드 이벤트 바인딩
@@ -367,17 +337,6 @@ export class FullscreenManager {
             controlPanel.style.backgroundColor = '';
             controlPanel.style.borderRadius = '';
             controlPanel.style.padding = '';
-        }
-
-        // VTON 전체화면 버튼이 비활성화되지 않도록 확실히 활성화
-        if (this.vtonFullBtn) {
-            this.vtonFullBtn.disabled = false;
-            this.vtonFullBtn.removeAttribute('disabled');
-            this.vtonFullBtn.style.pointerEvents = 'auto';
-            this.vtonFullBtn.style.cursor = 'pointer';
-            console.log(
-                '[FullscreenManager] Ensured VTON button is enabled after camera fullscreen exit'
-            );
         }
 
         // mjpegViewer UI 업데이트 호출

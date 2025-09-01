@@ -382,34 +382,6 @@
             </p>
         </footer>
 
-        <!-- VTON 버튼 활성화 (Fullscreen Manager가 처리) -->
-        <script>
-            (function () {
-                console.log('[VTON Button] Ensuring button is enabled');
-
-                // VTON 버튼이 비활성화되지 않도록 보장
-                function ensureVtonButtonEnabled() {
-                    var vtonFullBtn = document.getElementById('vtonFullBtn');
-                    if (vtonFullBtn && vtonFullBtn.disabled) {
-                        vtonFullBtn.disabled = false;
-                        vtonFullBtn.removeAttribute('disabled');
-                        console.log('[VTON Button] Button enabled');
-                    }
-                }
-
-                // DOM 로드 후 실행
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', ensureVtonButtonEnabled);
-                } else {
-                    ensureVtonButtonEnabled();
-                }
-
-                // 다른 스크립트가 버튼을 비활성화할 수 있으므로 추가 체크
-                setTimeout(ensureVtonButtonEnabled, 500);
-                setTimeout(ensureVtonButtonEnabled, 1000);
-            })();
-        </script>
-
         <!-- 초기화 엔트리 -->
         <script type="module" src="../src/app-init.js"></script>
     </body>
