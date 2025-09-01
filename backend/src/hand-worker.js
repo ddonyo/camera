@@ -10,17 +10,24 @@ class HandWorker extends EventEmitter {
         super();
         this.process = null;
         this.isRunning = false;
+        // Detect ARM architecture for optimization
+        const isARM = process.arch === 'arm' || process.arch === 'arm64';
         this.config = {
-            fps_limit: 15,
-            max_num_hands: 2,
-            min_detection_confidence: 0.5,
-            min_tracking_confidence: 0.5,
+            fps_limit: isARM ? 5 : 15, // Lower FPS on ARM
+            max_num_hands: isARM ? 1 : 2, // Detect fewer hands on ARM
+            min_detection_confidence: isARM ? 0.6 : 0.5, // Higher threshold on ARM
+            min_tracking_confidence: isARM ? 0.6 : 0.5,
+            model_complexity: isARM ? 0 : 1, // Use lite model on ARM
             ...config,
         };
         this.lastProcessTime = 0;
         this.frameInterval = 1000 / this.config.fps_limit;
         this.pendingFrames = 0;
-        this.maxPendingFrames = 3; // Drop frames if too many pending
+        this.maxPendingFrames = isARM ? 1 : 3; // Stricter limit on ARM
+        this.frameSkipCounter = 0;
+        this.adaptiveFpsEnabled = isARM; // Enable adaptive FPS on ARM
+        this.cpuLoadThreshold = 0.8; // Reduce FPS if CPU > 80%
+        this.lastCropInfo = null; // Store crop info for coordinate transformation
     }
 
     async start() {
@@ -114,13 +121,14 @@ class HandWorker extends EventEmitter {
             this.emit('error', error);
         });
 
-        // Send initial configuration
+        // Send initial configuration with model complexity
         this.sendCommand({
             type: 'config',
             config: {
                 max_num_hands: this.config.max_num_hands,
                 min_detection_confidence: this.config.min_detection_confidence,
                 min_tracking_confidence: this.config.min_tracking_confidence,
+                model_complexity: this.config.model_complexity || 1,
             },
         });
     }
@@ -139,7 +147,7 @@ class HandWorker extends EventEmitter {
         }
     }
 
-    async processFrame(imageBuffer, cropMode = false) {
+    async processFrame(imageBuffer, cropMode = false, roiConfig = null) {
         if (!this.isRunning) {
             console.log('[HandWorker] Skipping frame - worker not running');
             return false;
@@ -151,9 +159,11 @@ class HandWorker extends EventEmitter {
             return false;
         }
 
-        // Rate limiting
+        // Rate limiting with adaptive FPS
         const now = Date.now();
-        if (now - this.lastProcessTime < this.frameInterval) {
+        const currentInterval = this.adaptiveFpsEnabled ? this.getAdaptiveInterval() : this.frameInterval;
+        if (now - this.lastProcessTime < currentInterval) {
+            this.frameSkipCounter++;
             return false; // Skip frame due to rate limit
         }
 
@@ -168,9 +178,48 @@ class HandWorker extends EventEmitter {
 
         try {
             let processedBuffer = imageBuffer;
+            let cropInfo = null;
 
-            // Crop image if in crop mode
-            if (cropMode) {
+            // Crop to ROI regions for better performance on ARM
+            const isARM = process.arch === 'arm' || process.arch === 'arm64';
+            if (isARM && roiConfig && roiConfig.enabled) {
+                const image = sharp(imageBuffer);
+                const metadata = await image.metadata();
+
+                // Calculate combined ROI area (union of start and stop ROIs)
+                const startROI = roiConfig.start_roi;
+                const stopROI = roiConfig.stop_roi;
+                
+                // Get the bounding box that contains both ROIs
+                const minX = Math.min(startROI.x1, stopROI.x1);
+                const maxX = Math.max(startROI.x2, stopROI.x2);
+                const minY = Math.min(startROI.y1, stopROI.y1);
+                const maxY = Math.max(startROI.y2, stopROI.y2);
+
+                // Convert normalized coordinates to pixels
+                const cropX = Math.floor(minX * metadata.width);
+                const cropY = Math.floor(minY * metadata.height);
+                const cropWidth = Math.ceil((maxX - minX) * metadata.width);
+                const cropHeight = Math.ceil((maxY - minY) * metadata.height);
+
+                // Store crop info for coordinate transformation
+                cropInfo = {
+                    offsetX: minX,
+                    offsetY: minY,
+                    scaleX: maxX - minX,
+                    scaleY: maxY - minY
+                };
+
+                // Crop to ROI area
+                processedBuffer = await image
+                    .extract({
+                        left: cropX,
+                        top: cropY,
+                        width: cropWidth,
+                        height: cropHeight,
+                    })
+                    .toBuffer();
+            } else if (cropMode) {
                 const image = sharp(imageBuffer);
                 const metadata = await image.metadata();
 
@@ -189,8 +238,11 @@ class HandWorker extends EventEmitter {
                     .toBuffer();
             }
 
-            // Convert image buffer to base64
+            // Convert to base64
             const base64Image = processedBuffer.toString('base64');
+
+            // Store crop info for later use in handleResult
+            this.lastCropInfo = cropInfo;
 
             return this.sendCommand({
                 type: 'process_frame',
@@ -204,7 +256,7 @@ class HandWorker extends EventEmitter {
         }
     }
 
-    processImagePath(imagePath, cropMode = false) {
+    processImagePath(imagePath, cropMode = false, roiConfig = null) {
         if (!this.isRunning) {
             return false;
         }
@@ -218,7 +270,7 @@ class HandWorker extends EventEmitter {
                 return false;
             }
 
-            return this.processFrame(imageBuffer, cropMode);
+            return this.processFrame(imageBuffer, cropMode, roiConfig);
         } catch (error) {
             console.error('[HandWorker] Failed to read image:', error);
             return false;
@@ -235,10 +287,12 @@ class HandWorker extends EventEmitter {
         }
 
         if (result.success && result.hands) {
+            // Include crop info if available for coordinate transformation
             this.emit('detection', {
                 hands: result.hands,
                 timestamp: result.timestamp,
                 frameTime: Date.now(),
+                cropInfo: this.lastCropInfo,
             });
         }
     }
@@ -257,8 +311,17 @@ class HandWorker extends EventEmitter {
                 max_num_hands: this.config.max_num_hands,
                 min_detection_confidence: this.config.min_detection_confidence,
                 min_tracking_confidence: this.config.min_tracking_confidence,
+                model_complexity: this.config.model_complexity || 1,
             },
         });
+    }
+
+    getAdaptiveInterval() {
+        // Adaptive frame interval based on pending frames
+        if (this.pendingFrames >= 2) {
+            return this.frameInterval * 2; // Halve FPS if backlogged
+        }
+        return this.frameInterval;
     }
 
     stop() {
@@ -291,6 +354,9 @@ class HandWorker extends EventEmitter {
             pendingFrames: this.pendingFrames,
             config: this.config,
             lastProcessTime: this.lastProcessTime,
+            frameSkipCounter: this.frameSkipCounter,
+            adaptiveFpsEnabled: this.adaptiveFpsEnabled,
+            currentFps: this.frameInterval > 0 ? Math.round(1000 / this.getAdaptiveInterval()) : 0,
         };
     }
 }

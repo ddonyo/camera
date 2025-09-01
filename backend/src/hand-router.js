@@ -157,7 +157,7 @@ class HandRouter extends EventEmitter {
         this.stats.lastFrameTime = Date.now();
 
         const config = this.roiConfig.get();
-        return this.handWorker.processFrame(imageBuffer, config.crop_mode);
+        return this.handWorker.processFrame(imageBuffer, config.crop_mode, config);
     }
 
     processImagePath(imagePath) {
@@ -169,11 +169,11 @@ class HandRouter extends EventEmitter {
         this.stats.lastFrameTime = Date.now();
 
         const config = this.roiConfig.get();
-        return this.handWorker.processImagePath(imagePath, config.crop_mode);
+        return this.handWorker.processImagePath(imagePath, config.crop_mode, config);
     }
 
     handleHandDetection(data) {
-        const { hands, timestamp } = data;
+        const { hands, timestamp, cropInfo } = data;
         const config = this.roiConfig.get();
 
         // Only log hand count in debug mode
@@ -197,15 +197,22 @@ class HandRouter extends EventEmitter {
         for (const hand of hands) {
             const { handedness, center, confidence, is_v_gesture } = hand;
 
-            // Apply coordinate transformation based on flip_mode only
-            // No crop mode transformation needed - MediaPipe receives appropriate image
+            // Apply coordinate transformation
             let effectiveCenter = center;
+
+            // If image was cropped to ROI, transform coordinates back to full image space
+            if (cropInfo) {
+                effectiveCenter = {
+                    x: cropInfo.offsetX + (center.x * cropInfo.scaleX),
+                    y: cropInfo.offsetY + (center.y * cropInfo.scaleY),
+                };
+            }
 
             // Apply flip transformation
             if (config.flip_mode) {
                 effectiveCenter = {
-                    x: 1 - center.x,
-                    y: center.y,
+                    x: 1 - effectiveCenter.x,
+                    y: effectiveCenter.y,
                 };
             }
 
