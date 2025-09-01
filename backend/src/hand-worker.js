@@ -3,6 +3,7 @@ const { spawn } = require('child_process');
 const { EventEmitter } = require('events');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 
 class HandWorker extends EventEmitter {
     constructor(config = {}) {
@@ -14,7 +15,7 @@ class HandWorker extends EventEmitter {
             max_num_hands: 2,
             min_detection_confidence: 0.5,
             min_tracking_confidence: 0.5,
-            ...config
+            ...config,
         };
         this.lastProcessTime = 0;
         this.frameInterval = 1000 / this.config.fps_limit;
@@ -43,7 +44,7 @@ class HandWorker extends EventEmitter {
         return new Promise((resolve, reject) => {
             const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
             const testProcess = spawn(pythonCmd, ['-c', 'import mediapipe, cv2; print("OK")'], {
-                stdio: ['pipe', 'pipe', 'pipe']
+                stdio: ['pipe', 'pipe', 'pipe'],
             });
 
             let output = '';
@@ -61,7 +62,11 @@ class HandWorker extends EventEmitter {
                 if (code === 0 && output.includes('OK')) {
                     resolve();
                 } else {
-                    reject(new Error(`Python dependencies not found. Install with: pip install mediapipe opencv-python\nError: ${errorOutput}`));
+                    reject(
+                        new Error(
+                            `Python dependencies not found. Install with: pip install mediapipe opencv-python\nError: ${errorOutput}`
+                        )
+                    );
                 }
             });
 
@@ -76,7 +81,7 @@ class HandWorker extends EventEmitter {
         const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
 
         this.process = spawn(pythonCmd, [scriptPath], {
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
         });
 
         this.process.stdout.on('data', (data) => {
@@ -115,8 +120,8 @@ class HandWorker extends EventEmitter {
             config: {
                 max_num_hands: this.config.max_num_hands,
                 min_detection_confidence: this.config.min_detection_confidence,
-                min_tracking_confidence: this.config.min_tracking_confidence
-            }
+                min_tracking_confidence: this.config.min_tracking_confidence,
+            },
         });
     }
 
@@ -134,7 +139,7 @@ class HandWorker extends EventEmitter {
         }
     }
 
-    processFrame(imageBuffer) {
+    async processFrame(imageBuffer, cropMode = false) {
         if (!this.isRunning) {
             console.log('[HandWorker] Skipping frame - worker not running');
             return false;
@@ -161,31 +166,59 @@ class HandWorker extends EventEmitter {
         this.lastProcessTime = now;
         this.pendingFrames++;
 
-        // Convert image buffer to base64
-        const base64Image = imageBuffer.toString('base64');
+        try {
+            let processedBuffer = imageBuffer;
 
-        return this.sendCommand({
-            type: 'process_frame',
-            image_data: base64Image,
-            format: 'base64'
-        });
+            // Crop image if in crop mode
+            if (cropMode) {
+                const image = sharp(imageBuffer);
+                const metadata = await image.metadata();
+
+                // Calculate crop region (middle 1/3)
+                const cropWidth = Math.floor(metadata.width / 3);
+                const cropX = Math.floor(metadata.width / 3);
+
+                // Crop the middle third
+                processedBuffer = await image
+                    .extract({
+                        left: cropX,
+                        top: 0,
+                        width: cropWidth,
+                        height: metadata.height,
+                    })
+                    .toBuffer();
+            }
+
+            // Convert image buffer to base64
+            const base64Image = processedBuffer.toString('base64');
+
+            return this.sendCommand({
+                type: 'process_frame',
+                image_data: base64Image,
+                format: 'base64',
+            });
+        } catch (error) {
+            console.error('[HandWorker] Failed to process image:', error);
+            this.pendingFrames--;
+            return false;
+        }
     }
 
-    processImagePath(imagePath) {
+    processImagePath(imagePath, cropMode = false) {
         if (!this.isRunning) {
             return false;
         }
 
         try {
             const imageBuffer = fs.readFileSync(imagePath);
-            
+
             // Additional validation for file-based images
             if (!imageBuffer || imageBuffer.length === 0) {
                 console.log('[HandWorker] Skipping frame - empty image file:', imagePath);
                 return false;
             }
-            
-            return this.processFrame(imageBuffer);
+
+            return this.processFrame(imageBuffer, cropMode);
         } catch (error) {
             console.error('[HandWorker] Failed to read image:', error);
             return false;
@@ -205,7 +238,7 @@ class HandWorker extends EventEmitter {
             this.emit('detection', {
                 hands: result.hands,
                 timestamp: result.timestamp,
-                frameTime: Date.now()
+                frameTime: Date.now(),
             });
         }
     }
@@ -217,14 +250,14 @@ class HandWorker extends EventEmitter {
     updateConfig(newConfig) {
         this.config = { ...this.config, ...newConfig };
         this.frameInterval = 1000 / this.config.fps_limit;
-        
+
         return this.sendCommand({
             type: 'config',
             config: {
                 max_num_hands: this.config.max_num_hands,
                 min_detection_confidence: this.config.min_detection_confidence,
-                min_tracking_confidence: this.config.min_tracking_confidence
-            }
+                min_tracking_confidence: this.config.min_tracking_confidence,
+            },
         });
     }
 
@@ -237,7 +270,7 @@ class HandWorker extends EventEmitter {
 
         if (this.process) {
             this.process.kill('SIGTERM');
-            
+
             // Force kill if not stopped within timeout
             setTimeout(() => {
                 if (this.process && !this.process.killed) {
@@ -245,7 +278,7 @@ class HandWorker extends EventEmitter {
                     this.process.kill('SIGKILL');
                 }
             }, 5000);
-            
+
             this.process = null;
         }
 
@@ -257,7 +290,7 @@ class HandWorker extends EventEmitter {
             isRunning: this.isRunning,
             pendingFrames: this.pendingFrames,
             config: this.config,
-            lastProcessTime: this.lastProcessTime
+            lastProcessTime: this.lastProcessTime,
         };
     }
 }

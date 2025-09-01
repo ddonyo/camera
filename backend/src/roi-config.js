@@ -17,26 +17,25 @@ class ROIConfig extends EventEmitter {
         try {
             const data = fs.readFileSync(this.configPath, 'utf8');
             const newConfig = JSON.parse(data);
-            
+
             // Validate config structure
             this.validateConfig(newConfig);
-            
+
             const oldConfig = this.config;
             this.config = newConfig;
-            
+
             console.log('[ROI-Config] Configuration loaded:', {
                 enabled: this.config.enabled,
                 debounce_ms: this.config.debounce_ms,
-                cooldown_ms: this.config.cooldown_ms
+                cooldown_ms: this.config.cooldown_ms,
             });
-            
+
             if (oldConfig) {
                 this.emit('configChanged', this.config, oldConfig);
             }
-            
         } catch (error) {
             console.error('[ROI-Config] Failed to load config:', error.message);
-            
+
             // Use default config if load fails
             this.config = this.getDefaultConfig();
             console.log('[ROI-Config] Using default configuration');
@@ -45,7 +44,7 @@ class ROIConfig extends EventEmitter {
 
     validateConfig(config) {
         const required = ['start_roi', 'stop_roi', 'debounce_ms', 'cooldown_ms', 'min_confidence'];
-        
+
         for (const field of required) {
             if (!(field in config)) {
                 throw new Error(`Missing required field: ${field}`);
@@ -53,16 +52,21 @@ class ROIConfig extends EventEmitter {
         }
 
         // Validate ROI structure
-        ['start_roi', 'stop_roi'].forEach(roiName => {
+        ['start_roi', 'stop_roi'].forEach((roiName) => {
             const roi = config[roiName];
             const coords = ['x1', 'y1', 'x2', 'y2'];
-            
+
             for (const coord of coords) {
-                if (!(coord in roi) || typeof roi[coord] !== 'number' || roi[coord] < 0 || roi[coord] > 1) {
+                if (
+                    !(coord in roi) ||
+                    typeof roi[coord] !== 'number' ||
+                    roi[coord] < 0 ||
+                    roi[coord] > 1
+                ) {
                     throw new Error(`Invalid ${roiName}.${coord}: must be number between 0 and 1`);
                 }
             }
-            
+
             if (roi.x1 >= roi.x2 || roi.y1 >= roi.y2) {
                 throw new Error(`Invalid ${roiName}: x1,y1 must be < x2,y2`);
             }
@@ -71,8 +75,8 @@ class ROIConfig extends EventEmitter {
 
     getDefaultConfig() {
         return {
-            start_roi: { x1: 0.70, y1: 0.20, x2: 0.95, y2: 0.60 },
-            stop_roi: { x1: 0.05, y1: 0.20, x2: 0.30, y2: 0.60 },
+            start_roi: { x1: 0.7, y1: 0.2, x2: 0.95, y2: 0.6 },
+            stop_roi: { x1: 0.05, y1: 0.2, x2: 0.3, y2: 0.6 },
             debounce_ms: 250,
             cooldown_ms: 1000,
             min_confidence: 0.7,
@@ -81,14 +85,14 @@ class ROIConfig extends EventEmitter {
                 fps_limit: 15,
                 max_num_hands: 2,
                 min_detection_confidence: 0.5,
-                min_tracking_confidence: 0.5
-            }
+                min_tracking_confidence: 0.5,
+            },
         };
     }
 
     startWatching() {
         if (this.watcher) return;
-        
+
         try {
             this.watcher = fs.watch(this.configPath, (eventType) => {
                 if (eventType === 'change') {
@@ -96,7 +100,7 @@ class ROIConfig extends EventEmitter {
                     setTimeout(() => this.loadConfig(), 100); // Debounce file changes
                 }
             });
-            
+
             console.log('[ROI-Config] Started watching configuration file');
         } catch (error) {
             console.warn('[ROI-Config] Could not watch config file:', error.message);
@@ -147,7 +151,9 @@ class ROIConfig extends EventEmitter {
     isPointInROI(x, y, roiType) {
         const roi = roiType === 'start' ? this.getStartROI() : this.getStopROI();
         if (!roi) return false;
-        
+
+        // Simple coordinate check - no transformation needed
+        // MediaPipe always receives appropriate image (full or cropped)
         return x >= roi.x1 && x <= roi.x2 && y >= roi.y1 && y <= roi.y2;
     }
 
@@ -167,8 +173,8 @@ module.exports = {
         }
         return instance;
     },
-    
+
     createInstance() {
         return new ROIConfig();
-    }
+    },
 };

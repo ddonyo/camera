@@ -10,6 +10,7 @@ export class ROIOverlay {
         this.handDetections = [];
         this.isEnabled = false;
         this.animationId = null;
+        this.cropMode = false; // Crop mode 상태 추가
 
         // ROI 활성화 상태 (손 감지 시 UI 효과용)
         this.roiActiveState = {
@@ -25,8 +26,10 @@ export class ROIOverlay {
         this.dwellProgress = {
             start: 0, // 0 to 1
             stop: 0, // 0 to 1
+            vton: 0, // 0 to 1
             startActive: false,
             stopActive: false,
+            vtonActive: false,
         };
 
         this.createOverlayCanvas();
@@ -279,6 +282,7 @@ export class ROIOverlay {
             roi: this.config[roiKey],
             style: style,
             label: label,
+            cropMode: this.cropMode,
         });
 
         if (!this.config[roiKey]) {
@@ -290,21 +294,46 @@ export class ROIOverlay {
         const ctx = this.overlayCtx;
         const canvas = this.overlayCanvas;
 
-        // 정규화된 좌표를 픽셀 좌표로 변환
-        const x1 = roi.x1 * canvas.width;
-        const y1 = roi.y1 * canvas.height;
-        const x2 = roi.x2 * canvas.width;
-        const y2 = roi.y2 * canvas.height;
+        // Crop mode에서는 중앙 1/3 영역만 사용
+        let effectiveX1, effectiveX2, effectiveY1, effectiveY2;
+
+        if (this.cropMode) {
+            // Crop mode: 중앙 1/3 영역에 맞춰 ROI 좌표 조정
+            // UI에서는 중앙 1/3이 전체 화면처럼 보이므로
+            // ROI를 중앙 1/3 내에 배치
+            const cropStartX = canvas.width / 3;
+            const cropWidth = canvas.width / 3;
+
+            // ROI 좌표를 crop 영역 내부로 변환
+            // 전체 좌표 (0-1)를 중앙 1/3 영역으로 스케일링
+            effectiveX1 = cropStartX + roi.x1 * cropWidth;
+            effectiveX2 = cropStartX + roi.x2 * cropWidth;
+            effectiveY1 = roi.y1 * canvas.height;
+            effectiveY2 = roi.y2 * canvas.height;
+        } else {
+            // Normal mode: 전체 캔버스 사용
+            effectiveX1 = roi.x1 * canvas.width;
+            effectiveY1 = roi.y1 * canvas.height;
+            effectiveX2 = roi.x2 * canvas.width;
+            effectiveY2 = roi.y2 * canvas.height;
+        }
 
         // 중심점과 반지름 계산
-        const centerX = (x1 + x2) / 2;
-        const centerY = (y1 + y2) / 2;
-        const radius = Math.min(x2 - x1, y2 - y1) / 2;
+        const centerX = (effectiveX1 + effectiveX2) / 2;
+        const centerY = (effectiveY1 + effectiveY2) / 2;
+        const radius = Math.min(effectiveX2 - effectiveX1, effectiveY2 - effectiveY1) / 2;
 
         // Dwell progress 확인
         let dwellProgress = 0;
-        if (roiKey === 'start_roi' && this.dwellProgress.startActive) {
-            dwellProgress = this.dwellProgress.start;
+        let isVGesture = false;
+        if (roiKey === 'start_roi') {
+            // V gesture has higher priority
+            if (this.dwellProgress.vtonActive) {
+                dwellProgress = this.dwellProgress.vton;
+                isVGesture = true;
+            } else if (this.dwellProgress.startActive) {
+                dwellProgress = this.dwellProgress.start;
+            }
         } else if (roiKey === 'stop_roi' && this.dwellProgress.stopActive) {
             dwellProgress = this.dwellProgress.stop;
         }
@@ -346,10 +375,17 @@ export class ROIOverlay {
 
             // Progress에 따라 투명도 조절 (0.1 ~ 0.3)
             const opacity = 0.1 + dwellProgress * 0.2;
-            const progressColor =
-                roiKey === 'start_roi'
-                    ? `rgba(0, 255, 0, ${opacity})` // 녹색 (시작)
-                    : `rgba(255, 0, 0, ${opacity})`; // 빨간색 (중지)
+            let progressColor;
+            if (isVGesture) {
+                // V gesture -> VTON (purple/magenta)
+                progressColor = `rgba(255, 0, 255, ${opacity})`;
+            } else if (roiKey === 'start_roi') {
+                // Normal start (green)
+                progressColor = `rgba(0, 255, 0, ${opacity})`;
+            } else {
+                // Stop (red)
+                progressColor = `rgba(255, 0, 0, ${opacity})`;
+            }
 
             // Progress 원 채우기
             ctx.beginPath();
@@ -368,7 +404,11 @@ export class ROIOverlay {
                     -Math.PI / 2 + 2 * Math.PI * dwellProgress,
                     false
                 );
-                ctx.strokeStyle = roiKey === 'start_roi' ? '#00ff00' : '#ff0000';
+                ctx.strokeStyle = isVGesture
+                    ? '#ff00ff'
+                    : roiKey === 'start_roi'
+                      ? '#00ff00'
+                      : '#ff0000';
                 ctx.lineWidth = 3;
                 ctx.setLineDash([]);
                 ctx.stroke();
@@ -378,15 +418,18 @@ export class ROIOverlay {
         }
 
         // 라벨 그리기 (원 위쪽에, 중앙 정렬)
-        this.drawLabel(centerX, centerY - radius - 10, label, 'center');
+        const displayLabel = isVGesture ? 'V GESTURE → VTON' : label;
+        this.drawLabel(centerX, centerY - radius - 10, displayLabel, 'center');
 
         // 중심점에 작은 점 추가 (dwell 중일 때 더 크게)
         const dotSize = dwellProgress > 0 ? 5 : 3;
         ctx.fillStyle =
             dwellProgress > 0
-                ? roiKey === 'start_roi'
-                    ? '#00ff00'
-                    : '#ff0000'
+                ? isVGesture
+                    ? '#ff00ff'
+                    : roiKey === 'start_roi'
+                      ? '#00ff00'
+                      : '#ff0000'
                 : style.strokeStyle;
         ctx.beginPath();
         ctx.arc(centerX, centerY, dotSize, 0, 2 * Math.PI);
@@ -479,11 +522,12 @@ export class ROIOverlay {
         }
 
         // ROI 상태 표시
-        const statusY = this.overlayCanvas.height - 60;
+        const statusY = this.overlayCanvas.height - 80;
 
-        this.drawLabel(10, statusY, 'Hand Gesture Recording:');
-        this.drawLabel(10, statusY + 20, `Right hand in green area → START recording`);
-        this.drawLabel(10, statusY + 40, `Left hand in red area → STOP recording`);
+        this.drawLabel(10, statusY, 'Hand Gesture Controls:');
+        this.drawLabel(10, statusY + 20, `V sign in green area → VTON (Virtual Try-On)`);
+        this.drawLabel(10, statusY + 40, `Right hand in green area → START recording`);
+        this.drawLabel(10, statusY + 60, `Left hand in red area → STOP recording`);
 
         // 현재 감지된 손 개수
         const handCount = this.handDetections.length;
@@ -609,16 +653,27 @@ export class ROIOverlay {
         return distance <= radius;
     }
 
+    // Crop mode 설정
+    setCropMode(enabled) {
+        this.cropMode = enabled;
+        if (this.isEnabled) {
+            this.render(); // Crop mode 변경 시 다시 그리기
+        }
+    }
+
     // Dwell progress 업데이트
     updateDwellProgress(progressData) {
         const previousStartActive = this.dwellProgress.startActive;
         const previousStopActive = this.dwellProgress.stopActive;
+        const previousVtonActive = this.dwellProgress.vtonActive;
 
         this.dwellProgress = {
             start: progressData.start || 0,
             stop: progressData.stop || 0,
+            vton: progressData.vton || 0,
             startActive: progressData.startActive || false,
             stopActive: progressData.stopActive || false,
+            vtonActive: progressData.vtonActive || false,
         };
 
         // Progress가 변경되면 다시 렌더링
@@ -628,8 +683,10 @@ export class ROIOverlay {
             if (
                 this.dwellProgress.startActive ||
                 this.dwellProgress.stopActive ||
+                this.dwellProgress.vtonActive ||
                 (previousStartActive && !this.dwellProgress.startActive) ||
-                (previousStopActive && !this.dwellProgress.stopActive)
+                (previousStopActive && !this.dwellProgress.stopActive) ||
+                (previousVtonActive && !this.dwellProgress.vtonActive)
             ) {
                 this.render();
             }

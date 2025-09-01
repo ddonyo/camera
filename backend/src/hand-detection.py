@@ -36,6 +36,50 @@ class HandDetector:
         )
         
         self.mp_drawing = mp.solutions.drawing_utils
+    
+    def detect_v_gesture(self, landmarks):
+        """
+        Detect V gesture (Victory/Peace sign)
+        V gesture: Index and Middle fingers extended, others folded
+        
+        MediaPipe landmark indices:
+        - Thumb: 1-4
+        - Index: 5-8
+        - Middle: 9-12
+        - Ring: 13-16
+        - Pinky: 17-20
+        """
+        try:
+            # Get key landmarks
+            thumb_tip = landmarks[4]
+            index_tip = landmarks[8]
+            index_mcp = landmarks[5]
+            middle_tip = landmarks[12]
+            middle_mcp = landmarks[9]
+            ring_tip = landmarks[16]
+            ring_mcp = landmarks[13]
+            pinky_tip = landmarks[20]
+            pinky_mcp = landmarks[17]
+            
+            # Check if index finger is extended (tip higher than MCP)
+            index_extended = index_tip['y'] < index_mcp['y']
+            
+            # Check if middle finger is extended
+            middle_extended = middle_tip['y'] < middle_mcp['y']
+            
+            # Check if ring finger is folded
+            ring_folded = ring_tip['y'] >= ring_mcp['y']
+            
+            # Check if pinky is folded
+            pinky_folded = pinky_tip['y'] >= pinky_mcp['y']
+            
+            # V gesture: index and middle extended, ring and pinky folded
+            is_v = index_extended and middle_extended and ring_folded and pinky_folded
+            
+            return is_v
+            
+        except Exception as e:
+            return False
         
     def process_frame(self, image_data, format='base64'):
         """
@@ -116,12 +160,16 @@ class HandDetector:
                         "y": (bbox["y1"] + bbox["y2"]) / 2
                     }
                     
+                    # Detect V gesture (Victory/Peace sign)
+                    is_v_gesture = self.detect_v_gesture(landmarks)
+                    
                     hands_info.append({
                         "handedness": hand_label,  # "Left" or "Right" 
                         "confidence": hand_confidence,
                         "bbox": bbox,
                         "center": center,
-                        "landmarks": landmarks
+                        "landmarks": landmarks,
+                        "is_v_gesture": is_v_gesture
                     })
             
             return {

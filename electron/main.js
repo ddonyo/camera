@@ -535,6 +535,25 @@ function setupIpcHandlers(win) {
             return false;
         }
     });
+
+    // ROI 설정 업데이트 IPC 핸들러 (crop_mode 등)
+    ipcMain.handle('update-roi-config', async (event, updates) => {
+        console.log(`[Main] ROI config update requested:`, updates);
+        try {
+            const roiConfigPath = path.join(PATHS.CONFIG_DIR, 'roi.json');
+            const config = JSON.parse(fs.readFileSync(roiConfigPath, 'utf8'));
+
+            // 업데이트 적용
+            Object.assign(config, updates);
+
+            fs.writeFileSync(roiConfigPath, JSON.stringify(config, null, 2));
+            console.log(`[Main] ROI config updated:`, updates);
+            return true;
+        } catch (error) {
+            console.error('[Main] Failed to update ROI config:', error);
+            return false;
+        }
+    });
 }
 
 // 메인 창 생성 및 설정

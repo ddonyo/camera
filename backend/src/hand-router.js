@@ -15,11 +15,13 @@ class HandRouter extends EventEmitter {
         this.lastTriggers = {
             start: 0,
             stop: 0,
+            vton: 0,
         };
 
         this.triggerState = {
             start: false, // Whether right hand is currently in start ROI
             stop: false, // Whether left hand is currently in stop ROI
+            vton: false, // Whether V gesture is currently in start ROI
         };
 
         // Dwell time tracking (1초 동안 ROI에 머물러야 트리거)
@@ -30,6 +32,11 @@ class HandRouter extends EventEmitter {
                 progress: 0, // 0 to 1 for visual feedback
             },
             stop: {
+                isInROI: false,
+                enteredTime: 0,
+                progress: 0, // 0 to 1 for visual feedback
+            },
+            vton: {
                 isInROI: false,
                 enteredTime: 0,
                 progress: 0, // 0 to 1 for visual feedback
@@ -127,11 +134,12 @@ class HandRouter extends EventEmitter {
     }
 
     resetState() {
-        this.triggerState = { start: false, stop: false };
-        this.lastTriggers = { start: 0, stop: 0 };
+        this.triggerState = { start: false, stop: false, vton: false };
+        this.lastTriggers = { start: 0, stop: 0, vton: 0 };
         this.dwellState = {
             start: { isInROI: false, enteredTime: 0, progress: 0 },
             stop: { isInROI: false, enteredTime: 0, progress: 0 },
+            vton: { isInROI: false, enteredTime: 0, progress: 0 },
         };
         if (this.dwellUpdateInterval) {
             clearInterval(this.dwellUpdateInterval);
@@ -148,7 +156,8 @@ class HandRouter extends EventEmitter {
         this.stats.framesProcessed++;
         this.stats.lastFrameTime = Date.now();
 
-        return this.handWorker.processFrame(imageBuffer);
+        const config = this.roiConfig.get();
+        return this.handWorker.processFrame(imageBuffer, config.crop_mode);
     }
 
     processImagePath(imagePath) {
@@ -159,7 +168,8 @@ class HandRouter extends EventEmitter {
         this.stats.framesProcessed++;
         this.stats.lastFrameTime = Date.now();
 
-        return this.handWorker.processImagePath(imagePath);
+        const config = this.roiConfig.get();
+        return this.handWorker.processImagePath(imagePath, config.crop_mode);
     }
 
     handleHandDetection(data) {
@@ -168,7 +178,9 @@ class HandRouter extends EventEmitter {
 
         // Only log hand count in debug mode
         if (this.debugMode && hands.length > 0) {
-            console.log(`[HandRouter] ${hands.length} hand(s) detected`);
+            console.log(
+                `[HandRouter] ${hands.length} hand(s) detected, crop_mode: ${config.crop_mode}`
+            );
         }
 
         if (!config || hands.length === 0) {
@@ -180,14 +192,22 @@ class HandRouter extends EventEmitter {
         // Process each detected hand
         let rightHandInStartROI = false;
         let leftHandInStopROI = false;
+        let rightHandVGestureInStartROI = false;
 
         for (const hand of hands) {
-            const { handedness, center, confidence } = hand;
+            const { handedness, center, confidence, is_v_gesture } = hand;
 
-            // Apply coordinate transformation based on flip_mode
-            const effectiveCenter = config.flip_mode
-                ? { x: 1 - center.x, y: center.y } // Flip X coordinate when flip_mode is true
-                : center; // Use original coordinates when flip_mode is false
+            // Apply coordinate transformation based on flip_mode only
+            // No crop mode transformation needed - MediaPipe receives appropriate image
+            let effectiveCenter = center;
+
+            // Apply flip transformation
+            if (config.flip_mode) {
+                effectiveCenter = {
+                    x: 1 - center.x,
+                    y: center.y,
+                };
+            }
 
             // MediaPipe returns mirrored handedness for webcam:
             // Physical right hand = "Left" in MediaPipe, Physical left hand = "Right" in MediaPipe
@@ -213,15 +233,24 @@ class HandRouter extends EventEmitter {
                 continue;
             }
 
-            // Check ROI intersections - always use same logic regardless of flip mode
+            // Check ROI intersections - simple coordinate check
             // Right hand -> start ROI (녹화 시작), Left hand -> stop ROI (녹화 중지)
             if (effectiveHandedness === 'Right') {
                 if (this.roiConfig.isPointInROI(effectiveCenter.x, effectiveCenter.y, 'start')) {
-                    rightHandInStartROI = true;
-                    // Always log ROI hits
-                    console.log(
-                        `[HandRouter] Right hand in START ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
-                    );
+                    // Check for V gesture - has higher priority than normal start
+                    if (is_v_gesture) {
+                        rightHandVGestureInStartROI = true;
+                        // Always log V gesture ROI hits
+                        console.log(
+                            `[HandRouter] Right hand V GESTURE in START ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
+                        );
+                    } else {
+                        rightHandInStartROI = true;
+                        // Always log ROI hits
+                        console.log(
+                            `[HandRouter] Right hand in START ROI at (${effectiveCenter.x.toFixed(3)}, ${effectiveCenter.y.toFixed(3)})`
+                        );
+                    }
                 }
             } else if (effectiveHandedness === 'Left') {
                 if (this.roiConfig.isPointInROI(effectiveCenter.x, effectiveCenter.y, 'stop')) {
@@ -235,7 +264,13 @@ class HandRouter extends EventEmitter {
         }
 
         // Handle trigger logic with debouncing and cooldown
-        this.handleTriggerLogic(rightHandInStartROI, leftHandInStopROI, config);
+        // V gesture has priority over normal start recording
+        this.handleTriggerLogic(
+            rightHandInStartROI,
+            leftHandInStopROI,
+            rightHandVGestureInStartROI,
+            config
+        );
 
         // Show ROI status only in debug mode (already logged above when ROI hit)
         if (this.debugMode && (rightHandInStartROI || leftHandInStopROI)) {
@@ -249,15 +284,75 @@ class HandRouter extends EventEmitter {
             hands,
             rightHandInStartROI,
             leftHandInStopROI,
+            rightHandVGestureInStartROI,
             timestamp,
         });
     }
 
-    handleTriggerLogic(rightHandInStartROI, leftHandInStopROI, config) {
+    handleTriggerLogic(
+        rightHandInStartROI,
+        leftHandInStopROI,
+        rightHandVGestureInStartROI,
+        config
+    ) {
         const now = Date.now();
 
-        // Handle START ROI with dwell time
-        if (rightHandInStartROI) {
+        // Handle V GESTURE in START ROI with dwell time (highest priority)
+        if (rightHandVGestureInStartROI) {
+            if (!this.dwellState.vton.isInROI) {
+                // V gesture just entered START ROI
+                this.dwellState.vton.isInROI = true;
+                this.dwellState.vton.enteredTime = now;
+                this.dwellState.vton.progress = 0;
+
+                // Always log V gesture ROI entry/dwell events
+                console.log(
+                    '[HandRouter] Right hand V GESTURE entered START ROI - starting dwell timer for VTON'
+                );
+
+                // Start progress update for visual feedback
+                this.startDwellProgress('vton');
+            } else {
+                // V gesture is dwelling in START ROI
+                const dwellTime = now - this.dwellState.vton.enteredTime;
+                this.dwellState.vton.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+
+                // Check if dwell time reached and cooldown passed
+                if (dwellTime >= this.DWELL_TIME_MS && !this.triggerState.vton) {
+                    if (now - this.lastTriggers.vton > config.cooldown_ms) {
+                        this.triggerState.vton = true;
+                        this.lastTriggers.vton = now;
+                        this.stats.triggersVton = (this.stats.triggersVton || 0) + 1;
+
+                        console.log(
+                            '[HandRouter] VTON TRIGGER - 1 second V gesture dwell completed'
+                        );
+                        this.triggerVTON();
+
+                        // Reset dwell state after trigger
+                        this.dwellState.vton.isInROI = false;
+                        this.dwellState.vton.progress = 0;
+                    }
+                }
+            }
+        } else if (this.dwellState.vton.isInROI) {
+            // V gesture left START ROI
+            if (this.debugMode) {
+                console.log('[HandRouter] Right hand V GESTURE left START ROI - resetting dwell');
+            }
+            this.dwellState.vton.isInROI = false;
+            this.dwellState.vton.progress = 0;
+
+            // Reset trigger state after debounce
+            if (this.triggerState.vton) {
+                setTimeout(() => {
+                    this.triggerState.vton = false;
+                }, config.debounce_ms);
+            }
+        }
+
+        // Handle START ROI with dwell time (only if not V gesture)
+        if (rightHandInStartROI && !rightHandVGestureInStartROI) {
             if (!this.dwellState.start.isInROI) {
                 // Hand just entered START ROI
                 this.dwellState.start.isInROI = true;
@@ -379,16 +474,28 @@ class HandRouter extends EventEmitter {
                     this.dwellState.stop.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
                 }
 
+                // Update and emit VTON progress (in start ROI with V gesture)
+                if (this.dwellState.vton.isInROI) {
+                    const dwellTime = now - this.dwellState.vton.enteredTime;
+                    this.dwellState.vton.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+                }
+
                 // Emit dwell progress for UI
                 this.emit('dwellProgress', {
                     start: this.dwellState.start.progress,
                     stop: this.dwellState.stop.progress,
+                    vton: this.dwellState.vton.progress,
                     startActive: this.dwellState.start.isInROI,
                     stopActive: this.dwellState.stop.isInROI,
+                    vtonActive: this.dwellState.vton.isInROI,
                 });
 
                 // Clear interval if no hands in ROI
-                if (!this.dwellState.start.isInROI && !this.dwellState.stop.isInROI) {
+                if (
+                    !this.dwellState.start.isInROI &&
+                    !this.dwellState.stop.isInROI &&
+                    !this.dwellState.vton.isInROI
+                ) {
                     clearInterval(this.dwellUpdateInterval);
                     this.dwellUpdateInterval = null;
                 }
@@ -442,6 +549,34 @@ class HandRouter extends EventEmitter {
                 console.error('[HandRouter] Failed to stop recording:', error);
                 this.emit('recordingError', error);
             });
+    }
+
+    triggerVTON() {
+        console.log('[HandRouter] Triggering VTON');
+
+        // Emit VTON trigger event
+        this.emit('vtonTriggered', {
+            trigger: 'v_gesture',
+            timestamp: Date.now(),
+        });
+
+        // Send VTON command to capture device if it has VTON capability
+        if (this.captureDevice && this.captureDevice.triggerVTON) {
+            this.captureDevice
+                .triggerVTON()
+                .then((success) => {
+                    if (success) {
+                        console.log('[HandRouter] VTON triggered successfully');
+                    }
+                })
+                .catch((error) => {
+                    console.error('[HandRouter] Failed to trigger VTON:', error);
+                    this.emit('vtonError', error);
+                });
+        } else {
+            // Fallback: Just emit the event for frontend to handle
+            console.log('[HandRouter] VTON trigger event emitted (no capture device VTON support)');
+        }
     }
 
     // Test methods for unit testing

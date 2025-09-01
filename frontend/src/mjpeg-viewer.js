@@ -491,10 +491,40 @@ export class MJPEGViewer {
             body.classList.remove('crop-mode');
         }
 
+        // ROI overlay에 crop mode 상태 전달
+        if (this.roiOverlay) {
+            this.roiOverlay.setCropMode(this.cropMode);
+        }
+
+        // Backend에 crop mode 상태 전달
+        this._updateCropModeConfig(this.cropMode);
+
         this._updateUI();
 
         if (this.state === State.PLAYBACK && !this.playing) {
             this._updateFrameDisplay();
+        }
+    }
+
+    // Crop mode 설정 업데이트
+    async _updateCropModeConfig(cropMode) {
+        try {
+            console.log('[MJPEGViewer] Updating crop mode config to:', cropMode);
+
+            // Electron IPC를 통해 config 파일 업데이트 요청
+            if (this.#electronAPI?.invoke) {
+                const result = await this.#electronAPI.invoke('update-roi-config', {
+                    crop_mode: cropMode,
+                });
+                console.log('[MJPEGViewer] Crop mode update result:', result);
+            } else if (this.#electronAPI?.emit) {
+                // Fallback to emit if invoke is not available
+                this.#electronAPI.emit('update-roi-config', { crop_mode: cropMode });
+            }
+
+            console.log('[MJPEGViewer] Crop mode updated in config:', cropMode);
+        } catch (error) {
+            console.error('[MJPEGViewer] Failed to update crop mode config:', error);
         }
     }
 

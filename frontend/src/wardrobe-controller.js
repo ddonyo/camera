@@ -4,11 +4,14 @@ import { createVtonUI } from './vton-ui.js';
 import { captureCurrentFrame } from './capture-helper.js';
 import { runVTONWithFallback } from './vton-service.js';
 
+let vtonUI = null;
+
 export function initWardrobeController() {
     const grid = $('#wardrobeGrid');
     if (!grid) return;
 
     const ui = createVtonUI();
+    vtonUI = ui; // Store for external access
 
     // VTON 모드 선택 초기화
     initVtonModeSelector();
@@ -32,7 +35,6 @@ export function initWardrobeController() {
         const cropBtn = document.getElementById('cropBtn');
         const cropMode = cropBtn && cropBtn.classList.contains('active');
 
-
         // VTON 모드 가져오기
         const vtonMode = getSelectedVtonMode();
         console.log(`[VTON] Selected mode for API request: ${vtonMode}`);
@@ -53,7 +55,6 @@ export function initWardrobeController() {
 
         let finalBlob = shot.blob;
         let finalDataUrl = shot.dataUrl;
-
 
         const personRef = {
             type: 'file',
@@ -135,5 +136,93 @@ function getSelectedVtonMode() {
     } else {
         console.warn('[VTON] Dropdown not found, using default: balanced');
         return 'balanced';
+    }
+}
+
+// Automatic VTON trigger for V gesture
+export async function triggerVTONFromGesture() {
+    console.log('[VTON] Triggering VTON from V gesture');
+
+    // Check if UI is already processing
+    if (!vtonUI) {
+        console.warn('[VTON] UI not initialized');
+        return;
+    }
+
+    // Get the first available garment (or a default one)
+    const firstGarmentBtn = $('#wardrobeGrid button[data-garment-id]');
+    if (!firstGarmentBtn) {
+        console.warn('[VTON] No garment available');
+        return;
+    }
+
+    const garmentId = firstGarmentBtn.dataset.garmentId;
+    console.log('[VTON] Using garment:', garmentId);
+
+    // Highlight the selected garment
+    $$('#wardrobeGrid button[data-garment-id]').forEach((b) =>
+        b.classList.remove('ring-2', 'ring-blue-500')
+    );
+    firstGarmentBtn.classList.add('ring-2', 'ring-blue-500');
+
+    vtonUI.start(); // Start loading
+    vtonUI.setProgress(0.05, 'V Gesture triggered - Capturing frame...');
+
+    // Check crop mode
+    const cropBtn = document.getElementById('cropBtn');
+    const cropMode = cropBtn && cropBtn.classList.contains('active');
+
+    // Get VTON mode
+    const vtonMode = getSelectedVtonMode();
+    console.log(`[VTON] V Gesture mode: ${vtonMode}`);
+
+    // Capture current frame
+    const shot = await captureCurrentFrame({
+        maxWidth: 1080,
+        maxHeight: 1080,
+        mirror: false,
+        crop: cropMode,
+    });
+
+    if (!shot.ok) {
+        vtonUI.fail(shot.error || 'Failed to capture frame');
+        return;
+    }
+
+    vtonUI.setPreview(shot.dataUrl);
+
+    const personRef = {
+        type: 'file',
+        blob: shot.blob,
+        previewUrl: shot.dataUrl,
+        meta: { w: shot.width, h: shot.height, source: shot.source },
+    };
+    const options = { face_lock: true, vton_mode: vtonMode };
+
+    try {
+        const result = await runVTONWithFallback({
+            personRef,
+            garmentId,
+            options,
+            onProgress: (p, stage) => {
+                const baseProgress = 0.05;
+                const mappedProgress =
+                    typeof p === 'number' ? baseProgress + p * (1 - baseProgress) : undefined;
+                vtonUI.setProgress(mappedProgress, stage);
+            },
+        });
+
+        if (result.status === 'succeeded') {
+            if (result.result_url) vtonUI.succeed(result.result_url, true, cropMode);
+            else if (result.result_base64)
+                vtonUI.succeed(`data:image/png;base64,${result.result_base64}`, true, cropMode);
+            else if (result.image_base64)
+                vtonUI.succeed(`data:image/png;base64,${result.image_base64}`, true, cropMode);
+            else vtonUI.succeed(personRef.previewUrl, true, cropMode);
+        } else {
+            vtonUI.fail(result.error || 'Failed');
+        }
+    } catch (err) {
+        vtonUI.fail(err.message);
     }
 }

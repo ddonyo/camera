@@ -124,6 +124,12 @@ ipcRenderer.on('roi-dwell-progress', (event, data) => {
     window.dispatchEvent(new CustomEvent('roi-dwell-progress', { detail: data }));
 });
 
+// VTON trigger 이벤트 리스너
+ipcRenderer.on('vtonTriggered', (event, data) => {
+    // 프론트엔드로 이벤트 전달
+    window.dispatchEvent(new CustomEvent('vtonTriggered', { detail: data }));
+});
+
 // `electronAPI`를 렌더러 프로세스의 `window` 객체에 노출
 contextBridge.exposeInMainWorld('electronAPI', {
     log: logMessage, // 로그 함수
@@ -139,6 +145,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     saveVtonImage: (url, filename) => ipcRenderer.invoke('save-vton-image', { url, filename }),
     // ROI 플립 모드 업데이트 IPC
     updateROIFlipMode: (flipMode) => ipcRenderer.invoke('update-roi-flip-mode', flipMode),
+
+    // Generic invoke method for IPC
+    invoke: (channel, data) => ipcRenderer.invoke(channel, data),
 });
 
 console.log(`${CONFIG.LOG_PREFIX} Electron API exposed to renderer process`);

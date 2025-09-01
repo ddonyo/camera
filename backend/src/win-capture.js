@@ -97,6 +97,31 @@ class WinDevice extends EventEmitter {
                     }
                 }
             });
+
+            // Forward VTON trigger event to frontend
+            this.handRouter.on('vtonTriggered', (data) => {
+                if (
+                    this.mainWindow &&
+                    !this.mainWindow.isDestroyed() &&
+                    this.mainWindow.webContents &&
+                    !this.mainWindow.webContents.isDestroyed()
+                ) {
+                    console.log('[WinCapture] Forwarding VTON trigger to frontend:', data);
+                    this.mainWindow.webContents.send('vtonTriggered', data);
+                }
+            });
+
+            // Forward dwell progress event to frontend
+            this.handRouter.on('dwellProgress', (data) => {
+                if (
+                    this.mainWindow &&
+                    !this.mainWindow.isDestroyed() &&
+                    this.mainWindow.webContents &&
+                    !this.mainWindow.webContents.isDestroyed()
+                ) {
+                    this.mainWindow.webContents.send('roi-dwell-progress', data);
+                }
+            });
         }
     }
 

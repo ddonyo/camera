@@ -1,7 +1,7 @@
 import { MJPEGViewer } from './mjpeg-viewer.js';
 import { FullscreenManager } from './fullscreen-manager.js';
 import { bindNumberInputs } from './number-input.js';
-import { initWardrobeController } from './wardrobe-controller.js';
+import { initWardrobeController, triggerVTONFromGesture } from './wardrobe-controller.js';
 import { renderWardrobeGrid } from './wardrobe-data.js';
 
 // 이미지 URL에 타임스탬프 추가 (캐시 방지)
@@ -64,6 +64,12 @@ window.addEventListener('DOMContentLoaded', () => {
     if (window.WIN_CAM) {
         document.body.classList.add('win-webcam');
     }
+
+    // 4) VTON V gesture trigger event listener
+    window.addEventListener('vtonTriggered', (event) => {
+        console.log('[App] VTON triggered by V gesture:', event.detail);
+        triggerVTONFromGesture();
+    });
 });
 // 페이지 언로드 직전 앱 정리
 window.addEventListener('beforeunload', cleanupApp);
