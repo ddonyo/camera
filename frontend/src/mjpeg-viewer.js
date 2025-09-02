@@ -972,6 +972,16 @@ export class MJPEGViewer {
         return this.state === State.LIVE || this.state === State.RECORD;
     }
 
+    // 현재 상태 반환 (외부에서 접근 가능)
+    getState() {
+        return this.state;
+    }
+
+    // 녹화 중인지 확인
+    isRecording() {
+        return this.state === State.RECORD;
+    }
+
     // 스트리밍 UI 초기화
     _resetUIForStreaming() {
         this._pause();

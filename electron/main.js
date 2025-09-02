@@ -546,6 +546,11 @@ function setupIpcHandlers(win) {
         return roiConfig.getUISettings();
     });
 
+    // 녹화 상태 확인 IPC 핸들러
+    ipcMain.handle('is-recording', async () => {
+        return frameHandler.isRecording;
+    });
+
     // 전체화면 관련 IPC 핸들러들 (handle 방식으로 추가)
     ipcMain.handle('set-fullscreen', async (event, fullscreen) => {
         console.log('IPC: set-fullscreen called with:', fullscreen);

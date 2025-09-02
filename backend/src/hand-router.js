@@ -302,12 +302,14 @@ class HandRouter extends EventEmitter {
         }
 
         // Emit detection event for UI feedback
+        const isRecordingNow = this.frameHandler && this.frameHandler.isRecording;
         this.emit('handDetection', {
             hands,
-            rightHandInStartROI,
-            leftHandInStopROI,
+            rightHandInStartROI: rightHandInStartROI && !isRecordingNow, // Block START ROI when recording
+            leftHandInStopROI: leftHandInStopROI && isRecordingNow, // Block STOP ROI when not recording
             rightHandVGestureInStartROI,
             timestamp,
+            isRecording: isRecordingNow,
         });
     }
 
@@ -373,8 +375,10 @@ class HandRouter extends EventEmitter {
             }
         }
 
-        // Handle START ROI with dwell time (only if not V gesture)
-        if (rightHandInStartROI && !rightHandVGestureInStartROI) {
+        // Handle START ROI with dwell time (only if not V gesture and not already recording)
+        const isRecording = this.frameHandler && this.frameHandler.isRecording;
+        
+        if (rightHandInStartROI && !rightHandVGestureInStartROI && !isRecording) {
             if (!this.dwellState.start.isInROI) {
                 // Hand just entered START ROI
                 this.dwellState.start.isInROI = true;
@@ -408,10 +412,11 @@ class HandRouter extends EventEmitter {
                 }
             }
         } else {
-            // Hand left START ROI
+            // Hand left START ROI or recording is active
             if (this.dwellState.start.isInROI) {
                 if (this.debugMode) {
-                    console.log('[HandRouter] Right hand left START ROI - resetting dwell');
+                    const reason = isRecording ? 'recording active' : 'hand left ROI';
+                    console.log(`[HandRouter] Right hand START ROI reset - ${reason}`);
                 }
                 this.dwellState.start.isInROI = false;
                 this.dwellState.start.progress = 0;
@@ -423,10 +428,17 @@ class HandRouter extends EventEmitter {
                     }, config.debounce_ms);
                 }
             }
+            
+            // Log when recording blocks START ROI
+            if (rightHandInStartROI && !rightHandVGestureInStartROI && isRecording) {
+                if (this.debugMode) {
+                    console.log('[HandRouter] START ROI ignored - recording in progress');
+                }
+            }
         }
 
-        // Handle STOP ROI with dwell time
-        if (leftHandInStopROI) {
+        // Handle STOP ROI with dwell time (only if recording)
+        if (leftHandInStopROI && isRecording) {
             if (!this.dwellState.stop.isInROI) {
                 // Hand just entered STOP ROI
                 this.dwellState.stop.isInROI = true;
@@ -460,10 +472,11 @@ class HandRouter extends EventEmitter {
                 }
             }
         } else {
-            // Hand left STOP ROI
+            // Hand left STOP ROI or not recording
             if (this.dwellState.stop.isInROI) {
                 if (this.debugMode) {
-                    console.log('[HandRouter] Left hand left STOP ROI - resetting dwell');
+                    const reason = !isRecording ? 'not recording' : 'hand left ROI';
+                    console.log(`[HandRouter] Left hand STOP ROI reset - ${reason}`);
                 }
                 this.dwellState.stop.isInROI = false;
                 this.dwellState.stop.progress = 0;
@@ -473,6 +486,13 @@ class HandRouter extends EventEmitter {
                     setTimeout(() => {
                         this.triggerState.stop = false;
                     }, config.debounce_ms);
+                }
+            }
+            
+            // Log when not recording blocks STOP ROI
+            if (leftHandInStopROI && !isRecording) {
+                if (this.debugMode) {
+                    console.log('[HandRouter] STOP ROI ignored - not recording');
                 }
             }
         }
