@@ -526,6 +526,15 @@ function setupIpcHandlers(win) {
             console.log('[Main] Received stop-record command');
             return frameHandler.disableRecording();
         },
+        'update-ui-settings': (event, settings) => {
+            console.log('[Main] Updating UI settings:', settings);
+            const roiConfig = require('../backend/src/roi-config').getInstance();
+            return roiConfig.updateUISettings(settings);
+        },
+        'get-ui-settings': () => {
+            const roiConfig = require('../backend/src/roi-config').getInstance();
+            return roiConfig.getUISettings();
+        },
         'log-message': (event, message) => console.log('APP: ' + message),
     };
 

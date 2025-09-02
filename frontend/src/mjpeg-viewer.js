@@ -41,6 +41,7 @@ export class MJPEGViewer {
         this._bindEvents(); // 이벤트 바인딩
         this._setupLiveIpcListeners(); // IPC 리스너 (라이브)
         this._forwardHandRouterEvents(); // HandRouter 이벤트 전달 설정
+        this._syncInitialSettingsToBackend(); // 초기 UI 설정을 백엔드로 전송
         setTimeout(() => {
             this._initROIOverlay();
         }, 100);
@@ -443,6 +444,9 @@ export class MJPEGViewer {
 
         // Update ROI flip mode
         this._updateROIFlipMode();
+        
+        // Backend에 flip mode 상태 전달
+        this._updateBackendSettings({ flip_mode: this.flipMode });
 
         if (this.state === State.PLAYBACK && !this.playing) {
             this._updateFrameDisplay();
@@ -468,6 +472,7 @@ export class MJPEGViewer {
 
         // Backend에 crop mode 상태 전달
         this._updateCropModeConfig(this.cropMode);
+        this._updateBackendSettings({ crop_mode: this.cropMode });
 
         this._updateUI();
 
@@ -1153,6 +1158,9 @@ export class MJPEGViewer {
             this.roiMode = this.roiOverlay.isEnabled;
 
             console.log(`[MJPEGViewer] ROI overlay ${this.roiMode ? 'enabled' : 'disabled'}`);
+            
+            // Backend에 ROI enabled 상태 전달
+            this._updateBackendSettings({ enabled: this.roiMode });
 
             // UI 업데이트 (Crop, Flip과 동일한 방식)
             this._updateUI();
@@ -1165,6 +1173,33 @@ export class MJPEGViewer {
             this.#electronAPI.updateROIFlipMode(this.flipMode);
             console.log(`[MJPEGViewer] ROI flip mode updated: ${this.flipMode}`);
         }
+    }
+
+    // Backend UI 설정 업데이트
+    async _updateBackendSettings(settings) {
+        if (!this.#electronAPI?.invoke) {
+            console.warn('[MJPEGViewer] electronAPI.invoke not available');
+            return;
+        }
+
+        try {
+            const result = await this.#electronAPI.invoke('update-ui-settings', settings);
+            console.log('[MJPEGViewer] Backend settings updated:', settings, 'Result:', result);
+        } catch (error) {
+            console.error('[MJPEGViewer] Failed to update backend settings:', error);
+        }
+    }
+
+    // 초기 UI 설정을 백엔드로 동기화
+    _syncInitialSettingsToBackend() {
+        const initialSettings = {
+            enabled: this.roiMode,
+            flip_mode: this.flipMode,
+            crop_mode: this.cropMode
+        };
+        
+        console.log('[MJPEGViewer] Syncing initial UI settings to backend:', initialSettings);
+        this._updateBackendSettings(initialSettings);
     }
 
 

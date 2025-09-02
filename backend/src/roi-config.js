@@ -9,6 +9,14 @@ class ROIConfig extends EventEmitter {
         this.configPath = path.join(__dirname, '../../config/roi.json');
         this.config = null;
         this.watcher = null;
+        
+        // UI settings (managed by frontend, stored in memory only)
+        this.uiSettings = {
+            enabled: true,
+            flip_mode: true,
+            crop_mode: false
+        };
+        
         this.loadConfig();
         this.startWatching();
     }
@@ -116,11 +124,15 @@ class ROIConfig extends EventEmitter {
     }
 
     get() {
-        return this.config;
+        // Merge config with UI settings for backward compatibility
+        return {
+            ...this.config,
+            ...this.uiSettings
+        };
     }
 
     isEnabled() {
-        return this.config && this.config.enabled;
+        return this.uiSettings.enabled;
     }
 
     getStartROI() {
@@ -145,6 +157,38 @@ class ROIConfig extends EventEmitter {
 
     getHandDetectionConfig() {
         return this.config ? this.config.hand_detection : this.getDefaultConfig().hand_detection;
+    }
+
+    // Update UI settings (in memory only, not saved to file)
+    updateUISettings(updates) {
+        const validKeys = ['enabled', 'flip_mode', 'crop_mode'];
+        const filteredUpdates = {};
+        
+        // Only update valid UI settings
+        for (const key of validKeys) {
+            if (key in updates) {
+                filteredUpdates[key] = updates[key];
+            }
+        }
+        
+        if (Object.keys(filteredUpdates).length > 0) {
+            this.uiSettings = {
+                ...this.uiSettings,
+                ...filteredUpdates
+            };
+            
+            console.log('[ROI-Config] UI settings updated:', filteredUpdates);
+            
+            // Emit change event with merged config
+            this.emit('configChanged', this.get());
+        }
+        
+        return { success: true, uiSettings: this.uiSettings };
+    }
+
+    // Get current UI settings
+    getUISettings() {
+        return { ...this.uiSettings };
     }
 
     // Helper method to check if point is inside ROI
