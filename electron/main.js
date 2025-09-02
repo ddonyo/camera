@@ -144,8 +144,8 @@ class FrameHandler {
                 console.log('[Main] Initializing hand detection system...');
                 console.log('[Main] Device available for HandRouter:', !!device);
 
-                initializeHandRouter(device);
-                console.log('[Main] initializeHandRouter called');
+                initializeHandRouter(device, this);
+                console.log('[Main] initializeHandRouter called with frameHandler');
 
                 // Ensure main window reference is set again after HandRouter initialization
                 if (process.platform !== 'linux' && this.currentWindow) {

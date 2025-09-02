@@ -235,6 +235,24 @@ class Device extends EventEmitter {
         }
 
         try {
+            // Clear existing recordings before starting new one
+            const recordDir = path.join(__dirname, '../../frontend/public/record');
+            if (fs.existsSync(recordDir)) {
+                console.log('[Capture] Clearing existing recordings from:', recordDir);
+                const files = fs.readdirSync(recordDir);
+                for (const file of files) {
+                    const filePath = path.join(recordDir, file);
+                    try {
+                        fs.unlinkSync(filePath);
+                    } catch (err) {
+                        console.error(`[Capture] Failed to delete file ${file}:`, err.message);
+                    }
+                }
+            } else {
+                // Create record directory if it doesn't exist
+                fs.mkdirSync(recordDir, { recursive: true });
+            }
+            
             this.isRecording = true;
             this.recordingStartTime = Date.now();
             console.log('[Capture] Recording started');

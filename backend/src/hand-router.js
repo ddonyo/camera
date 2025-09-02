@@ -4,9 +4,10 @@ const HandWorker = require('./hand-worker');
 const { getInstance: getROIConfig } = require('./roi-config');
 
 class HandRouter extends EventEmitter {
-    constructor(captureDevice) {
+    constructor(captureDevice, frameHandler = null) {
         super();
         this.captureDevice = captureDevice;
+        this.frameHandler = frameHandler; // FrameHandler reference for recording control
         this.handWorker = null;
         this.roiConfig = getROIConfig();
         this.isEnabled = false;
@@ -525,51 +526,83 @@ class HandRouter extends EventEmitter {
     }
 
     triggerRecordingStart() {
-        if (!this.captureDevice) {
-            console.warn('[HandRouter] No capture device available for recording start');
-            return;
-        }
-
         console.log('[HandRouter] Triggering recording START');
 
-        this.captureDevice
-            .startRecording()
-            .then((success) => {
-                if (success) {
+        // Use frameHandler if available (for proper recording with directory cleanup)
+        if (this.frameHandler && this.frameHandler.enableRecording) {
+            console.log('[HandRouter] Using frameHandler for recording start');
+            this.frameHandler
+                .enableRecording()
+                .then(() => {
                     this.emit('recordingStarted', {
                         trigger: 'hand_gesture',
                         timestamp: Date.now(),
                     });
-                }
-            })
-            .catch((error) => {
-                console.error('[HandRouter] Failed to start recording:', error);
-                this.emit('recordingError', error);
-            });
+                })
+                .catch((error) => {
+                    console.error('[HandRouter] Failed to start recording via frameHandler:', error);
+                    this.emit('recordingError', error);
+                });
+        } else if (this.captureDevice) {
+            // Fallback to direct capture device control
+            console.log('[HandRouter] Using captureDevice directly for recording start');
+            this.captureDevice
+                .startRecording()
+                .then((success) => {
+                    if (success) {
+                        this.emit('recordingStarted', {
+                            trigger: 'hand_gesture',
+                            timestamp: Date.now(),
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error('[HandRouter] Failed to start recording:', error);
+                    this.emit('recordingError', error);
+                });
+        } else {
+            console.warn('[HandRouter] No recording mechanism available');
+        }
     }
 
     triggerRecordingStop() {
-        if (!this.captureDevice) {
-            console.warn('[HandRouter] No capture device available for recording stop');
-            return;
-        }
-
         console.log('[HandRouter] Triggering recording STOP');
 
-        this.captureDevice
-            .stopRecording()
-            .then((success) => {
-                if (success) {
+        // Use frameHandler if available
+        if (this.frameHandler && this.frameHandler.disableRecording) {
+            console.log('[HandRouter] Using frameHandler for recording stop');
+            this.frameHandler
+                .disableRecording()
+                .then(() => {
                     this.emit('recordingStopped', {
                         trigger: 'hand_gesture',
                         timestamp: Date.now(),
                     });
-                }
-            })
-            .catch((error) => {
-                console.error('[HandRouter] Failed to stop recording:', error);
-                this.emit('recordingError', error);
-            });
+                })
+                .catch((error) => {
+                    console.error('[HandRouter] Failed to stop recording via frameHandler:', error);
+                    this.emit('recordingError', error);
+                });
+        } else if (this.captureDevice) {
+            // Fallback to direct capture device control
+            console.log('[HandRouter] Using captureDevice directly for recording stop');
+            this.captureDevice
+                .stopRecording()
+                .then((success) => {
+                    if (success) {
+                        this.emit('recordingStopped', {
+                            trigger: 'hand_gesture',
+                            timestamp: Date.now(),
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error('[HandRouter] Failed to stop recording:', error);
+                    this.emit('recordingError', error);
+                });
+        } else {
+            console.warn('[HandRouter] No recording mechanism available');
+        }
     }
 
     triggerVTON() {

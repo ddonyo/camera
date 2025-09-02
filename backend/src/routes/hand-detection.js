@@ -10,11 +10,11 @@ const router = express.Router();
 // Global hand router instance (will be initialized when needed)
 let handRouterInstance = null;
 
-// Initialize hand router with capture device
-function initializeHandRouter(captureDevice) {
+// Initialize hand router with capture device and optional frameHandler
+function initializeHandRouter(captureDevice, frameHandler = null) {
     if (!handRouterInstance && captureDevice) {
         try {
-            handRouterInstance = new HandRouter(captureDevice);
+            handRouterInstance = new HandRouter(captureDevice, frameHandler);
             
             // Setup event forwarding to main process (Electron IPC)
             handRouterInstance.on('handDetection', (data) => {
