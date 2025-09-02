@@ -149,8 +149,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
     // VTON 이미지 저장 IPC
     saveVtonImage: (url, filename) => ipcRenderer.invoke('save-vton-image', { url, filename }),
-    // ROI 플립 모드 업데이트 IPC
-    updateROIFlipMode: (flipMode) => ipcRenderer.invoke('update-roi-flip-mode', flipMode),
 
     // Generic invoke method for IPC
     invoke: (channel, data) => ipcRenderer.invoke(channel, data),

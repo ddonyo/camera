@@ -441,9 +441,6 @@ export class MJPEGViewer {
     _handleFlip() {
         this.flipMode = !this.flipMode;
         this._updateUI();
-
-        // Update ROI flip mode
-        this._updateROIFlipMode();
         
         // Backend에 flip mode 상태 전달
         this._updateBackendSettings({ flip_mode: this.flipMode });
@@ -471,7 +468,6 @@ export class MJPEGViewer {
         }
 
         // Backend에 crop mode 상태 전달
-        this._updateCropModeConfig(this.cropMode);
         this._updateBackendSettings({ crop_mode: this.cropMode });
 
         this._updateUI();
@@ -481,27 +477,6 @@ export class MJPEGViewer {
         }
     }
 
-    // Crop mode 설정 업데이트
-    async _updateCropModeConfig(cropMode) {
-        try {
-            console.log('[MJPEGViewer] Updating crop mode config to:', cropMode);
-
-            // Electron IPC를 통해 config 파일 업데이트 요청
-            if (this.#electronAPI?.invoke) {
-                const result = await this.#electronAPI.invoke('update-roi-config', {
-                    crop_mode: cropMode,
-                });
-                console.log('[MJPEGViewer] Crop mode update result:', result);
-            } else if (this.#electronAPI?.emit) {
-                // Fallback to emit if invoke is not available
-                this.#electronAPI.emit('update-roi-config', { crop_mode: cropMode });
-            }
-
-            console.log('[MJPEGViewer] Crop mode updated in config:', cropMode);
-        } catch (error) {
-            console.error('[MJPEGViewer] Failed to update crop mode config:', error);
-        }
-    }
 
     // Full 버튼 이벤트 핸들러
     _handleFull() {
@@ -1167,13 +1142,6 @@ export class MJPEGViewer {
         }
     }
 
-    // ROI 플립 모드 업데이트
-    _updateROIFlipMode() {
-        if (this.#electronAPI) {
-            this.#electronAPI.updateROIFlipMode(this.flipMode);
-            console.log(`[MJPEGViewer] ROI flip mode updated: ${this.flipMode}`);
-        }
-    }
 
     // Backend UI 설정 업데이트
     async _updateBackendSettings(settings) {

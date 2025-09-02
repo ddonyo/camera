@@ -526,21 +526,24 @@ function setupIpcHandlers(win) {
             console.log('[Main] Received stop-record command');
             return frameHandler.disableRecording();
         },
-        'update-ui-settings': (event, settings) => {
-            console.log('[Main] Updating UI settings:', settings);
-            const roiConfig = require('../backend/src/roi-config').getInstance();
-            return roiConfig.updateUISettings(settings);
-        },
-        'get-ui-settings': () => {
-            const roiConfig = require('../backend/src/roi-config').getInstance();
-            return roiConfig.getUISettings();
-        },
         'log-message': (event, message) => console.log('APP: ' + message),
     };
 
     Object.entries(handlers).forEach(([event, handler]) => {
         ipcMain.on(event, handler);
         console.log(`[Main] IPC handler registered for: ${event}`);
+    });
+
+    // UI 설정 관련 IPC 핸들러들 (handle 방식)
+    ipcMain.handle('update-ui-settings', async (event, settings) => {
+        console.log('[Main] Updating UI settings:', settings);
+        const roiConfig = require('../backend/src/roi-config').getInstance();
+        return roiConfig.updateUISettings(settings);
+    });
+    
+    ipcMain.handle('get-ui-settings', async () => {
+        const roiConfig = require('../backend/src/roi-config').getInstance();
+        return roiConfig.getUISettings();
     });
 
     // 전체화면 관련 IPC 핸들러들 (handle 방식으로 추가)
@@ -581,40 +584,7 @@ function setupIpcHandlers(win) {
         });
     });
 
-    // ROI 플립 모드 업데이트 IPC 핸들러
-    ipcMain.handle('update-roi-flip-mode', async (event, flipMode) => {
-        console.log(`[Main] ROI flip mode update requested: ${flipMode}`);
-        try {
-            const roiConfigPath = path.join(PATHS.CONFIG_DIR, 'roi.json');
-            const config = JSON.parse(fs.readFileSync(roiConfigPath, 'utf8'));
-            config.flip_mode = flipMode;
-            fs.writeFileSync(roiConfigPath, JSON.stringify(config, null, 2));
-            console.log(`[Main] ROI flip mode updated to: ${flipMode}`);
-            return true;
-        } catch (error) {
-            console.error('[Main] Failed to update ROI flip mode:', error);
-            return false;
-        }
-    });
 
-    // ROI 설정 업데이트 IPC 핸들러 (crop_mode 등)
-    ipcMain.handle('update-roi-config', async (event, updates) => {
-        console.log(`[Main] ROI config update requested:`, updates);
-        try {
-            const roiConfigPath = path.join(PATHS.CONFIG_DIR, 'roi.json');
-            const config = JSON.parse(fs.readFileSync(roiConfigPath, 'utf8'));
-
-            // 업데이트 적용
-            Object.assign(config, updates);
-
-            fs.writeFileSync(roiConfigPath, JSON.stringify(config, null, 2));
-            console.log(`[Main] ROI config updated:`, updates);
-            return true;
-        } catch (error) {
-            console.error('[Main] Failed to update ROI config:', error);
-            return false;
-        }
-    });
 }
 
 // 메인 창 생성 및 설정
