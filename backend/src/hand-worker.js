@@ -139,7 +139,15 @@ class HandWorker extends EventEmitter {
         }
 
         try {
-            this.process.stdin.write(JSON.stringify(command) + '\n');
+            // Use binary protocol for all commands
+            const header = JSON.stringify(command);
+            const headerBuffer = Buffer.from(header);
+            const headerLength = Buffer.allocUnsafe(4);
+            headerLength.writeUInt32LE(headerBuffer.length, 0);
+            
+            this.process.stdin.write(headerLength);
+            this.process.stdin.write(headerBuffer);
+            
             return true;
         } catch (error) {
             console.error('[HandWorker] Failed to send command:', error);
@@ -180,32 +188,10 @@ class HandWorker extends EventEmitter {
         this.pendingFrames++;
 
         try {
-            // Convert to base64 directly without Sharp processing
-            const base64Image = imageBuffer.toString('base64');
-
-            // Prepare crop info for Python processing
+            // Prepare crop info for display mode (middle third)
             let cropInfo = null;
-            
-            // Send crop info for ROI processing regardless of architecture
-            if (roiConfig && roiConfig.enabled && roiConfig.start_roi && roiConfig.stop_roi) {
-                const startROI = roiConfig.start_roi;
-                const stopROI = roiConfig.stop_roi;
-                
-                // Get the bounding box that contains both ROIs
-                const minX = Math.min(startROI.x1, stopROI.x1);
-                const maxX = Math.max(startROI.x2, stopROI.x2);
-                const minY = Math.min(startROI.y1, stopROI.y1);
-                const maxY = Math.max(startROI.y2, stopROI.y2);
-
-                // Store crop info for Python to process
-                cropInfo = {
-                    offsetX: minX,
-                    offsetY: minY,
-                    scaleX: maxX - minX,
-                    scaleY: maxY - minY
-                };
-            } else if (cropMode) {
-                // Middle third crop info
+            if (cropMode) {
+                // Middle third crop info for display purposes
                 cropInfo = {
                     offsetX: 1/3,
                     offsetY: 0,
@@ -213,16 +199,51 @@ class HandWorker extends EventEmitter {
                     scaleY: 1
                 };
             }
+            
+            // Prepare ROI info separately
+            let roiInfo = null;
+            if (roiConfig && roiConfig.enabled && roiConfig.start_roi && roiConfig.stop_roi) {
+                const startROI = roiConfig.start_roi;
+                const stopROI = roiConfig.stop_roi;
+                
+                // ROI boundaries for detection
+                roiInfo = {
+                    start_roi: startROI,
+                    stop_roi: stopROI,
+                    // Calculate bounding box for optimization
+                    bbox: {
+                        x1: Math.min(startROI.x1, stopROI.x1),
+                        y1: Math.min(startROI.y1, stopROI.y1),
+                        x2: Math.max(startROI.x2, stopROI.x2),
+                        y2: Math.max(startROI.y2, stopROI.y2)
+                    }
+                };
+            }
 
-            // Store crop info for later use in handleResult
+            // Store both for later use in handleResult
             this.lastCropInfo = cropInfo;
+            this.lastRoiInfo = roiInfo;
 
-            return this.sendCommand({
+            // Send binary data length and both crop/roi info as JSON header
+            const header = JSON.stringify({
                 type: 'process_frame',
-                image_data: base64Image,
-                format: 'base64',
-                crop_info: cropInfo  // Send crop info to Python
+                format: 'binary',
+                data_length: imageBuffer.length,
+                crop_info: cropInfo,
+                roi_info: roiInfo
             });
+
+            // Send header length (4 bytes), header, then binary data
+            const headerBuffer = Buffer.from(header);
+            const headerLength = Buffer.allocUnsafe(4);
+            headerLength.writeUInt32LE(headerBuffer.length, 0);
+            
+            // Write all data to Python process
+            this.process.stdin.write(headerLength);
+            this.process.stdin.write(headerBuffer);
+            this.process.stdin.write(imageBuffer);
+            
+            return true;
         } catch (error) {
             console.error('[HandWorker] Failed to process image:', error);
             this.pendingFrames--;

@@ -16,7 +16,7 @@
   "min_confidence": 0.7,
   "enabled": true,
   "flip_mode": true,
-  "crop_mode": false,
+  "crop_mode": true,
   "hand_detection": {
     "fps_limit": 15,
     "max_num_hands": 2,

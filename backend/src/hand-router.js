@@ -151,6 +151,13 @@ class HandRouter extends EventEmitter {
         console.log('[HandRouter] State reset completed');
     }
 
+    adjustROIForCropMode(roi) {
+        // In crop_mode, we don't need to adjust ROI boundaries
+        // because hand coordinates are already transformed to full screen space in Python
+        // Just return the original ROI
+        return roi;
+    }
+
     processFrame(imageBuffer) {
         if (!this.isEnabled || !this.handWorker) {
             return false;
@@ -190,6 +197,18 @@ class HandRouter extends EventEmitter {
             return;
         }
 
+        // Adjust ROI boundaries for crop_mode
+        let adjustedConfig = config;
+        if (config.crop_mode) {
+            // In crop_mode, we only see middle third (1/3 to 2/3)
+            // Need to adjust ROI coordinates to match the transformed hand coordinates
+            adjustedConfig = {
+                ...config,
+                start_roi: this.adjustROIForCropMode(config.start_roi),
+                stop_roi: this.adjustROIForCropMode(config.stop_roi)
+            };
+        }
+
         this.stats.handsDetected += hands.length;
 
         // Process each detected hand
@@ -200,19 +219,11 @@ class HandRouter extends EventEmitter {
         for (const hand of hands) {
             const { handedness, center, confidence, is_v_gesture } = hand;
 
-            // Apply coordinate transformation
+            // Coordinates are already in full image space (transformed in Python)
             let effectiveCenter = center;
 
-            // If image was cropped to ROI, transform coordinates back to full image space
-            if (cropInfo) {
-                effectiveCenter = {
-                    x: cropInfo.offsetX + (center.x * cropInfo.scaleX),
-                    y: cropInfo.offsetY + (center.y * cropInfo.scaleY),
-                };
-            }
-
             // Apply flip transformation
-            if (config.flip_mode) {
+            if (adjustedConfig.flip_mode) {
                 effectiveCenter = {
                     x: 1 - effectiveCenter.x,
                     y: effectiveCenter.y,
