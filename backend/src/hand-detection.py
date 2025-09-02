@@ -81,13 +81,14 @@ class HandDetector:
         except Exception as e:
             return False
         
-    def process_frame(self, image_data, format='base64'):
+    def process_frame(self, image_data, format='base64', crop_info=None):
         """
         Process a single frame and detect hands
         
         Args:
             image_data: Image data (base64 string or numpy array)
             format: 'base64' or 'numpy'
+            crop_info: Optional crop information to process only a region
             
         Returns:
             dict with detection results
@@ -120,6 +121,23 @@ class HandDetector:
             if image is None:
                 return {"error": "Failed to decode image"}
                 
+            # Apply crop if specified (process only the ROI region)
+            if crop_info:
+                height, width = image.shape[:2]
+                x1 = int(crop_info['offsetX'] * width)
+                y1 = int(crop_info['offsetY'] * height)
+                x2 = int((crop_info['offsetX'] + crop_info['scaleX']) * width)
+                y2 = int((crop_info['offsetY'] + crop_info['scaleY']) * height)
+                
+                # Ensure valid crop bounds
+                x1 = max(0, min(x1, width - 1))
+                y1 = max(0, min(y1, height - 1))
+                x2 = max(x1 + 1, min(x2, width))
+                y2 = max(y1 + 1, min(y2, height))
+                
+                # Crop the image to ROI
+                image = image[y1:y2, x1:x2]
+            
             # Convert BGR to RGB (MediaPipe uses RGB)
             rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
@@ -142,6 +160,12 @@ class HandDetector:
                     
                     for landmark in hand_landmarks.landmark:
                         x, y = landmark.x, landmark.y
+                        
+                        # Transform coordinates back to original image space if cropped
+                        if crop_info:
+                            x = crop_info['offsetX'] + x * crop_info['scaleX']
+                            y = crop_info['offsetY'] + y * crop_info['scaleY']
+                        
                         landmarks.append({"x": x, "y": y, "z": landmark.z})
                         x_coords.append(x)
                         y_coords.append(y)
@@ -205,9 +229,10 @@ def main():
                 if input_data.get("type") == "process_frame":
                     image_data = input_data.get("image_data")
                     format_type = input_data.get("format", "base64")
+                    crop_info = input_data.get("crop_info", None)
                     
                     # Process frame
-                    result = detector.process_frame(image_data, format_type)
+                    result = detector.process_frame(image_data, format_type, crop_info)
                     
                     # Output result
                     print(json.dumps(result), flush=True)

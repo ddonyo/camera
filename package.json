@@ -9,7 +9,8 @@
     "test:hand": "node backend/src/test/hand-gesture-test.js",
     "setup:python": "pip install mediapipe opencv-python",
     "check:deps": "python3 -c \"import mediapipe, cv2; print('Python dependencies OK')\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "echo \"No tests defined yet\" && exit 0"
   },
   "author": "LGE SoC Media BSP Task",
   "description": "MJPEG Viewer",
@@ -26,7 +27,7 @@
   },
   "devDependencies": {
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.5",
+    "lint-staged": "^16.1.6",
     "prettier": "^3.6.2"
   },
   "lint-staged": {

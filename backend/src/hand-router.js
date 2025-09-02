@@ -47,7 +47,8 @@ class HandRouter extends EventEmitter {
         this.dwellUpdateInterval = null;
 
         // Debug mode - Enable verbose logging with HAND_DEBUG=true
-        this.debugMode = process.env.HAND_DEBUG === 'true';
+        const config = this.roiConfig.get();
+        this.debugMode = process.env.HAND_DEBUG === 'true' || (config && config.hand_detection && config.hand_detection.debug_mode);
 
         // Statistics
         this.stats = {
@@ -64,6 +65,8 @@ class HandRouter extends EventEmitter {
     setupROIConfigListener() {
         this.roiConfig.on('configChanged', (newConfig) => {
             console.log('[HandRouter] ROI configuration changed');
+            // Update debug mode
+            this.debugMode = process.env.HAND_DEBUG === 'true' || (newConfig && newConfig.hand_detection && newConfig.hand_detection.debug_mode);
             if (this.handWorker && this.handWorker.isRunning) {
                 this.handWorker.updateConfig(newConfig.hand_detection);
             }

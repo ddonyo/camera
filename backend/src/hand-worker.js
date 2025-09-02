@@ -3,7 +3,7 @@ const { spawn } = require('child_process');
 const { EventEmitter } = require('events');
 const path = require('path');
 const fs = require('fs');
-const sharp = require('sharp');
+// const sharp = require('sharp'); // Removed - processing done in Python for better performance
 
 class HandWorker extends EventEmitter {
     constructor(config = {}) {
@@ -169,7 +169,10 @@ class HandWorker extends EventEmitter {
 
         // Drop frame if too many pending
         if (this.pendingFrames >= this.maxPendingFrames) {
-            console.log('[HandWorker] Dropping frame - too many pending:', this.pendingFrames);
+            // Don't log every dropped frame to avoid console spam
+            if (this.pendingFrames % 10 === 0) {
+                console.log('[HandWorker] Dropping frames - too many pending:', this.pendingFrames);
+            }
             return false;
         }
 
@@ -177,16 +180,14 @@ class HandWorker extends EventEmitter {
         this.pendingFrames++;
 
         try {
-            let processedBuffer = imageBuffer;
+            // Convert to base64 directly without Sharp processing
+            const base64Image = imageBuffer.toString('base64');
+
+            // Prepare crop info for Python processing
             let cropInfo = null;
-
-            // Crop to ROI regions for better performance on ARM
-            const isARM = process.arch === 'arm' || process.arch === 'arm64';
-            if (isARM && roiConfig && roiConfig.enabled) {
-                const image = sharp(imageBuffer);
-                const metadata = await image.metadata();
-
-                // Calculate combined ROI area (union of start and stop ROIs)
+            
+            // Send crop info for ROI processing regardless of architecture
+            if (roiConfig && roiConfig.enabled && roiConfig.start_roi && roiConfig.stop_roi) {
                 const startROI = roiConfig.start_roi;
                 const stopROI = roiConfig.stop_roi;
                 
@@ -196,50 +197,22 @@ class HandWorker extends EventEmitter {
                 const minY = Math.min(startROI.y1, stopROI.y1);
                 const maxY = Math.max(startROI.y2, stopROI.y2);
 
-                // Convert normalized coordinates to pixels
-                const cropX = Math.floor(minX * metadata.width);
-                const cropY = Math.floor(minY * metadata.height);
-                const cropWidth = Math.ceil((maxX - minX) * metadata.width);
-                const cropHeight = Math.ceil((maxY - minY) * metadata.height);
-
-                // Store crop info for coordinate transformation
+                // Store crop info for Python to process
                 cropInfo = {
                     offsetX: minX,
                     offsetY: minY,
                     scaleX: maxX - minX,
                     scaleY: maxY - minY
                 };
-
-                // Crop to ROI area
-                processedBuffer = await image
-                    .extract({
-                        left: cropX,
-                        top: cropY,
-                        width: cropWidth,
-                        height: cropHeight,
-                    })
-                    .toBuffer();
             } else if (cropMode) {
-                const image = sharp(imageBuffer);
-                const metadata = await image.metadata();
-
-                // Calculate crop region (middle 1/3)
-                const cropWidth = Math.floor(metadata.width / 3);
-                const cropX = Math.floor(metadata.width / 3);
-
-                // Crop the middle third
-                processedBuffer = await image
-                    .extract({
-                        left: cropX,
-                        top: 0,
-                        width: cropWidth,
-                        height: metadata.height,
-                    })
-                    .toBuffer();
+                // Middle third crop info
+                cropInfo = {
+                    offsetX: 1/3,
+                    offsetY: 0,
+                    scaleX: 1/3,
+                    scaleY: 1
+                };
             }
-
-            // Convert to base64
-            const base64Image = processedBuffer.toString('base64');
 
             // Store crop info for later use in handleResult
             this.lastCropInfo = cropInfo;
@@ -248,6 +221,7 @@ class HandWorker extends EventEmitter {
                 type: 'process_frame',
                 image_data: base64Image,
                 format: 'base64',
+                crop_info: cropInfo  // Send crop info to Python
             });
         } catch (error) {
             console.error('[HandWorker] Failed to process image:', error);
