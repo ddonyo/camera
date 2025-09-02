@@ -528,81 +528,23 @@ class HandRouter extends EventEmitter {
     triggerRecordingStart() {
         console.log('[HandRouter] Triggering recording START');
 
-        // Use frameHandler if available (for proper recording with directory cleanup)
-        if (this.frameHandler && this.frameHandler.enableRecording) {
-            console.log('[HandRouter] Using frameHandler for recording start');
-            this.frameHandler
-                .enableRecording()
-                .then(() => {
-                    this.emit('recordingStarted', {
-                        trigger: 'hand_gesture',
-                        timestamp: Date.now(),
-                    });
-                })
-                .catch((error) => {
-                    console.error('[HandRouter] Failed to start recording via frameHandler:', error);
-                    this.emit('recordingError', error);
-                });
-        } else if (this.captureDevice) {
-            // Fallback to direct capture device control
-            console.log('[HandRouter] Using captureDevice directly for recording start');
-            this.captureDevice
-                .startRecording()
-                .then((success) => {
-                    if (success) {
-                        this.emit('recordingStarted', {
-                            trigger: 'hand_gesture',
-                            timestamp: Date.now(),
-                        });
-                    }
-                })
-                .catch((error) => {
-                    console.error('[HandRouter] Failed to start recording:', error);
-                    this.emit('recordingError', error);
-                });
-        } else {
-            console.warn('[HandRouter] No recording mechanism available');
-        }
+        // Frontend에만 알리고, 실제 녹화는 Frontend가 처리하도록 함
+        // 이렇게 하면 버튼 녹화와 동일한 플로우를 따름
+        this.emit('recordingStarted', {
+            trigger: 'hand_gesture',
+            timestamp: Date.now(),
+        });
     }
 
     triggerRecordingStop() {
         console.log('[HandRouter] Triggering recording STOP');
 
-        // Use frameHandler if available
-        if (this.frameHandler && this.frameHandler.disableRecording) {
-            console.log('[HandRouter] Using frameHandler for recording stop');
-            this.frameHandler
-                .disableRecording()
-                .then(() => {
-                    this.emit('recordingStopped', {
-                        trigger: 'hand_gesture',
-                        timestamp: Date.now(),
-                    });
-                })
-                .catch((error) => {
-                    console.error('[HandRouter] Failed to stop recording via frameHandler:', error);
-                    this.emit('recordingError', error);
-                });
-        } else if (this.captureDevice) {
-            // Fallback to direct capture device control
-            console.log('[HandRouter] Using captureDevice directly for recording stop');
-            this.captureDevice
-                .stopRecording()
-                .then((success) => {
-                    if (success) {
-                        this.emit('recordingStopped', {
-                            trigger: 'hand_gesture',
-                            timestamp: Date.now(),
-                        });
-                    }
-                })
-                .catch((error) => {
-                    console.error('[HandRouter] Failed to stop recording:', error);
-                    this.emit('recordingError', error);
-                });
-        } else {
-            console.warn('[HandRouter] No recording mechanism available');
-        }
+        // Frontend에만 알리고, 실제 녹화 중지는 Frontend가 처리하도록 함
+        // 이렇게 하면 버튼 녹화와 동일한 플로우를 따름
+        this.emit('recordingStopped', {
+            trigger: 'hand_gesture',
+            timestamp: Date.now(),
+        });
     }
 
     triggerVTON() {

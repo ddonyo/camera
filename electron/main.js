@@ -55,6 +55,68 @@ class FrameHandler {
         this.isRecording = false; // 녹화 상태
         this.frameCounter = 0; // 녹화 프레임 카운터
         this.currentWindow = null; // 현재 창
+        this.handRouterListenersRegistered = false; // HandRouter 이벤트 리스너 등록 여부
+    }
+
+    // HandRouter 이벤트 리스너 등록 (한 번만 실행)
+    registerHandRouterListeners() {
+        if (this.handRouterListenersRegistered) {
+            console.log('[FrameHandler] HandRouter listeners already registered');
+            return;
+        }
+
+        const handRouterInstance = getHandRouterInstance();
+        if (!handRouterInstance) {
+            console.log('[FrameHandler] HandRouter instance not available yet');
+            return;
+        }
+
+        console.log('[FrameHandler] Registering HandRouter event listeners');
+
+        // HandRouter 이벤트를 프론트엔드로 전달
+        handRouterInstance.on('recordingStarted', (data) => {
+            const allWindows = BrowserWindow.getAllWindows();
+            for (const window of allWindows) {
+                if (window.webContents) {
+                    window.webContents.send('recording-started', data);
+                }
+            }
+        });
+
+        handRouterInstance.on('recordingStopped', (data) => {
+            const allWindows = BrowserWindow.getAllWindows();
+            for (const window of allWindows) {
+                if (window.webContents) {
+                    window.webContents.send('recording-stopped', data);
+                }
+            }
+        });
+
+        // Dwell progress 이벤트를 프론트엔드로 전달
+        handRouterInstance.on('dwellProgress', (data) => {
+            if (this.currentWindow && this.currentWindow.webContents) {
+                this.currentWindow.webContents.send('roi-dwell-progress', data);
+            }
+        });
+
+        this.handRouterListenersRegistered = true;
+        console.log('[FrameHandler] HandRouter event listeners registered successfully');
+    }
+
+    // HandRouter 이벤트 리스너 정리
+    cleanupHandRouterListeners() {
+        if (!this.handRouterListenersRegistered) {
+            return;
+        }
+
+        const handRouterInstance = getHandRouterInstance();
+        if (handRouterInstance) {
+            console.log('[FrameHandler] Cleaning up HandRouter event listeners');
+            handRouterInstance.removeAllListeners('recordingStarted');
+            handRouterInstance.removeAllListeners('recordingStopped');
+            handRouterInstance.removeAllListeners('dwellProgress');
+            this.handRouterListenersRegistered = false;
+        }
     }
 
     // 디렉토리 내 프레임 파일 정리
@@ -73,7 +135,18 @@ class FrameHandler {
                 (file) => file.startsWith('frame') && file.endsWith('.jpg')
             );
 
-            await Promise.all(frameFiles.map((file) => fsp.unlink(path.join(dirPath, file))));
+            await Promise.all(
+                frameFiles.map(async (file) => {
+                    try {
+                        await fsp.unlink(path.join(dirPath, file));
+                    } catch (error) {
+                        // 파일이 이미 없는 경우는 무시
+                        if (error.code !== 'ENOENT') {
+                            console.error(`Error deleting ${file}:`, error.message);
+                        }
+                    }
+                })
+            );
 
             if (frameFiles.length > 0) {
                 console.log(`${dirName} directory cleared (${frameFiles.length} files)`);
@@ -171,33 +244,8 @@ class FrameHandler {
                         console.log('[Main] HandRouter connected to WinDevice');
                     }
 
-                    // HandRouter 이벤트를 프론트엔드로 전달
-                    handRouterInstance.on('recordingStarted', (data) => {
-                        // 모든 윈도우에 이벤트 전송 (window 참조 문제 해결)
-                        const allWindows = BrowserWindow.getAllWindows();
-                        for (const window of allWindows) {
-                            if (window.webContents) {
-                                window.webContents.send('recording-started', data);
-                            }
-                        }
-                    });
-
-                    handRouterInstance.on('recordingStopped', (data) => {
-                        // 모든 윈도우에 이벤트 전송 (window 참조 문제 해결)
-                        const allWindows = BrowserWindow.getAllWindows();
-                        for (const window of allWindows) {
-                            if (window.webContents) {
-                                window.webContents.send('recording-stopped', data);
-                            }
-                        }
-                    });
-
-                    // Dwell progress 이벤트를 프론트엔드로 전달
-                    handRouterInstance.on('dwellProgress', (data) => {
-                        if (this.currentWindow && this.currentWindow.webContents) {
-                            this.currentWindow.webContents.send('roi-dwell-progress', data);
-                        }
-                    });
+                    // HandRouter 이벤트 리스너 등록 (FrameHandler에서 한 번만 등록)
+                    this.registerHandRouterListeners();
 
                     // HandRouter 시작
                     try {
@@ -444,6 +492,10 @@ class FrameHandler {
             this.watcher = null;
             console.log('[FrameHandler] Watcher cleanup completed');
         }
+        
+        // HandRouter 이벤트 리스너 정리
+        this.cleanupHandRouterListeners();
+        
         this.currentWindow = null;
     }
 
@@ -596,9 +648,10 @@ function createWindow() {
 }
 
 // 앱 종료 시 리소스 정리
-function cleanupApp() {
+async function cleanupApp() {
     console.log('Cleaning up application...');
-    frameHandler.stopStreaming();
+    await frameHandler.stopStreaming();
+    await frameHandler.cleanup();
 }
 
 function startBackendOnce() {

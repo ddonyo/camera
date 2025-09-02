@@ -27,24 +27,14 @@ function initializeHandRouter(captureDevice, frameHandler = null) {
                 }
             });
             
+            // recording 이벤트는 Main 프로세스에서 직접 처리 (경로 1 사용)
+            // 중복 방지를 위해 여기서는 process.send 하지 않음
             handRouterInstance.on('recordingStarted', (data) => {
                 console.log('[HandDetection API] Recording started via hand gesture');
-                if (process.send) {
-                    process.send({
-                        type: 'recording-started',
-                        data: data
-                    });
-                }
             });
             
             handRouterInstance.on('recordingStopped', (data) => {
                 console.log('[HandDetection API] Recording stopped via hand gesture');
-                if (process.send) {
-                    process.send({
-                        type: 'recording-stopped', 
-                        data: data
-                    });
-                }
             });
             
             handRouterInstance.start()

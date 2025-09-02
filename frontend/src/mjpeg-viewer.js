@@ -339,6 +339,9 @@ export class MJPEGViewer {
             this._emitToElectron(IPCCommands.STOP_RECORDING);
             this._emitToElectron(IPCCommands.STOP_STREAMING);
 
+            // 프레임 카운터 리셋 (다음 녹화를 위해)
+            this.liveFrameCount = 0;
+
             // Playback 모드로 전환 (버튼과 제스처 모두 동일하게 처리)
             await this._startPlaybackMode(Direction.FORWARD);
 
