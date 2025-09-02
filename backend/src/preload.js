@@ -5,7 +5,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CONFIG = Object.freeze({
     USE_SOCKET_IO: false, // Socket.IO 사용 여부
     SOCKET_URL: 'http://localhost:3000', // Socket.IO 서버 URL
-    VALID_CHANNELS: ['frame-path', 'frame-data'], // 유효한 IPC/Socket 채널 목록
+    VALID_CHANNELS: [
+        'frame-path', 
+        'frame-data',
+        'recording-started',
+        'recording-stopped',
+        'hand-detection'
+    ], // 유효한 IPC/Socket 채널 목록
     LOG_PREFIX: '[Preload]', // 로그 접두사
 });
 

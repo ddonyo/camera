@@ -48,24 +48,6 @@ export class MJPEGViewer {
 
         console.log('MJPEGViewer constructor completed');
 
-        // ROI 제스처 녹화 상태 변경 리스너
-        window.addEventListener('recording-state-changed', (event) => {
-            const { isRecording, source } = event.detail;
-            console.log(
-                `[MJPEGViewer] Recording state changed: ${isRecording} (source: ${source})`
-            );
-
-            if (isRecording) {
-                console.log(
-                    '[MJPEGViewer] Gesture recording started - updating UI to recording mode'
-                );
-                this._switchToGestureRecordingMode();
-            } else {
-                console.log('[MJPEGViewer] Gesture recording stopped - updating UI to live mode');
-                this._switchToLiveMode();
-            }
-        });
-
         // ROI dwell progress 리스너
         window.addEventListener('roi-dwell-progress', (event) => {
             if (this.roiOverlay) {
@@ -187,14 +169,12 @@ export class MJPEGViewer {
 
         // 손 제스처 녹화 시작 이벤트
         this.#electronAPI.on('recording-started', (data) => {
-            console.log('[MJPEGViewer] Recording started by hand gesture:', data);
-            this.uiController.setMessage('🔴 Hand gesture: Recording started', MessageType.INFO);
+            this._startRecording();
         });
 
         // 손 제스처 녹화 중지 이벤트
         this.#electronAPI.on('recording-stopped', (data) => {
-            console.log('[MJPEGViewer] Recording stopped by hand gesture:', data);
-            this.uiController.setMessage('⏹️ Hand gesture: Recording stopped', MessageType.INFO);
+            this._stopRecording();
         });
     }
 
@@ -324,9 +304,9 @@ export class MJPEGViewer {
     }
 
     // 공용 녹화 시작 메서드 (Live 스트리밍은 유지)
-    async _startRecording(source = 'button') {
+    async _startRecording() {
         try {
-            console.log(`[Recording] Starting recording from ${source}`);
+            console.log('[Recording] Starting recording');
 
             // UI 상태를 RECORD로 변경 (Live 스트리밍은 계속 진행)
             this._setState(State.RECORD);
@@ -335,36 +315,25 @@ export class MJPEGViewer {
             // UI 업데이트 (상태 변경으로 버튼 활성/비활성화 자동 처리됨)
             this._updateUI();
 
-            // 메시지 표시 (소스에 따라 다른 메시지)
-            const message =
-                source === 'gesture'
-                    ? '🔴 Hand gesture: Recording started'
-                    : '🔴 Recording started';
-            this.uiController.setMessage(message, MessageType.INFO);
+            // 메시지 표시
+            this.uiController.setMessage('🔴 Recording started', MessageType.INFO);
 
-            // 백그라운드에서 녹화 시작 명령 전송 (버튼으로 시작한 경우에만)
-            // 중요: START_RECORDING만 전송, STOP_STREAMING은 전송하지 않음
-            if (source === 'button') {
-                this._emitToElectron(IPCCommands.START_RECORDING);
-            }
+            // 백그라운드에서 녹화 시작 명령 전송
+            this._emitToElectron(IPCCommands.START_RECORDING);
 
-            console.log(`[Recording] Successfully started recording from ${source}`);
+            console.log('[Recording] Successfully started recording');
         } catch (error) {
             this._handleError(error, 'Recording start error');
         }
     }
 
     // 공용 녹화 중지 메서드 (버튼과 제스처 모두 Playback 모드로 전환)
-    async _stopRecording(source = 'button') {
+    async _stopRecording() {
         try {
-            console.log(`[Recording] Stopping recording from ${source}`);
+            console.log('[Recording] Stopping recording');
 
-            // 메시지 표시 (소스에 따라 다른 메시지)
-            const message =
-                source === 'gesture'
-                    ? '⏹️ Hand gesture: Recording stopped'
-                    : '⏹️ Recording stopped';
-            this.uiController.setMessage(message, MessageType.INFO);
+            // 메시지 표시
+            this.uiController.setMessage('⏹️ Recording stopped', MessageType.INFO);
 
             // 녹화 중지 명령 전송
             this._emitToElectron(IPCCommands.STOP_RECORDING);
@@ -373,9 +342,7 @@ export class MJPEGViewer {
             // Playback 모드로 전환 (버튼과 제스처 모두 동일하게 처리)
             await this._startPlaybackMode(Direction.FORWARD);
 
-            console.log(
-                `[Recording] Successfully stopped recording from ${source} and switched to playback`
-            );
+            console.log('[Recording] Successfully stopped recording and switched to playback');
         } catch (error) {
             this._handleError(error, 'Recording stop error');
         }
@@ -383,12 +350,12 @@ export class MJPEGViewer {
 
     // Live에서 Record로 전환 (무중단) - 버튼 클릭용
     async _switchFromLiveToRecord() {
-        await this._startRecording('button');
+        await this._startRecording();
     }
 
     // Record 모드 중지 및 Playback 전환 준비 - 버튼 클릭용
     async _stopRecordMode() {
-        await this._stopRecording('button');
+        await this._stopRecording();
     }
 
     // Playback 버튼 이벤트 핸들러
@@ -1197,15 +1164,6 @@ export class MJPEGViewer {
         }
     }
 
-    // 제스처 녹화 모드로 UI 전환 (공용 메서드 사용)
-    _switchToGestureRecordingMode() {
-        this._startRecording('gesture');
-    }
-
-    // 라이브 모드로 UI 복원 (공용 메서드 사용)
-    _switchToLiveMode() {
-        this._stopRecording('gesture');
-    }
 
     // 손 감지 결과 업데이트 (백엔드에서 받은 데이터)
     _updateHandDetections(detections) {

@@ -172,23 +172,23 @@ class FrameHandler {
                     }
 
                     // HandRouter 이벤트를 프론트엔드로 전달
-                    handRouterInstance.on('recordingStarted', () => {
-                        console.log('[Main] HandRouter recording started - updating UI');
-                        if (this.currentWindow && this.currentWindow.webContents) {
-                            this.currentWindow.webContents.send('recording-state-changed', {
-                                isRecording: true,
-                                source: 'gesture',
-                            });
+                    handRouterInstance.on('recordingStarted', (data) => {
+                        // 모든 윈도우에 이벤트 전송 (window 참조 문제 해결)
+                        const allWindows = BrowserWindow.getAllWindows();
+                        for (const window of allWindows) {
+                            if (window.webContents) {
+                                window.webContents.send('recording-started', data);
+                            }
                         }
                     });
 
-                    handRouterInstance.on('recordingStopped', () => {
-                        console.log('[Main] HandRouter recording stopped - updating UI');
-                        if (this.currentWindow && this.currentWindow.webContents) {
-                            this.currentWindow.webContents.send('recording-state-changed', {
-                                isRecording: false,
-                                source: 'gesture',
-                            });
+                    handRouterInstance.on('recordingStopped', (data) => {
+                        // 모든 윈도우에 이벤트 전송 (window 참조 문제 해결)
+                        const allWindows = BrowserWindow.getAllWindows();
+                        for (const window of allWindows) {
+                            if (window.webContents) {
+                                window.webContents.send('recording-stopped', data);
+                            }
                         }
                     });
 
