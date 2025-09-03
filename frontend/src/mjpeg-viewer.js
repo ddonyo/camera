@@ -5,7 +5,6 @@ import {
     InfoMessages,
     Direction,
     IPCCommands,
-    StateNames,
     Config,
 } from './config.js';
 import { TimerUtils, CanvasUtils, FileUtils } from './utils.js';
@@ -1037,6 +1036,12 @@ export class MJPEGViewer {
         this._pause();
         this.uiController.destroy();
         this.frameManager.clear();
+        
+        if (this.roiOverlay) {
+            this.roiOverlay.destroy();
+            this.roiOverlay = null;
+        }
+        
         console.log('MJPEGViewer destroyed');
     }
 
@@ -1243,19 +1248,5 @@ export class MJPEGViewer {
                 roiBtn.classList.remove('roi-active');
             }, 500);
         }
-    }
-
-    // MJPEGViewer 소멸 시 ROI 오버레이 정리
-    destroy() {
-        this._pause();
-        this.uiController.destroy();
-        this.frameManager.clear();
-
-        if (this.roiOverlay) {
-            this.roiOverlay.destroy();
-            this.roiOverlay = null;
-        }
-
-        console.log('MJPEGViewer destroyed');
     }
 }

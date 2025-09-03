@@ -85,15 +85,6 @@ const FRAME_WATCHER_CONFIG = Object.freeze({
     },
 });
 
-// 파일 경로를 웹 경로로 변환
-function convertToWebPath(filePath) {
-    return filePath
-        .replace(/\\/g, '/') // Windows 경로를 웹 경로로 변환
-        .replace(/^\.\/frontend\/public\//, './') // ./frontend/public/ 제거
-        .replace(/^frontend\/public\//, './') // frontend/public/ 제거
-        .replace(/^(?!\.\/)/, './'); // ./로 시작하지 않으면 추가
-}
-
 // 파일이 감시 대상 프레임 파일인지 확인
 function isTargetFrameFile(filePath) {
     const fileName = path.basename(filePath).toLowerCase();
@@ -285,15 +276,6 @@ function getHandRouterStatus() {
     return handRouter ? handRouter.getStatus() : null;
 }
 
-// 핸드 제스처 시뮬레이션 (테스트용)
-function simulateHandGesture(handedness, x, y, confidence = 0.8) {
-    if (handRouter) {
-        return handRouter.simulateHandDetection(handedness, x, y, confidence);
-    }
-    console.warn('[FrameWatcher] Hand router not initialized');
-    return false;
-}
-
 // CommonJS 모듈 export
 module.exports = {
     start,
@@ -301,9 +283,7 @@ module.exports = {
     stopAll,
     setHandRouter,
     getHandRouterStatus,
-    simulateHandGesture,
     // 테스트를 위한 유틸리티 함수들 export
-    convertToWebPath,
     isTargetFrameFile,
     ensureDirectoryExists,
     FRAME_WATCHER_CONFIG,

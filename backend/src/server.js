@@ -158,4 +158,4 @@ if (require.main === module) {
 }
 
 // 테스트를 위한 export (필요시)
-module.exports = { app, utils };
+module.exports = { app };

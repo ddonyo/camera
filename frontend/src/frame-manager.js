@@ -275,15 +275,4 @@ export class FrameManager {
     hasFrames() {
         return this.frames.length > 0;
     }
-
-    // (사용되지 않음, 필요시 구현) 현재 FrameManager 상태 반환
-    getState() {
-        return {
-            frameCount: this.frames.length,
-            currentIndex: this.#currentIndex,
-            hasFrames: this.hasFrames(),
-            progress: this.getProgress(),
-            currentFrame: this.getCurrentFrame(),
-        };
-    }
 }

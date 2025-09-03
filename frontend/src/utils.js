@@ -2,56 +2,6 @@ import { Config } from './config.js';
 
 // 유틸리티 함수 클래스
 
-// 유효성 검증 유틸리티
-export class ValidationUtils {
-    // 필수 값 및 타입 검증
-    static validateRequired(value, name, type = null) {
-        if (value === null || value === undefined) {
-            throw new Error(`${name} is required`);
-        }
-
-        if (type && typeof value !== type) {
-            throw new Error(`${name} must be of type ${type}`);
-        }
-
-        return value;
-    }
-
-    // 숫자 및 범위 검증
-    static validateNumber(value, name, options = {}) {
-        const { min = -Infinity, max = Infinity, allowNaN = false } = options;
-
-        if (typeof value !== 'number' || (!allowNaN && isNaN(value))) {
-            throw new Error(`${name} must be a valid number`);
-        }
-
-        if (value < min || value > max) {
-            throw new Error(`${name} must be between ${min} and ${max}`);
-        }
-
-        return value;
-    }
-
-    // 문자열, 빈 값, 최대 길이 검증
-    static validateString(value, name, options = {}) {
-        const { allowEmpty = false, maxLength = Infinity } = options;
-
-        if (typeof value !== 'string') {
-            throw new Error(`${name} must be a string`);
-        }
-
-        if (!allowEmpty && value.length === 0) {
-            throw new Error(`${name} cannot be empty`);
-        }
-
-        if (value.length > maxLength) {
-            throw new Error(`${name} cannot exceed ${maxLength} characters`);
-        }
-
-        return value;
-    }
-}
-
 // DOM 유틸리티
 export class DOMUtils {
     // ID를 가진 모든 DOM 요소 반환
@@ -68,10 +18,6 @@ export class DOMUtils {
 export class MathUtils {
     // 값 범위 제한 (clamp)
     static clamp(value, min, max) {
-        ValidationUtils.validateNumber(value, 'value');
-        ValidationUtils.validateNumber(min, 'min');
-        ValidationUtils.validateNumber(max, 'max');
-
         return Math.max(min, Math.min(max, value));
     }
 
@@ -99,8 +45,6 @@ export class ImageLoader {
     // 이미지 비동기 로드 (타임아웃 포함)
     static async loadImage(src, options = {}) {
         const { timeout = 5000 } = options;
-
-        ValidationUtils.validateString(src, 'Image source', { allowEmpty: false });
 
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -137,9 +81,6 @@ export class ImageLoader {
 
     // 프레임 정보 객체 생성
     static createFrameInfo(index, basePath, extension = Config.PATHS.RECORD_FRAME_EXTENSION) {
-        ValidationUtils.validateNumber(index, 'Frame index', { min: 0 });
-        ValidationUtils.validateString(basePath, 'Base path', { allowEmpty: false });
-
         const name = `frame${index}${extension}`;
         const path = `${basePath}${index}${extension}`;
 
@@ -154,17 +95,12 @@ export class ImageLoader {
 
 // 타이머 유틸리티
 export class TimerUtils {
-    // 시간 지연 (ms)
-    static delay(ms) {
-        ValidationUtils.validateNumber(ms, 'Delay time', { min: 0 });
-        return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-
     // 다음 프레임 대기 (FPS 기반)
     static waitForNextFrame(fps, options = {}) {
         const { validateFPS = true } = options;
         const validFPS = validateFPS ? MathUtils.validateFPS(fps) : fps;
-        return this.delay(1000 / validFPS);
+        const ms = 1000 / validFPS;
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }
 
