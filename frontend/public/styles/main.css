@@ -1149,3 +1149,27 @@ input[type='number']:disabled {
 .min-h-0 {
     min-height: 0;
 }
+
+/* Recording button blinking animation */
+@keyframes recording-blink {
+    0% {
+        opacity: 1;
+        background-color: var(--color-bg-button);
+    }
+    50% {
+        opacity: 0.7;
+        background-color: #b01010;
+    }
+    100% {
+        opacity: 1;
+        background-color: var(--color-bg-button);
+    }
+}
+
+.recording-btn.is-recording {
+    animation: recording-blink 1s infinite;
+}
+
+.recording-btn.is-recording img {
+    filter: brightness(1.5);
+}

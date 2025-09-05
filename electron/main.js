@@ -15,6 +15,7 @@ const {
     initializeHandRouter,
     getHandRouterInstance,
 } = require('../backend/src/routes/hand-detection');
+const PoseRouter = require('../backend/src/pose-router');
 
 let __backendProc = null;
 const BACKEND_PORT = process.env.PORT || 3000;
@@ -56,6 +57,8 @@ class FrameHandler {
         this.frameCounter = 0; // 녹화 프레임 카운터
         this.currentWindow = null; // 현재 창
         this.handRouterListenersRegistered = false; // HandRouter 이벤트 리스너 등록 여부
+        this.poseRouter = null; // PoseRouter 인스턴스
+        this.triggerMode = 'hand'; // 현재 트리거 모드 ('hand' 또는 'pose')
     }
 
     // HandRouter 이벤트 리스너 등록 (한 번만 실행)
@@ -94,8 +97,11 @@ class FrameHandler {
 
         // Dwell progress 이벤트를 프론트엔드로 전달
         handRouterInstance.on('dwellProgress', (data) => {
-            if (this.currentWindow && this.currentWindow.webContents) {
-                this.currentWindow.webContents.send('roi-dwell-progress', data);
+            const allWindows = BrowserWindow.getAllWindows();
+            for (const window of allWindows) {
+                if (window.webContents) {
+                    window.webContents.send('roi-dwell-progress', data);
+                }
             }
         });
 
@@ -116,6 +122,122 @@ class FrameHandler {
             handRouterInstance.removeAllListeners('recordingStopped');
             handRouterInstance.removeAllListeners('dwellProgress');
             this.handRouterListenersRegistered = false;
+        }
+    }
+
+    // PoseRouter 초기화
+    async initializePoseRouter() {
+        if (this.poseRouter) {
+            console.log('[FrameHandler] PoseRouter already initialized');
+            return;
+        }
+
+        try {
+            console.log('[FrameHandler] Initializing PoseRouter...');
+            this.poseRouter = new PoseRouter(this.captureDevice, this);
+            
+            // PoseRouter 이벤트 리스너 등록
+            this.poseRouter.on('poseDetection', (data) => {
+                const allWindows = BrowserWindow.getAllWindows();
+                if (allWindows.length > 0) {
+                    // 처음 몇 번과 주요 이벤트만 로그
+                    if (data.dwellProgress > 0 && (data.dwellProgress < 0.1 || data.dwellProgress > 0.9)) {
+                        console.log(`[FrameHandler] Sending poseDetection to renderer: progress ${(data.dwellProgress * 100).toFixed(0)}%`);
+                    }
+                    for (const window of allWindows) {
+                        if (window.webContents) {
+                            window.webContents.send('pose-detection', data);
+                        }
+                    }
+                } else {
+                    console.log('[FrameHandler] No windows available for poseDetection event');
+                }
+            });
+
+            this.poseRouter.on('recordingStarted', (data) => {
+                const allWindows = BrowserWindow.getAllWindows();
+                for (const window of allWindows) {
+                    if (window.webContents) {
+                        window.webContents.send('recording-started', data);
+                    }
+                }
+            });
+
+            this.poseRouter.on('recordingStopped', (data) => {
+                const allWindows = BrowserWindow.getAllWindows();
+                for (const window of allWindows) {
+                    if (window.webContents) {
+                        window.webContents.send('recording-stopped', data);
+                    }
+                }
+            });
+
+            // Dwell progress 이벤트를 프론트엔드로 전달 (pose용)
+            this.poseRouter.on('dwellProgress', (data) => {
+                const allWindows = BrowserWindow.getAllWindows();
+                for (const window of allWindows) {
+                    if (window.webContents) {
+                        window.webContents.send('roi-dwell-progress', data);
+                    }
+                }
+            });
+
+            console.log('[FrameHandler] PoseRouter initialized successfully');
+        } catch (error) {
+            console.error('[FrameHandler] Failed to initialize PoseRouter:', error);
+        }
+    }
+
+    // 트리거 모드 변경
+    async setTriggerMode(mode) {
+        console.log(`[FrameHandler] Setting trigger mode to: ${mode}`);
+        const previousMode = this.triggerMode;
+        this.triggerMode = mode;
+
+        try {
+            if (mode === 'pose') {
+                // Hand 모드 비활성화
+                const handRouterInstance = getHandRouterInstance();
+                if (handRouterInstance && handRouterInstance.isEnabled) {
+                    handRouterInstance.stop();
+                    console.log('[FrameHandler] HandRouter stopped for pose mode');
+                }
+
+                // Pose 모드 활성화
+                if (!this.poseRouter) {
+                    await this.initializePoseRouter();
+                }
+                if (this.poseRouter && !this.poseRouter.isEnabled) {
+                    await this.poseRouter.start();
+                    console.log('[FrameHandler] PoseRouter started');
+                    // frame-watcher에 PoseRouter 연결
+                    watcher.setPoseRouter(this.poseRouter);
+                    console.log('[FrameHandler] PoseRouter connected to frame-watcher');
+                }
+            } else {
+                // Pose 모드 비활성화
+                if (this.poseRouter && this.poseRouter.isEnabled) {
+                    this.poseRouter.stop();
+                    console.log('[FrameHandler] PoseRouter stopped');
+                    // frame-watcher에서 PoseRouter 연결 해제
+                    watcher.setPoseRouter(null);
+                    console.log('[FrameHandler] PoseRouter disconnected from frame-watcher');
+                }
+
+                // Hand 모드 활성화
+                const handRouterInstance = getHandRouterInstance();
+                if (handRouterInstance && !handRouterInstance.isEnabled) {
+                    await handRouterInstance.start();
+                    console.log('[FrameHandler] HandRouter started');
+                    // frame-watcher에 HandRouter 재연결
+                    watcher.setHandRouter(handRouterInstance);
+                    console.log('[FrameHandler] HandRouter reconnected to frame-watcher');
+                }
+            }
+        } catch (error) {
+            console.error(`[FrameHandler] Failed to switch trigger mode:`, error);
+            this.triggerMode = previousMode; // 실패 시 이전 모드로 복원
+            throw error;
         }
     }
 
@@ -566,6 +688,18 @@ function setupIpcHandlers(win) {
         const isFullscreen = win.isFullScreen();
         win.setFullScreen(!isFullscreen);
         return !isFullscreen;
+    });
+
+    // 트리거 모드 설정 IPC 핸들러
+    ipcMain.handle('set-trigger-mode', async (event, mode) => {
+        console.log('[Main] Setting trigger mode to:', mode);
+        try {
+            await frameHandler.setTriggerMode(mode);
+            return { success: true, mode };
+        } catch (error) {
+            console.error('[Main] Failed to set trigger mode:', error);
+            return { success: false, error: error.message };
+        }
     });
 
     // vton 이미지 저장 IPC 핸들러

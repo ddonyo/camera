@@ -136,6 +136,12 @@ ipcRenderer.on('vtonTriggered', (event, data) => {
     window.dispatchEvent(new CustomEvent('vtonTriggered', { detail: data }));
 });
 
+// Pose detection 이벤트 리스너
+ipcRenderer.on('poseDetection', (event, data) => {
+    // 프론트엔드로 이벤트 전달
+    window.dispatchEvent(new CustomEvent('pose-detection', { detail: data }));
+});
+
 // `electronAPI`를 렌더러 프로세스의 `window` 객체에 노출
 contextBridge.exposeInMainWorld('electronAPI', {
     log: logMessage, // 로그 함수

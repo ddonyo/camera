@@ -10,6 +10,8 @@ let activeWatchers = new Set();
 
 // 핸드 라우터 인스턴스
 let handRouter = null;
+// 포즈 라우터 인스턴스
+let poseRouter = null;
 
 // 핸드 라우터 프레임 전송 상태 추적
 let handRouterState = {
@@ -28,6 +30,15 @@ function setHandRouter(handRouterInstance) {
     // HandRouter가 재설정되면 상태 초기화
     handRouterState.isFirstSend = true;
     handRouterState.hasLoggedStart = false;
+}
+
+// PoseRouter 인스턴스 설정 함수
+function setPoseRouter(poseRouterInstance) {
+    poseRouter = poseRouterInstance;
+    console.log('[FrameWatcher] PoseRouter instance set:', !!poseRouter);
+    if (poseRouter) {
+        console.log('[FrameWatcher] PoseRouter isEnabled:', poseRouter.isEnabled);
+    }
 }
 
 // HandRouter 프레임 전송 로그 관리 함수
@@ -127,6 +138,10 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
                     logHandRouterFrame('binary');
                     handRouter.processFrame(data);
                 }
+                // 포즈 라우터에서 프레임 처리
+                if (poseRouter && poseRouter.isEnabled) {
+                    poseRouter.processFrame(data);
+                }
             } catch (error) {
                 console.error(`[FrameWatcher] Error reading file as binary:`, error);
                 // 에러 발생시 path 방식으로 fallback
@@ -136,6 +151,10 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
                     logHandRouterFrame('path fallback');
                     handRouter.processImagePath(filePath);
                 }
+                // path 방식으로 포즈 라우터 처리
+                if (poseRouter && poseRouter.isEnabled) {
+                    poseRouter.processImagePath(filePath);
+                }
             }
         } else {
             // 기존 path 방식
@@ -144,6 +163,10 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
             if (handRouter && handRouter.isEnabled) {
                 logHandRouterFrame('path');
                 handRouter.processImagePath(filePath);
+            }
+            // path 방식으로 포즈 라우터 처리
+            if (poseRouter && poseRouter.isEnabled) {
+                poseRouter.processImagePath(filePath);
             }
         }
     } catch (error) {
@@ -282,6 +305,7 @@ module.exports = {
     stop,
     stopAll,
     setHandRouter,
+    setPoseRouter,
     getHandRouterStatus,
     // 테스트를 위한 유틸리티 함수들 export
     isTargetFrameFile,

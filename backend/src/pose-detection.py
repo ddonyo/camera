@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Hand detection worker using MediaPipe
-Processes frames and outputs hand landmarks with handedness info
+Pose detection worker using MediaPipe
+Processes frames and outputs full body pose detection for recording triggers
 """
 
 import sys
@@ -18,82 +18,115 @@ except ImportError:
     print(json.dumps({"error": "mediapipe not installed. Run: pip install mediapipe opencv-python"}))
     sys.exit(1)
 
-class HandDetector:
+class PoseDetector:
     def __init__(self, config=None):
         if config is None:
             config = {
-                "max_num_hands": 2,
                 "min_detection_confidence": 0.5,
-                "min_tracking_confidence": 0.5
+                "min_tracking_confidence": 0.5,
+                "model_complexity": 1
             }
         
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands(
+        self.mp_pose = mp.solutions.pose
+        self.pose = self.mp_pose.Pose(
             static_image_mode=False,
-            max_num_hands=config.get("max_num_hands", 2),
+            model_complexity=config.get("model_complexity", 1),
+            smooth_landmarks=True,
             min_detection_confidence=config.get("min_detection_confidence", 0.5),
             min_tracking_confidence=config.get("min_tracking_confidence", 0.5)
         )
         
         self.mp_drawing = mp.solutions.drawing_utils
+        
+        # Define key body landmarks for full body detection
+        self.key_landmarks = [
+            self.mp_pose.PoseLandmark.NOSE,
+            self.mp_pose.PoseLandmark.LEFT_SHOULDER,
+            self.mp_pose.PoseLandmark.RIGHT_SHOULDER,
+            self.mp_pose.PoseLandmark.LEFT_HIP,
+            self.mp_pose.PoseLandmark.RIGHT_HIP,
+            self.mp_pose.PoseLandmark.LEFT_KNEE,
+            self.mp_pose.PoseLandmark.RIGHT_KNEE,
+            self.mp_pose.PoseLandmark.LEFT_ANKLE,
+            self.mp_pose.PoseLandmark.RIGHT_ANKLE
+        ]
     
-    def detect_gesture(self, hand_landmarks):
+    def check_full_body_visible(self, landmarks):
         """
-        Detect hand gesture based on landmarks
-        Returns: 'open_palm', 'closed_fist', or 'unknown'
+        Check if full body is visible in frame
+        Returns True if all key landmarks are detected with good confidence
         """
-        # MediaPipe hand landmark indices
-        WRIST = 0
-        THUMB_TIP = 4
-        THUMB_IP = 3
-        INDEX_TIP = 8
-        INDEX_PIP = 6
-        MIDDLE_TIP = 12
-        MIDDLE_PIP = 10
-        RING_TIP = 16
-        RING_PIP = 14
-        PINKY_TIP = 20
-        PINKY_PIP = 18
-        
-        landmarks = hand_landmarks.landmark
-        
-        # Check if fingers are extended (open palm)
-        fingers_extended = []
-        
-        # Thumb - check if tip is further from wrist than IP joint (different axis)
-        thumb_extended = abs(landmarks[THUMB_TIP].x - landmarks[WRIST].x) > abs(landmarks[THUMB_IP].x - landmarks[WRIST].x)
-        fingers_extended.append(thumb_extended)
-        
-        # Other fingers - check if tip is below PIP joint (y increases downward in image)
-        # For open palm, fingertips should be higher (lower y value) than PIP joints
-        for tip, pip in [(INDEX_TIP, INDEX_PIP), (MIDDLE_TIP, MIDDLE_PIP), 
-                         (RING_TIP, RING_PIP), (PINKY_TIP, PINKY_PIP)]:
-            finger_extended = landmarks[tip].y < landmarks[pip].y
-            fingers_extended.append(finger_extended)
-        
-        # Count extended fingers
-        extended_count = sum(fingers_extended)
-        
-        # Classify gesture
-        if extended_count >= 4:  # At least 4 fingers extended
-            return "open_palm"
-        elif extended_count <= 1:  # 1 or fewer fingers extended
-            return "closed_fist"
-        else:
-            return "unknown"
+        try:
+            if not landmarks:
+                return False
+            
+            # Check visibility of key body parts
+            visible_count = 0
+            total_confidence = 0
+            
+            for landmark_id in self.key_landmarks:
+                landmark = landmarks.landmark[landmark_id]
+                
+                # Check visibility (MediaPipe provides visibility score)
+                if landmark.visibility > 0.7:  # Threshold for good visibility
+                    visible_count += 1
+                    total_confidence += landmark.visibility
+            
+            # Consider full body visible if most key landmarks are detected
+            required_visible = len(self.key_landmarks) * 0.8  # 80% of key landmarks
+            is_full_body = visible_count >= required_visible
+            
+            # Calculate average confidence
+            avg_confidence = total_confidence / len(self.key_landmarks) if len(self.key_landmarks) > 0 else 0
+            
+            return is_full_body, avg_confidence
+            
+        except Exception as e:
+            return False, 0
     
-    def process_frame(self, image_data, format='base64', crop_info=None, roi_info=None):
+    def get_body_bbox(self, landmarks, image_shape):
         """
-        Process a single frame and detect hands
+        Calculate bounding box for detected body
+        """
+        try:
+            if not landmarks:
+                return None
+                
+            x_coords = []
+            y_coords = []
+            
+            for landmark in landmarks.landmark:
+                if landmark.visibility > 0.5:  # Only include visible landmarks
+                    x_coords.append(landmark.x)
+                    y_coords.append(landmark.y)
+            
+            if not x_coords or not y_coords:
+                return None
+                
+            # Calculate normalized bounding box
+            bbox = {
+                "x1": min(x_coords),
+                "y1": min(y_coords),
+                "x2": max(x_coords),
+                "y2": max(y_coords)
+            }
+            
+            return bbox
+            
+        except Exception as e:
+            return None
+    
+    def process_frame(self, image_data, format='base64', crop_info=None):
+        """
+        Process a single frame and detect pose
         
         Args:
             image_data: Image data (base64 string or numpy array)
             format: 'base64' or 'numpy'
-            crop_info: Optional crop information for display mode (middle third)
-            roi_info: Optional ROI information for detection boundaries
+            crop_info: Optional crop information for display mode
             
         Returns:
-            dict with detection results
+            dict with pose detection results
         """
         try:
             # Convert input to numpy array
@@ -122,9 +155,11 @@ class HandDetector:
                 
             if image is None:
                 return {"error": "Failed to decode image"}
-                
-            # Apply crop if specified (for display mode - middle third)
-            # Only crop the image, don't modify coordinates here
+            
+            # Store original dimensions
+            original_height, original_width = image.shape[:2]
+            
+            # Apply crop if specified
             if crop_info:
                 height, width = image.shape[:2]
                 x1 = int(crop_info['offsetX'] * width)
@@ -138,69 +173,52 @@ class HandDetector:
                 x2 = max(x1 + 1, min(x2, width))
                 y2 = max(y1 + 1, min(y2, height))
                 
-                # Crop the image to middle third
+                # Crop the image
                 image = image[y1:y2, x1:x2]
             
             # Convert BGR to RGB (MediaPipe uses RGB)
             rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
             # Process the image
-            results = self.hands.process(rgb_image)
+            results = self.pose.process(rgb_image)
             
-            # Extract hand information
-            hands_info = []
+            # Extract pose information
+            pose_info = {
+                "detected": False,
+                "full_body_visible": False,
+                "confidence": 0,
+                "bbox": None,
+                "landmarks": []
+            }
             
-            if results.multi_hand_landmarks and results.multi_handedness:
-                for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-                    # Get handedness (Left/Right)
-                    hand_label = handedness.classification[0].label
-                    hand_confidence = handedness.classification[0].score
-                    
-                    # Get bounding box
-                    landmarks = []
-                    x_coords = []
-                    y_coords = []
-                    
-                    for landmark in hand_landmarks.landmark:
-                        x, y = landmark.x, landmark.y
-                        
-                        # In crop_mode, treat the cropped image as the full image
-                        # No coordinate transformation needed - just use normalized coordinates as-is
-                        # This way ROI boundaries work correctly
-                        
-                        landmarks.append({"x": x, "y": y, "z": landmark.z})
-                        x_coords.append(x)
-                        y_coords.append(y)
-                    
-                    # Calculate bounding box (normalized coordinates)
-                    bbox = {
-                        "x1": min(x_coords),
-                        "y1": min(y_coords), 
-                        "x2": max(x_coords),
-                        "y2": max(y_coords)
-                    }
-                    
-                    # Calculate center point
-                    center = {
-                        "x": (bbox["x1"] + bbox["x2"]) / 2,
-                        "y": (bbox["y1"] + bbox["y2"]) / 2
-                    }
-                    
-                    # Detect gesture (open palm)
-                    gesture = self.detect_gesture(hand_landmarks)
-                    
-                    hands_info.append({
-                        "handedness": hand_label,  # "Left" or "Right" 
-                        "confidence": hand_confidence,
-                        "bbox": bbox,
-                        "center": center,
-                        "landmarks": landmarks,
-                        "gesture": gesture
+            if results.pose_landmarks:
+                # Check if full body is visible
+                is_full_body, confidence = self.check_full_body_visible(results.pose_landmarks)
+                
+                # Get bounding box
+                bbox = self.get_body_bbox(results.pose_landmarks, image.shape)
+                
+                # Extract all landmarks
+                landmarks = []
+                for landmark in results.pose_landmarks.landmark:
+                    landmarks.append({
+                        "x": landmark.x,
+                        "y": landmark.y,
+                        "z": landmark.z,
+                        "visibility": landmark.visibility
                     })
+                
+                pose_info = {
+                    "detected": True,
+                    "full_body_visible": is_full_body,
+                    "confidence": confidence,
+                    "bbox": bbox,
+                    "landmarks": landmarks
+                }
             
             return {
                 "success": True,
-                "hands": hands_info,
+                "pose": pose_info,
                 "timestamp": time.time()
             }
             
@@ -216,7 +234,7 @@ def main():
     Main loop for processing stdin input
     Expected input: Binary protocol with header
     """
-    detector = HandDetector()
+    detector = PoseDetector()
     
     try:
         while True:
@@ -252,7 +270,6 @@ def main():
                     
                     # Process binary data directly
                     crop_info = header.get("crop_info", None)
-                    roi_info = header.get("roi_info", None)
                     
                     # Convert bytes to numpy array
                     np_array = np.frombuffer(image_bytes, np.uint8)
@@ -266,8 +283,8 @@ def main():
                         print(json.dumps({"error": "Failed to decode image"}), flush=True)
                         continue
                     
-                    # Process with both crop and roi info
-                    result = detector.process_frame(image, format='numpy', crop_info=crop_info, roi_info=roi_info)
+                    # Process frame
+                    result = detector.process_frame(image, format='numpy', crop_info=crop_info)
                     
                     # Output result
                     print(json.dumps(result), flush=True)
@@ -279,7 +296,7 @@ def main():
             elif header.get("type") == "config":
                 # Update configuration
                 new_config = header.get("config", {})
-                detector = HandDetector(new_config)
+                detector = PoseDetector(new_config)
                 print(json.dumps({"success": True, "message": "config updated"}), flush=True)
                 
             else:

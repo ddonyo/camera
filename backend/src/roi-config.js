@@ -12,7 +12,7 @@ class ROIConfig extends EventEmitter {
         
         // UI settings (managed by frontend, stored in memory only)
         this.uiSettings = {
-            enabled: true,
+            enabled: false,  // Default to disabled
             flip_mode: true,
             crop_mode: false
         };
@@ -88,7 +88,7 @@ class ROIConfig extends EventEmitter {
             debounce_ms: 250,
             cooldown_ms: 1000,
             min_confidence: 0.7,
-            enabled: true,
+            enabled: false,
             hand_detection: {
                 fps_limit: 15,
                 max_num_hands: 2,

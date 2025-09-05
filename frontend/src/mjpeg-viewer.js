@@ -29,8 +29,9 @@ export class MJPEGViewer {
         this.repeatMode = false; // 반복 재생
         this.flipMode = true; // 좌우 반전 (기본값)
         this.cropMode = false; // 중앙 크롭
-        this.roiMode = true; // ROI 오버레이 표시 (기본값: 활성화)
+        this.roiMode = false; // ROI 오버레이 표시 (기본값: 비활성화)
         this.fullMode = false; // 풀스크린 모드
+        this.triggerMode = 'hand'; // 트리거 모드: 'hand' 또는 'pose'
         this._uiUpdateScheduled = false; // UI 업데이트 스케줄링 플래그
         this.liveFrameCount = 0; // 라이브 프레임 카운터
         this.originalFPS = null; // 파일에서 읽어온 원본 FPS
@@ -53,6 +54,8 @@ export class MJPEGViewer {
             if (this.roiOverlay) {
                 this.roiOverlay.updateDwellProgress(event.detail);
             }
+            // Update RecTrigger progress bar
+            this._updateRecTriggerProgress(event.detail);
         });
     }
 
@@ -109,6 +112,7 @@ export class MJPEGViewer {
             flipBtn: () => this._handleFlip(),
             cropBtn: () => this._handleCrop(),
             roiBtn: () => this._toggleROIOverlay(),
+            triggerModeBtn: () => this._handleTriggerMode(),
             fullBtn: () => this._handleFull(),
             progressBar: (evt) => this._handleSeek(evt),
         };
@@ -172,9 +176,15 @@ export class MJPEGViewer {
             this._startRecording();
         });
 
-        // 손 제스처 녹화 중지 이벤트
+        // 손 제스처/포즈 녹화 중지 이벤트
         this.#electronAPI.on('recording-stopped', (data) => {
+            console.log('[MJPEGViewer] Recording stopped event received:', data);
             this._stopRecording();
+        });
+        
+        // 포즈 감지 결과 수신
+        this.#electronAPI.on('pose-detection', (detectionData) => {
+            this._handlePoseDetectionData(detectionData);
         });
     }
 
@@ -312,6 +322,18 @@ export class MJPEGViewer {
             this._setState(State.RECORD);
             this.liveFrameCount = 0; // Record 모드 카운터 리셋
 
+            // REC 버튼에 블링킹 효과 추가
+            const recordBtn = document.getElementById('recordBtn');
+            if (recordBtn) {
+                recordBtn.classList.add('is-recording');
+            }
+
+            // Update trigger text to STOP Trigger
+            const triggerText = document.getElementById('recTriggerText');
+            if (triggerText) {
+                triggerText.textContent = 'STOP Trigger';
+            }
+
             // UI 업데이트 (상태 변경으로 버튼 활성/비활성화 자동 처리됨)
             this._updateUI();
 
@@ -331,6 +353,18 @@ export class MJPEGViewer {
     async _stopRecording() {
         try {
             console.log('[Recording] Stopping recording');
+
+            // REC 버튼 블링킹 효과 제거
+            const recordBtn = document.getElementById('recordBtn');
+            if (recordBtn) {
+                recordBtn.classList.remove('is-recording');
+            }
+
+            // Update trigger text to START Trigger
+            const triggerText = document.getElementById('recTriggerText');
+            if (triggerText) {
+                triggerText.textContent = 'START Trigger';
+            }
 
             // 메시지 표시
             this.uiController.setMessage('⏹️ Recording stopped', MessageType.INFO);
@@ -447,6 +481,44 @@ export class MJPEGViewer {
         if (this.state === State.PLAYBACK && !this.playing) {
             this._updateFrameDisplay();
         }
+    }
+
+    // Trigger 모드 버튼 이벤트 핸들러
+    _handleTriggerMode() {
+        // Toggle between 'hand' and 'pose' modes
+        this.triggerMode = this.triggerMode === 'hand' ? 'pose' : 'hand';
+        
+        // Update button icon and text
+        const triggerBtn = this.uiController.elements.triggerModeBtn;
+        if (triggerBtn) {
+            // Update text
+            const spanElement = triggerBtn.querySelector('span');
+            if (spanElement) {
+                spanElement.textContent = this.triggerMode === 'hand' ? 'Hand' : 'Pose';
+            }
+            
+            // Update icon
+            const svgElement = triggerBtn.querySelector('svg');
+            if (svgElement) {
+                if (this.triggerMode === 'hand') {
+                    // Hand icon
+                    svgElement.innerHTML = '<path d="M6.58 19H14.58C15.4 19 16.08 18.56 16.58 17.95L19.94 12.83C20.18 12.42 19.59 12 19.12 12H12.87L13.8 8.91C13.96 8.37 13.64 7.83 13.09 7.67C12.73 7.56 12.35 7.68 12.1 7.94L6.8 14.04C6.28 14.59 6 15.29 6 16.04V17.58C6 18.36 6.22 19 6.58 19M7 16L11.42 10.74L10.58 13.43C10.46 13.78 10.5 14.15 10.69 14.47C10.88 14.79 11.19 15 11.53 15H17.91L15.58 18H8V16H7M1 7H5V21H1V7Z" />';
+                } else {
+                    // Person icon
+                    svgElement.innerHTML = '<path d="M12 2C13.1 2 14 2.9 14 4S13.1 6 12 6 10 5.1 10 4 10.9 2 12 2M15.9 8.1C15.5 7.7 14.8 7 13.5 7H10.5C9.2 7 8.5 7.7 8.1 8.1C6.7 9.5 6 11.6 6 14C6 14.3 6 14.5 6.1 14.8C5.4 14.3 5 13.5 5 12.6V8.2C5 7.5 5.5 7 6.2 7H7.3C7.9 6.4 8.7 6 9.6 6H14.4C15.3 6 16.1 6.4 16.7 7H17.8C18.5 7 19 7.5 19 8.2V12.6C19 13.5 18.6 14.3 17.9 14.8C18 14.5 18 14.3 18 14C18 11.6 17.3 9.5 15.9 8.1M8 22V18H7C6.4 18 6 17.6 6 17V14C6 11.3 7.1 10 8 10S10 11.3 10 14H14C14 11.3 15.1 10 16 10S18 11.3 18 14V17C18 17.6 17.6 18 17 18H16V22H14V18H10V22H8Z" />';
+                }
+            }
+            
+            // Update data attribute
+            triggerBtn.setAttribute('data-mode', this.triggerMode);
+        }
+        
+        // Notify backend about trigger mode change
+        if (this.#electronAPI?.invoke) {
+            this.#electronAPI.invoke('set-trigger-mode', this.triggerMode);
+        }
+        
+        console.log('Trigger mode changed to:', this.triggerMode);
     }
 
     // Crop 버튼 이벤트 핸들러
@@ -1122,8 +1194,8 @@ export class MJPEGViewer {
             try {
                 this.roiOverlay = new ROIOverlay(viewerCanvas);
 
-                // 기본적으로 활성화
-                this.roiOverlay.enable();
+                // 기본적으로 비활성화 (사용자가 명시적으로 활성화해야 함)
+                // this.roiOverlay.enable();  // Disabled by default
 
                 // 윈도우 리사이즈 이벤트 처리
                 window.addEventListener('resize', () => {
@@ -1248,5 +1320,133 @@ export class MJPEGViewer {
                 roiBtn.classList.remove('roi-active');
             }, 500);
         }
+    }
+
+    // 포즈 감지 데이터 처리 (IPC에서 받은 데이터)
+    _handlePoseDetectionData(detectionData) {
+        if (!detectionData) {
+            return;
+        }
+
+        // Dispatch window event for ROI overlay
+        window.dispatchEvent(new CustomEvent('pose-detection', { detail: detectionData }));
+
+        // Update RecTrigger progress bar for pose detection
+        // (Pose events should only come when in pose mode anyway)
+        if (detectionData.dwellProgress !== undefined) {
+            this._updateRecTriggerProgress({ 
+                start: detectionData.dwellProgress,
+                startActive: detectionData.dwellProgress > 0
+            });
+        } else if (!detectionData.fullBodyVisible) {
+            // Reset progress when full body is lost
+            this._updateRecTriggerProgress({ 
+                start: 0,
+                startActive: false
+            });
+        }
+
+        // 포즈 감지 시각화
+        // 예: 전신 감지 진행률 표시
+        if (detectionData.fullBodyVisible && detectionData.dwellProgress > 0) {
+            this._showPoseFeedback(detectionData.dwellProgress);
+        }
+    }
+
+    // 포즈 감지 시각적 피드백
+    _showPoseFeedback(progress) {
+        const triggerBtn = this.uiController.elements.triggerModeBtn;
+        if (triggerBtn && this.triggerMode === 'pose') {
+            // Progress bar 효과나 색상 변경 등으로 피드백 제공
+            triggerBtn.style.background = `linear-gradient(to right, #4CAF50 ${progress * 100}%, #transparent ${progress * 100}%)`;
+            if (progress >= 1) {
+                // 녹화 시작되면 원래대로
+                setTimeout(() => {
+                    triggerBtn.style.background = '';
+                }, 500);
+            }
+        }
+    }
+    
+    // RecTrigger Progress Bar 업데이트
+    _updateRecTriggerProgress(progressData) {
+        const progressBar = document.getElementById('recTriggerProgressBar');
+        const triggerText = document.getElementById('recTriggerText');
+        if (!progressBar) return;
+        
+        // Store previous state to detect interruptions
+        if (!this._lastDwellState) {
+            this._lastDwellState = { startActive: false, stopActive: false, startProgress: 0, stopProgress: 0 };
+        }
+        
+        let progress = 0;
+        let isActive = false;
+        
+        // Check for recording start progress (hand or pose)
+        if (progressData.startActive && progressData.start > 0) {
+            progress = progressData.start;
+            isActive = true;
+            progressBar.classList.remove('bg-red-500');
+            progressBar.classList.add('bg-green-500');
+            // Update text to START Trigger
+            if (triggerText) {
+                triggerText.textContent = 'START Trigger';
+            }
+        }
+        // Check for recording stop progress (hand or pose)
+        else if (progressData.stopActive && progressData.stop > 0) {
+            progress = progressData.stop;
+            isActive = true;
+            progressBar.classList.remove('bg-green-500');
+            progressBar.classList.add('bg-red-500');
+            // Update text to STOP Trigger
+            if (triggerText) {
+                triggerText.textContent = 'STOP Trigger';
+            }
+        } else {
+            // Update trigger text based on recording state
+            if (triggerText) {
+                triggerText.textContent = this.isRecording() ? 'STOP Trigger' : 'START Trigger';
+            }
+        }
+        
+        // Check for interruption - if progress goes backwards or stops before completion
+        const wasStartActive = this._lastDwellState.startActive;
+        const wasStopActive = this._lastDwellState.stopActive;
+        const startInterrupted = wasStartActive && (!progressData.startActive || progressData.start < this._lastDwellState.startProgress);
+        const stopInterrupted = wasStopActive && (!progressData.stopActive || progressData.stop < this._lastDwellState.stopProgress);
+        
+        // Check if trigger completed (reached 100%)
+        const startCompleted = wasStartActive && this._lastDwellState.startProgress >= 0.99 && !progressData.startActive;
+        const stopCompleted = wasStopActive && this._lastDwellState.stopProgress >= 0.99 && !progressData.stopActive;
+        
+        if (startInterrupted || stopInterrupted || startCompleted || stopCompleted) {
+            // Reset immediately when interrupted or completed
+            progressBar.style.width = '0%';
+            progressBar.style.transition = 'none'; // Instant reset
+            setTimeout(() => {
+                progressBar.style.transition = ''; // Re-enable transition
+            }, 10);
+            
+            // Reset color to green when stop completes
+            if (stopCompleted) {
+                progressBar.classList.remove('bg-red-500');
+                progressBar.classList.add('bg-green-500');
+            }
+        } else if (isActive) {
+            // Update progress bar width
+            progressBar.style.width = `${progress * 100}%`;
+        } else {
+            // Reset when not active
+            progressBar.style.width = '0%';
+        }
+        
+        // Update last state
+        this._lastDwellState = {
+            startActive: progressData.startActive || false,
+            stopActive: progressData.stopActive || false,
+            startProgress: progressData.start || 0,
+            stopProgress: progressData.stop || 0
+        };
     }
 }

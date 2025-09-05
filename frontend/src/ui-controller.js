@@ -340,16 +340,16 @@ export class UIController {
         console.log('UIController destroyed');
     }
 
-    // 모든 버튼 토글 (활성화/비활성화) - 전체화면 버튼 제외
+    // 모든 버튼 토글 (활성화/비활성화) - 전체화면 버튼 및 트리거 모드 버튼 제외
     _toggleAllButtons(disable) {
-        // 전체화면 버튼 ID 목록
-        const fullscreenButtonIds = ['fullBtn', 'vtonFullBtn', 'electronFullscreenBtn'];
+        // 항상 활성화되어야 하는 버튼 ID 목록
+        const alwaysEnabledButtons = ['fullBtn', 'vtonFullBtn', 'electronFullscreenBtn', 'triggerModeBtn'];
 
         Object.values(this.elements)
             .filter((el) => el?.tagName === UIController.#CONSTANTS.TAGS.BUTTON)
             .forEach((el) => {
-                // 전체화면 버튼은 건드리지 않음
-                if (fullscreenButtonIds.includes(el.id)) {
+                // 항상 활성화되어야 하는 버튼은 건드리지 않음
+                if (alwaysEnabledButtons.includes(el.id)) {
                     return;
                 }
 

@@ -26,10 +26,15 @@ export class ROIOverlay {
         this.dwellProgress = {
             start: 0, // 0 to 1
             stop: 0, // 0 to 1
-            vton: 0, // 0 to 1
             startActive: false,
             stopActive: false,
-            vtonActive: false,
+        };
+
+        // Pose detection 상태
+        this.poseDetection = {
+            detected: false,
+            fullBodyVisible: false,
+            dwellProgress: 0,
         };
 
         this.createOverlayCanvas();
@@ -48,6 +53,7 @@ export class ROIOverlay {
         this.overlayCanvas.style.height = '100%';
         this.overlayCanvas.style.pointerEvents = 'none';
         this.overlayCanvas.style.zIndex = '200';
+        this.overlayCanvas.style.display = 'none'; // Initially hidden
         this.overlayCtx = this.overlayCanvas.getContext('2d');
         // 캔버스 부모에 오버레이 추가
         const parent = this.canvas.parentElement;
@@ -243,15 +249,8 @@ export class ROIOverlay {
     }
 
     render() {
-        console.log('[ROI-Overlay] Render called:', {
-            isEnabled: this.isEnabled,
-            hasOverlayCtx: !!this.overlayCtx,
-            hasConfig: !!this.config,
-            configContent: this.config,
-        });
-
+        // Only render if overlay is enabled
         if (!this.isEnabled || !this.overlayCtx || !this.config) {
-            console.log('[ROI-Overlay] Render skipped - missing requirements');
             return;
         }
 
@@ -261,32 +260,33 @@ export class ROIOverlay {
         // 오버레이 클리어
         this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
 
-        console.log('[ROI-Overlay] Drawing ROI areas...');
+        // ROI 영역 그리기
 
-        // ROI 영역 그리기 (항상 고정된 라벨)
-        this.drawROI('start_roi', this.styles.startROI, 'REC START');
-        this.drawROI('stop_roi', this.styles.stopROI, 'REC STOP');
+        // ROI 모드 확인
+        const roiEnabled = this.config && this.config.enabled;
+        
+        // Only draw ROI circles if both ROI mode AND overlay are enabled
+        if (roiEnabled && this.isEnabled) {
+            // ROI 모드 활성화 시 - ROI 영역과 큰 원 표시
+            this.drawROI('start_roi', this.styles.startROI, 'REC START');
+            this.drawROI('stop_roi', this.styles.stopROI, 'REC STOP');
+        }
 
-        // 손 감지 결과 그리기
-        this.drawHandDetections();
+        // Only draw hand detections and status if overlay is enabled
+        if (this.isEnabled) {
+            // 손 감지 결과 그리기
+            this.drawHandDetections();
 
-        // 상태 정보 표시
-        this.drawStatusInfo();
+            // 상태 정보 표시
+            this.drawStatusInfo();
+        }
 
-        console.log('[ROI-Overlay] Render completed');
+        // Render completed
     }
 
-    drawROI(roiKey, style, label) {
-        console.log(`[ROI-Overlay] Drawing ${roiKey}:`, {
-            roiExists: !!this.config[roiKey],
-            roi: this.config[roiKey],
-            style: style,
-            label: label,
-            cropMode: this.cropMode,
-        });
 
+    drawROI(roiKey, style, label) {
         if (!this.config[roiKey]) {
-            console.log(`[ROI-Overlay] No config for ${roiKey}`);
             return;
         }
 
@@ -325,15 +325,8 @@ export class ROIOverlay {
 
         // Dwell progress 확인
         let dwellProgress = 0;
-        let isVGesture = false;
-        if (roiKey === 'start_roi') {
-            // V gesture has higher priority
-            if (this.dwellProgress.vtonActive) {
-                dwellProgress = this.dwellProgress.vton;
-                isVGesture = true;
-            } else if (this.dwellProgress.startActive) {
-                dwellProgress = this.dwellProgress.start;
-            }
+        if (roiKey === 'start_roi' && this.dwellProgress.startActive) {
+            dwellProgress = this.dwellProgress.start;
         } else if (roiKey === 'stop_roi' && this.dwellProgress.stopActive) {
             dwellProgress = this.dwellProgress.stop;
         }
@@ -344,13 +337,6 @@ export class ROIOverlay {
             ? Date.now() - this.roiActiveState.lastActivationTime[roiKey]
             : 0;
 
-        console.log(`[ROI-Overlay] ${roiKey} circle:`, {
-            centerX,
-            centerY,
-            radius,
-            canvasSize: { width: canvas.width, height: canvas.height },
-            isActive: isActive,
-        });
 
         // ROI 원형 그리기
         ctx.save();
@@ -376,11 +362,8 @@ export class ROIOverlay {
             // Progress에 따라 투명도 조절 (0.1 ~ 0.3)
             const opacity = 0.1 + dwellProgress * 0.2;
             let progressColor;
-            if (isVGesture) {
-                // V gesture -> VTON (purple/magenta)
-                progressColor = `rgba(255, 0, 255, ${opacity})`;
-            } else if (roiKey === 'start_roi') {
-                // Normal start (green)
+            if (roiKey === 'start_roi') {
+                // Start (green)
                 progressColor = `rgba(0, 255, 0, ${opacity})`;
             } else {
                 // Stop (red)
@@ -404,9 +387,7 @@ export class ROIOverlay {
                     -Math.PI / 2 + 2 * Math.PI * dwellProgress,
                     false
                 );
-                ctx.strokeStyle = isVGesture
-                    ? '#ff00ff'
-                    : roiKey === 'start_roi'
+                ctx.strokeStyle = roiKey === 'start_roi'
                       ? '#00ff00'
                       : '#ff0000';
                 ctx.lineWidth = 3;
@@ -418,16 +399,13 @@ export class ROIOverlay {
         }
 
         // 라벨 그리기 (원 위쪽에, 중앙 정렬)
-        const displayLabel = isVGesture ? 'V GESTURE → VTON' : label;
-        this.drawLabel(centerX, centerY - radius - 10, displayLabel, 'center');
+        this.drawLabel(centerX, centerY - radius - 10, label, 'center');
 
         // 중심점에 작은 점 추가 (dwell 중일 때 더 크게)
         const dotSize = dwellProgress > 0 ? 5 : 3;
         ctx.fillStyle =
             dwellProgress > 0
-                ? isVGesture
-                    ? '#ff00ff'
-                    : roiKey === 'start_roi'
+                ? roiKey === 'start_roi'
                       ? '#00ff00'
                       : '#ff0000'
                 : style.strokeStyle;
@@ -516,18 +494,20 @@ export class ROIOverlay {
     }
 
     drawStatusInfo() {
-        if (!this.config.enabled) {
-            this.drawLabel(10, 30, '❌ ROI Detection DISABLED');
-            return;
-        }
-
         // ROI 상태 표시
         const statusY = this.overlayCanvas.height - 80;
 
-        this.drawLabel(10, statusY, 'Hand Gesture Controls:');
-        this.drawLabel(10, statusY + 20, `V sign in green area → VTON (Virtual Try-On)`);
-        this.drawLabel(10, statusY + 40, `Right hand in green area → START recording`);
-        this.drawLabel(10, statusY + 60, `Left hand in red area → STOP recording`);
+        if (!this.config.enabled) {
+            // ROI disabled - full image detection
+            this.drawLabel(10, statusY, 'Full Image Hand Detection:');
+            this.drawLabel(10, statusY + 20, `Right hand anywhere → START recording`);
+            this.drawLabel(10, statusY + 40, `Left hand anywhere → STOP recording`);
+        } else {
+            // ROI enabled - bounded detection
+            this.drawLabel(10, statusY, 'ROI Hand Gesture Controls:');
+            this.drawLabel(10, statusY + 20, `Right hand in green area → START recording`);
+            this.drawLabel(10, statusY + 40, `Left hand in red area → STOP recording`);
+        }
 
         // 현재 감지된 손 개수
         const handCount = this.handDetections.length;
@@ -665,31 +645,48 @@ export class ROIOverlay {
     updateDwellProgress(progressData) {
         const previousStartActive = this.dwellProgress.startActive;
         const previousStopActive = this.dwellProgress.stopActive;
-        const previousVtonActive = this.dwellProgress.vtonActive;
+        const previousStartProgress = this.dwellProgress.start;
+        const previousStopProgress = this.dwellProgress.stop;
 
         this.dwellProgress = {
             start: progressData.start || 0,
             stop: progressData.stop || 0,
-            vton: progressData.vton || 0,
             startActive: progressData.startActive || false,
             stopActive: progressData.stopActive || false,
-            vtonActive: progressData.vtonActive || false,
         };
+        
 
-        // Progress가 변경되면 다시 렌더링
-        // 손이 ROI를 벗어났을 때도 렌더링하여 UI를 깨끗하게 지움
-        if (this.isEnabled) {
-            // 손이 ROI에 있거나, 방금 벗어났을 때 렌더링
-            if (
+        // Progress가 변경되면 다시 렌더링 (ROI 모드일 때만)
+        if (
+            this.isEnabled && (
                 this.dwellProgress.startActive ||
                 this.dwellProgress.stopActive ||
-                this.dwellProgress.vtonActive ||
                 (previousStartActive && !this.dwellProgress.startActive) ||
-                (previousStopActive && !this.dwellProgress.stopActive) ||
-                (previousVtonActive && !this.dwellProgress.vtonActive)
-            ) {
-                this.render();
-            }
+                (previousStopActive && !this.dwellProgress.stopActive)
+            )
+        ) {
+            this.render();
+        }
+    }
+
+    // Pose detection 정보 업데이트
+    updatePoseDetection(poseData) {
+        if (!poseData) return;
+        
+        const previousDwellProgress = this.poseDetection.dwellProgress;
+        
+        this.poseDetection = {
+            detected: poseData.detected || false,
+            fullBodyVisible: poseData.fullBodyVisible || false,
+            dwellProgress: poseData.dwellProgress || 0,
+        };
+        
+        // Pose dwell progress 렌더링 (ROI 모드일 때만)
+        if (this.isEnabled && (
+            Math.abs(this.poseDetection.dwellProgress - previousDwellProgress) > 0.01 ||
+            (previousDwellProgress > 0 && this.poseDetection.dwellProgress === 0)
+        )) {
+            this.render();
         }
     }
 
