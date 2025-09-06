@@ -2,5 +2,8 @@
   "format": "MJPG",
   "width": 1920,
   "height": 1080,
-  "fps": 24
+  "fps": 10,
+  "actual_fps": 10.459795162344738,
+  "frame_count": 336,
+  "duration": 32.123
 }

@@ -315,7 +315,7 @@ class WinDevice extends EventEmitter {
             }, 100);
 
             // 프레임 캡처 루프 시작 (안정성을 위해 최소 간격 제한)
-            const minInterval = 100; // 최소 100ms 간격 (최대 10fps)
+            const minInterval = 33; // 최소 33ms 간격 (최대 30fps)
             const targetInterval = 1000 / this.fps;
             const intervalMs = Math.max(minInterval, targetInterval);
 

@@ -11,6 +11,7 @@ import { TimerUtils, CanvasUtils, FileUtils } from './utils.js';
 import { FrameManager } from './frame-manager.js';
 import { UIController } from './ui-controller.js';
 import { ROIOverlay } from './roi-overlay.js';
+import { getSoundManager } from './sound-manager.js';
 
 // MJPEG 뷰어 메인 로직 클래스
 export class MJPEGViewer {
@@ -20,6 +21,7 @@ export class MJPEGViewer {
         this.frameManager = new FrameManager(); // 프레임 관리자
         this.uiController = new UIController(); // UI 컨트롤러
         this.roiOverlay = null; // ROI 오버레이 (나중에 초기화)
+        this.soundManager = getSoundManager(); // 사운드 매니저
 
         console.log('UI elements:', this.uiController.elements);
 
@@ -229,9 +231,10 @@ export class MJPEGViewer {
             img.onload = () => {
                 try {
                     const canvas = this.uiController.elements.viewer;
+                    // Transformations are now applied in backend, so just draw as-is
                     CanvasUtils.drawImageToCanvas(canvas, img, {
-                        flip: this.flipMode,
-                        crop: this.cropMode,
+                        flip: false,  // Already applied in backend
+                        crop: false,  // Already applied in backend
                     });
                     this.liveFrameCount++; // 프레임 카운터 증가
                     this._updateUI();
@@ -339,6 +342,11 @@ export class MJPEGViewer {
 
             // 메시지 표시
             this.uiController.setMessage('🔴 Recording started', MessageType.INFO);
+            
+            // 녹화 시작 효과음 재생
+            if (this.soundManager) {
+                this.soundManager.playRecordingStart();
+            }
 
             // 백그라운드에서 녹화 시작 명령 전송
             this._emitToElectron(IPCCommands.START_RECORDING);
@@ -368,6 +376,11 @@ export class MJPEGViewer {
 
             // 메시지 표시
             this.uiController.setMessage('⏹️ Recording stopped', MessageType.INFO);
+            
+            // 녹화 중지 효과음 재생
+            if (this.soundManager) {
+                this.soundManager.playRecordingStop();
+            }
 
             // 녹화 중지 명령 전송
             this._emitToElectron(IPCCommands.STOP_RECORDING);
@@ -378,6 +391,15 @@ export class MJPEGViewer {
 
             // Playback 모드로 전환 (버튼과 제스처 모두 동일하게 처리)
             await this._startPlaybackMode(Direction.FORWARD);
+
+            // Generate thumbnails if in replay mode (but don't update replay panel)
+            const modeSelect = document.getElementById('modeSelect');
+            if (modeSelect && modeSelect.value === 'replay') {
+                // Trigger thumbnail generation
+                if (typeof window.generateThumbnails === 'function') {
+                    window.generateThumbnails();
+                }
+            }
 
             console.log('[Recording] Successfully stopped recording and switched to playback');
         } catch (error) {
@@ -511,6 +533,23 @@ export class MJPEGViewer {
             
             // Update data attribute
             triggerBtn.setAttribute('data-mode', this.triggerMode);
+        }
+        
+        // Control ROI button availability - ROI is only for hand mode
+        const roiBtn = this.uiController.elements.roiBtn;
+        if (roiBtn) {
+            if (this.triggerMode === 'pose') {
+                // Disable ROI in pose mode
+                roiBtn.disabled = true;
+                roiBtn.classList.remove('active');
+                // Also disable ROI functionality if it was enabled
+                if (this.roiMode) {
+                    this._handleROI(); // Toggle off ROI
+                }
+            } else {
+                // Enable ROI in hand mode
+                roiBtn.disabled = false;
+            }
         }
         
         // Notify backend about trigger mode change
@@ -912,8 +951,8 @@ export class MJPEGViewer {
                     this.uiController.updateStatus(statusInfo);
                 },
                 {
-                    flip: this.flipMode,
-                    crop: this.cropMode,
+                    flip: false,  // Transformations already applied when saved
+                    crop: false,  // Transformations already applied when saved
                     effectiveFPS: this._getEffectiveFPS(),
                     totalFrameCount: totalFrameCount,
                 }
@@ -1008,6 +1047,12 @@ export class MJPEGViewer {
             this.fullMode,
             this.isLoadingFrames // 프레임 로딩 상태 추가
         );
+        
+        // Control ROI button based on trigger mode - ROI is only for hand mode
+        const roiBtn = this.uiController.elements.roiBtn;
+        if (roiBtn && this.triggerMode === 'pose') {
+            roiBtn.disabled = true;
+        }
 
         if (this.state === State.PLAYBACK || this.state === State.IDLE) {
             // 재생 모드에서는 부드러운 애니메이션 사용
@@ -1031,11 +1076,14 @@ export class MJPEGViewer {
 
     // 현재 프레임 표시 및 UI 업데이트
     async _updateFrameDisplay() {
+        // Transformations are already applied to saved frames, so just draw as-is
         await this.frameManager.drawCurrentFrame(this.uiController.elements.viewer, {
-            flip: this.flipMode,
-            crop: this.cropMode,
+            flip: false,  // Already applied when frames were saved
+            crop: false,  // Already applied when frames were saved
         });
         this._updateUI();
+        
+        // Removed automatic replay panel update - now only updates when thumbnail is clicked
     }
 
     // 스트리밍 모드 (Live/Record) 확인
@@ -1051,6 +1099,14 @@ export class MJPEGViewer {
     // 녹화 중인지 확인
     isRecording() {
         return this.state === State.RECORD;
+    }
+
+    // Jump to specific frame
+    jumpToFrame(frameIndex) {
+        if (this.state === State.PLAYBACK && this.frameManager) {
+            this.frameManager.setCurrentIndex(frameIndex);
+            this._updateFrameDisplay();
+        }
     }
 
     // 스트리밍 UI 초기화
@@ -1160,10 +1216,49 @@ export class MJPEGViewer {
 
     // Playback 모드 프레임 재생 루프
     async _executePlayLoop() {
+        const effectiveFPS = this._getEffectiveFPS();
+        const targetInterval = 1000 / effectiveFPS;
+        let nextFrameTime = performance.now() + targetInterval;
+        let frameCount = 0;
+        let totalFrames = 0;
+        let sessionStartTime = performance.now();
+        
         while (this.playing) {
             try {
+                const now = performance.now();
+                
+                // 다음 프레임 시간까지 대기
+                const timeToWait = nextFrameTime - now;
+                if (timeToWait > 0) {
+                    await new Promise(resolve => setTimeout(resolve, timeToWait));
+                }
+                
+                // 프레임 처리
+                const frameStartTime = performance.now();
                 await this._processFrame(this.currentDirection);
-                await TimerUtils.waitForNextFrame(this._getEffectiveFPS());
+                const processingTime = performance.now() - frameStartTime;
+                
+                // 다음 프레임 시간 계산 (drift 보정)
+                nextFrameTime += targetInterval;
+                if (nextFrameTime < performance.now()) {
+                    // 너무 뒤처진 경우 재동기화
+                    nextFrameTime = performance.now() + targetInterval;
+                }
+                
+                // 통계 업데이트
+                frameCount++;
+                totalFrames++;
+                
+                // 디버깅: 10프레임마다 실제 FPS 출력
+                if (frameCount >= 10) {
+                    const elapsed = (performance.now() - sessionStartTime) / 1000;
+                    const actualFPS = totalFrames / elapsed;
+                    const totalFrameCount = this.frameManager.getFrameCount();
+                    const currentIndex = this.frameManager.getCurrentIndex();
+                    console.log(`[Playback] Frame ${currentIndex}/${totalFrameCount}, Average FPS: ${actualFPS.toFixed(1)} (Target: ${effectiveFPS}), Interval: ${targetInterval.toFixed(1)}ms`);
+                    frameCount = 0;
+                }
+                
             } catch (error) {
                 this._handlePlayError(error);
                 break;

@@ -208,6 +208,11 @@ export class FrameManager {
         return this.setCurrentIndex(this.frames.length - 1);
     }
 
+    // 현재 프레임 인덱스 반환
+    getCurrentIndex() {
+        return this.currentIndex;
+    }
+
     // 단일 프레임 이동 (호환성 유지용)
     stepFrame(direction, circular = true) {
         return this.navigate(direction, { circular });

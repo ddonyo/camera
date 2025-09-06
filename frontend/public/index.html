@@ -56,13 +56,13 @@
                     </div>
                 </div>
 
-                <!-- RIGHT: VTON 패널 -->
-                <div id="vton-panel" class="vton-panel rounded-xl bg-black col-span-3 relative">
+                <!-- RIGHT: Mode 패널 (VTON/ImageViewer) -->
+                <div id="vton-panel" class="vton-panel rounded-xl bg-black col-span-3 relative flex items-center justify-center overflow-hidden">
                     <img
                         id="vtonResult"
                         src="./resources/vton/placeholder.jpg"
-                        alt="VTON Result"
-                        class="w-full h-full object-contain select-none"
+                        alt="Result"
+                        class="max-w-full max-h-full object-contain select-none"
                     />
 
                     <!-- VTON 전체화면 버튼 (상단 우측) -->
@@ -70,7 +70,7 @@
                         type="button"
                         id="vtonFullBtn"
                         class="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition-colors"
-                        aria-label="VTON 전체화면"
+                        aria-label="전체화면"
                         title="전체화면"
                     >
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -112,9 +112,10 @@
                     </div>
 
                     <div
+                        id="modeResultLabel"
                         class="absolute left-3 top-3 text-xs px-2 py-1 rounded bg-black/50 text-white"
                     >
-                        VTON Result
+                        ImageViewer
                     </div>
                 </div>
             </section>
@@ -368,22 +369,21 @@
                         </button>
                         <div class="control-base control-settings flex flex-col items-center">
                             <select
-                                id="vtonModeSelect"
+                                id="modeSelect"
                                 class="px-2 py-1 text-xs rounded bg-gray-700 text-white border border-gray-500 focus:border-blue-500 focus:outline-none mb-1"
                             >
-                                <option value="performance">Perf</option>
-                                <option value="balanced" selected>Bal</option>
-                                <option value="quality">Qual</option>
+                                <option value="replay" selected>Replay</option>
+                                <option value="vton">VTON</option>
                             </select>
-                            <span class="text-xs">VTON</span>
+                            <span class="text-xs">Mode</span>
                         </div>
                     </div>
                 </section>
             </div>
 
-            <!-- 하단 Wardrobe -->
-            <section aria-label="Wardrobe" class="wardrobe-section space-y-0 -mt-1">
-                <h2 class="text-xl leading-tight">Wardrobe</h2>
+            <!-- 하단 Wardrobe/Thumbnail -->
+            <section id="bottomSection" aria-label="Bottom Section" class="wardrobe-section space-y-0 -mt-1">
+                <h2 id="bottomSectionTitle" class="text-xl leading-tight">Thumbnail</h2>
                 <div
                     id="wardrobeGrid"
                     class="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
