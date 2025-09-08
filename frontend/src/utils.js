@@ -135,7 +135,7 @@ export class CanvasUtils {
 
     // 이미지 캔버스에 그리기
     static drawImageToCanvas(canvas, image, options = {}) {
-        const { clearFirst = true, flip = false, crop = false } = options;
+        const { clearFirst = true, flip = false, crop = false, fullCrop = false } = options;
 
         if (!(image instanceof HTMLImageElement)) {
             throw new Error('Image must be a valid HTMLImageElement');
@@ -158,53 +158,124 @@ export class CanvasUtils {
             ctx.scale(-1, 1); // X축 반전
         }
 
-        if (crop) {
-            // 중앙 크롭 적용 - 좌/우는 검정으로 마스킹, 중앙 1/3만 표시
+        if (crop || fullCrop) {
+            // 중앙 크롭 적용
             const sourceWidth = image.naturalWidth;
             const sourceHeight = image.naturalHeight;
             const cropX = sourceWidth / 3; // 시작 X: 1/3 지점
             const cropWidth = sourceWidth / 3; // 너비: 1/3
 
-            // 먼저 검정색으로 전체 캔버스 채우기
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 중앙 영역에만 이미지 그리기 (원본 비율 유지)
-            const canvasCenterX = canvas.width / 3; // 캔버스의 중앙 1/3 시작점
-            const canvasCenterWidth = canvas.width / 3; // 캔버스의 중앙 1/3 너비
-
-            if (flip) {
-                // 플립된 상태에서는 중앙 영역의 위치를 조정
-                ctx.drawImage(
-                    image,
-                    cropX,
-                    0,
-                    cropWidth,
-                    sourceHeight, // 소스 영역 (원본 중앙 1/3)
-                    -(canvasCenterX + canvasCenterWidth),
-                    0,
-                    canvasCenterWidth,
-                    canvas.height // 플립된 중앙 영역
-                );
+            if (fullCrop) {
+                // fullCrop: 썸네일/ImageViewer용 - 중앙 1/3을 비율 유지하며 캔버스에 최대한 채움
+                // 크롭된 영역의 비율 계산 (cropWidth : sourceHeight)
+                const sourceAspectRatio = cropWidth / sourceHeight;
+                const canvasAspectRatio = canvas.width / canvas.height;
+                
+                let destX = 0, destY = 0, destWidth = canvas.width, destHeight = canvas.height;
+                
+                // Fit 방식: 비율을 유지하면서 캔버스 안에 최대한 크게 표시
+                if (sourceAspectRatio > canvasAspectRatio) {
+                    // 소스가 더 넓은 경우: 너비를 캔버스에 맞추고 높이를 조정
+                    destHeight = canvas.width / sourceAspectRatio;
+                    destY = (canvas.height - destHeight) / 2;
+                } else {
+                    // 소스가 더 높은 경우: 높이를 캔버스에 맞추고 너비를 조정  
+                    destWidth = canvas.height * sourceAspectRatio;
+                    destX = (canvas.width - destWidth) / 2;
+                }
+                
+                // 캔버스를 먼저 검정색으로 채움
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                if (flip) {
+                    ctx.drawImage(
+                        image,
+                        cropX,
+                        0,
+                        cropWidth,
+                        sourceHeight, // 소스 영역 (원본 중앙 1/3 × 전체 높이)
+                        -(destX + destWidth),
+                        destY,
+                        destWidth,
+                        destHeight // 비율 유지하며 최대한 크게
+                    );
+                } else {
+                    ctx.drawImage(
+                        image,
+                        cropX,
+                        0,
+                        cropWidth,
+                        sourceHeight, // 소스 영역 (원본 중앙 1/3 × 전체 높이)
+                        destX,
+                        destY,
+                        destWidth,
+                        destHeight // 비율 유지하며 최대한 크게
+                    );
+                }
             } else {
-                ctx.drawImage(
-                    image,
-                    cropX,
-                    0,
-                    cropWidth,
-                    sourceHeight, // 소스 영역 (원본 중앙 1/3)
-                    canvasCenterX,
-                    0,
-                    canvasCenterWidth,
-                    canvas.height // 캔버스 중앙 영역
-                );
+                // crop: Camera view용 - 좌/우는 검정, 중앙 1/3만 표시
+                // 먼저 검정색으로 전체 캔버스 채우기
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 중앙 영역에만 이미지 그리기 (원본 비율 유지)
+                const canvasCenterX = canvas.width / 3; // 캔버스의 중앙 1/3 시작점
+                const canvasCenterWidth = canvas.width / 3; // 캔버스의 중앙 1/3 너비
+
+                if (flip) {
+                    // 플립된 상태에서는 중앙 영역의 위치를 조정
+                    ctx.drawImage(
+                        image,
+                        cropX,
+                        0,
+                        cropWidth,
+                        sourceHeight, // 소스 영역 (원본 중앙 1/3)
+                        -(canvasCenterX + canvasCenterWidth),
+                        0,
+                        canvasCenterWidth,
+                        canvas.height // 플립된 중앙 영역
+                    );
+                } else {
+                    ctx.drawImage(
+                        image,
+                        cropX,
+                        0,
+                        cropWidth,
+                        sourceHeight, // 소스 영역 (원본 중앙 1/3)
+                        canvasCenterX,
+                        0,
+                        canvasCenterWidth,
+                        canvas.height // 캔버스 중앙 영역
+                    );
+                }
             }
         } else {
-            // 일반 그리기
-            if (flip) {
-                ctx.drawImage(image, -canvas.width, 0, canvas.width, canvas.height);
+            // 일반 그리기 - 비율 유지하면서 최대 크기로 표시
+            const sourceAspectRatio = image.naturalWidth / image.naturalHeight;
+            const canvasAspectRatio = canvas.width / canvas.height;
+            
+            let destX = 0, destY = 0, destWidth = canvas.width, destHeight = canvas.height;
+            
+            // Fit 방식: 비율을 유지하면서 캔버스 안에 최대한 크게 표시
+            if (sourceAspectRatio > canvasAspectRatio) {
+                // 소스가 더 넓은 경우: 너비를 캔버스에 맞추고 높이를 조정
+                destHeight = canvas.width / sourceAspectRatio;
+                destY = (canvas.height - destHeight) / 2;
             } else {
-                ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                // 소스가 더 높은 경우: 높이를 캔버스에 맞추고 너비를 조정  
+                destWidth = canvas.height * sourceAspectRatio;
+                destX = (canvas.width - destWidth) / 2;
+            }
+            
+            // 캔버스를 먼저 검정색으로 채움
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (flip) {
+                ctx.drawImage(image, -(destX + destWidth), destY, destWidth, destHeight);
+            } else {
+                ctx.drawImage(image, destX, destY, destWidth, destHeight);
             }
         }
 

@@ -231,10 +231,17 @@ export class MJPEGViewer {
             img.onload = () => {
                 try {
                     const canvas = this.uiController.elements.viewer;
-                    // Transformations are now applied in backend, so just draw as-is
+                    
+                    // 캔버스 크기가 너무 작으면 조정
+                    if (canvas.width < 1280 || canvas.height < 720) {
+                        console.log('[MJPEGViewer] Adjusting canvas size from', canvas.width, 'x', canvas.height, 'to 1280x720');
+                        canvas.width = 1280;
+                        canvas.height = 720;
+                    }
+                    
                     CanvasUtils.drawImageToCanvas(canvas, img, {
-                        flip: false,  // Already applied in backend
-                        crop: false,  // Already applied in backend
+                        flip: this.flipMode,
+                        crop: this.cropMode,
                     });
                     this.liveFrameCount++; // 프레임 카운터 증가
                     this._updateUI();
@@ -321,6 +328,9 @@ export class MJPEGViewer {
         try {
             console.log('[Recording] Starting recording');
 
+            // 녹화 시작 효과음 재생
+            this.soundManager.playRecordingStart();
+
             // UI 상태를 RECORD로 변경 (Live 스트리밍은 계속 진행)
             this._setState(State.RECORD);
             this.liveFrameCount = 0; // Record 모드 카운터 리셋
@@ -361,6 +371,9 @@ export class MJPEGViewer {
     async _stopRecording() {
         try {
             console.log('[Recording] Stopping recording');
+
+            // 녹화 중지 효과음 재생
+            this.soundManager.playRecordingStop();
 
             // REC 버튼 블링킹 효과 제거
             const recordBtn = document.getElementById('recordBtn');
@@ -577,11 +590,14 @@ export class MJPEGViewer {
             this.roiOverlay.setCropMode(this.cropMode);
         }
 
-        // Backend에 crop mode 상태 전달
-        this._updateBackendSettings({ crop_mode: this.cropMode });
+        // Backend에 crop mode 상태 전달 (LIVE/RECORD 모드에서만 적용)
+        if (this.state === State.LIVE || this.state === State.RECORD) {
+            this._updateBackendSettings({ crop_mode: this.cropMode });
+        }
 
         this._updateUI();
 
+        // PLAYBACK 모드에서 일시정지 상태일 때 화면을 다시 그림
         if (this.state === State.PLAYBACK && !this.playing) {
             this._updateFrameDisplay();
         }
@@ -951,8 +967,8 @@ export class MJPEGViewer {
                     this.uiController.updateStatus(statusInfo);
                 },
                 {
-                    flip: false,  // Transformations already applied when saved
-                    crop: false,  // Transformations already applied when saved
+                    flip: this.flipMode,
+                    crop: this.cropMode,
                     effectiveFPS: this._getEffectiveFPS(),
                     totalFrameCount: totalFrameCount,
                 }
@@ -1076,10 +1092,10 @@ export class MJPEGViewer {
 
     // 현재 프레임 표시 및 UI 업데이트
     async _updateFrameDisplay() {
-        // Transformations are already applied to saved frames, so just draw as-is
+        // crop 모드는 모든 상태에서 적용 가능
         await this.frameManager.drawCurrentFrame(this.uiController.elements.viewer, {
-            flip: false,  // Already applied when frames were saved
-            crop: false,  // Already applied when frames were saved
+            flip: this.flipMode,
+            crop: this.cropMode,
         });
         this._updateUI();
         

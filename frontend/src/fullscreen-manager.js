@@ -437,6 +437,37 @@ export class FullscreenManager {
         // VTON 이미지 설정
         const vtonResult = document.getElementById('vtonResult');
         if (vtonResult) {
+            // Canvas인 경우 크기 재조정
+            if (vtonResult.tagName === 'CANVAS') {
+                // 패널의 실제 크기 가져오기
+                const panel = vtonResult.parentElement;
+                if (panel) {
+                    const rect = panel.getBoundingClientRect();
+                    vtonResult.width = rect.width;
+                    vtonResult.height = rect.height;
+                    console.log(`[FullscreenManager] Canvas resized to ${rect.width}x${rect.height} for fullscreen`);
+                    
+                    // 현재 프레임 다시 그리기 (replay 모드인 경우)
+                    if (window.mjpegViewer && window.mjpegViewer.frameManager) {
+                        const frameManager = window.mjpegViewer.frameManager;
+                        const currentFrame = frameManager.getCurrentFrame();
+                        if (currentFrame && currentFrame.data) {
+                            // 이미지 다시 로드 및 그리기
+                            const img = new Image();
+                            img.onload = () => {
+                                import('./utils.js').then(module => {
+                                    const { CanvasUtils } = module;
+                                    CanvasUtils.drawImageToCanvas(vtonResult, img, {
+                                        flip: window.mjpegViewer?.flipMode || false,
+                                        fullCrop: window.mjpegViewer?.cropMode || false
+                                    });
+                                });
+                            };
+                            img.src = currentFrame.data;
+                        }
+                    }
+                }
+            }
             vtonResult.style.width = '100%';
             vtonResult.style.height = '100%';
             vtonResult.style.objectFit = 'contain';
@@ -509,6 +540,36 @@ export class FullscreenManager {
         // VTON 이미지 스타일 복원
         const vtonResult = document.getElementById('vtonResult');
         if (vtonResult) {
+            // Canvas인 경우 크기 복원
+            if (vtonResult.tagName === 'CANVAS') {
+                // 패널의 원래 크기로 복원
+                const panel = vtonResult.parentElement;
+                if (panel) {
+                    const rect = panel.getBoundingClientRect();
+                    vtonResult.width = rect.width || 640;
+                    vtonResult.height = rect.height || 480;
+                    console.log(`[FullscreenManager] Canvas restored to ${vtonResult.width}x${vtonResult.height}`);
+                    
+                    // 현재 프레임 다시 그리기
+                    if (window.mjpegViewer && window.mjpegViewer.frameManager) {
+                        const frameManager = window.mjpegViewer.frameManager;
+                        const currentFrame = frameManager.getCurrentFrame();
+                        if (currentFrame && currentFrame.data) {
+                            const img = new Image();
+                            img.onload = () => {
+                                import('./utils.js').then(module => {
+                                    const { CanvasUtils } = module;
+                                    CanvasUtils.drawImageToCanvas(vtonResult, img, {
+                                        flip: window.mjpegViewer?.flipMode || false,
+                                        fullCrop: window.mjpegViewer?.cropMode || false
+                                    });
+                                });
+                            };
+                            img.src = currentFrame.data;
+                        }
+                    }
+                }
+            }
             vtonResult.style.width = '';
             vtonResult.style.height = '';
             vtonResult.style.objectFit = '';

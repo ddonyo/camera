@@ -152,6 +152,7 @@ class WinDevice extends EventEmitter {
                             const selectedDevice = hardwareCameras.length > 0 ? hardwareCameras[0] : videoDevices[0];
 
                             if (selectedDevice) {
+                                console.log('Selected camera device:', selectedDevice.label);
                                 const resolutions = [
                                     { width: ${this.width}, height: ${this.height} },
                                     { width: 1280, height: 720 },
@@ -161,6 +162,7 @@ class WinDevice extends EventEmitter {
                                 let stream = null;
                                 for (const resolution of resolutions) {
                                     try {
+                                        console.log('Trying resolution:', resolution);
                                         stream = await navigator.mediaDevices.getUserMedia({
                                             video: {
                                                 deviceId: { exact: selectedDevice.deviceId },
@@ -170,7 +172,9 @@ class WinDevice extends EventEmitter {
                                             },
                                             audio: false
                                         });
-                                        console.log('Camera stream created with resolution:', resolution);
+                                        const track = stream.getVideoTracks()[0];
+                                        const actualSettings = track.getSettings();
+                                        console.log('Camera stream created - Requested:', resolution, 'Actual:', actualSettings.width, 'x', actualSettings.height);
                                         break;
                                     } catch (resError) {
                                         console.warn('Failed resolution:', resolution, resError.message);
@@ -196,24 +200,25 @@ class WinDevice extends EventEmitter {
                             window.__captureVideo.muted = true;
                             window.__captureVideo.playsInline = true;
 
-                            // 비디오 메타데이터 로딩을 기다리되, 타임아웃 시간을 늘리고 더 상세한 에러 처리
-                            try {
-                                await Promise.race([
-                                    new Promise((resolve) => {
-                                        window.__captureVideo.addEventListener('loadedmetadata', resolve, { once: true });
-                                    }),
-                                    new Promise((resolve) => {
-                                        window.__captureVideo.addEventListener('canplay', resolve, { once: true });
-                                    }),
-                                    new Promise((_, reject) => {
-                                        setTimeout(() => reject(new Error('Video load timeout - camera may be disconnected')), 10000);
-                                    })
-                                ]);
-                                console.log('[WinCapture] Video metadata loaded successfully');
-                            } catch (loadError) {
-                                console.error('[WinCapture] Video loading failed:', loadError.message);
-                                throw new Error('Camera connection failed: ' + loadError.message);
+                            // 비디오 재생 시작 (autoplay 속성이 있으므로 play() 호출)
+                            await window.__captureVideo.play().catch(e => {
+                                console.warn('[WinCapture] Play failed, will retry:', e.message);
+                            });
+                            
+                            // 비디오가 실제로 재생 준비될 때까지 대기
+                            let retries = 0;
+                            const maxRetries = 100; // 10초 (100ms * 100)
+                            
+                            while (window.__captureVideo.readyState < 2 && retries < maxRetries) {
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                retries++;
                             }
+                            
+                            if (window.__captureVideo.readyState < 2) {
+                                throw new Error('Video failed to reach ready state after 10 seconds');
+                            }
+                            
+                            console.log('[WinCapture] Video ready after', retries * 100, 'ms');
 
                             const track = window.__winCaptureStream.getVideoTracks()[0];
                             const settings = track.getSettings();

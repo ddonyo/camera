@@ -3,6 +3,7 @@ import { FullscreenManager } from './fullscreen-manager.js';
 import { bindNumberInputs } from './number-input.js';
 import { initWardrobeController, triggerVTONFromGesture } from './wardrobe-controller.js';
 import { renderWardrobeGrid } from './wardrobe-data.js';
+import { CanvasUtils } from './utils.js';
 
 // 이미지 URL에 타임스탬프 추가 (캐시 방지)
 function addTimestampToImages() {
@@ -58,17 +59,19 @@ function handleModeChange(mode) {
         if (bottomSectionTitle) bottomSectionTitle.textContent = 'Thumbnail';
         // Keep grid container but hide wardrobe items inside
         if (wardrobeGrid) {
-            wardrobeGrid.style.visibility = 'hidden'; // Hide content but maintain layout space
+            wardrobeGrid.style.visibility = 'visible'; // Keep visible for thumbnails
             wardrobeGrid.style.minHeight = '80px'; // Maintain minimum height for layout
         }
         // Show video placeholder image in replay panel
         if (vtonResult) {
             vtonResult.src = './resources/ui/video-placeholder.jpg';
         }
-        // Generate thumbnails only if we have frames from a recording
-        // (thumbnails will be regenerated after each new recording completes)
+        // Generate thumbnails if we have frames, otherwise show empty placeholders
         if (window.mjpegViewer && window.mjpegViewer.frameManager.getFrameCount() > 0) {
             generateThumbnails();
+        } else {
+            // Show empty thumbnail placeholders
+            generateEmptyThumbnails();
         }
     } else if (mode === 'vton') {
         // VTON mode
@@ -91,7 +94,7 @@ function handleModeChange(mode) {
 }
 
 // Generate thumbnails for recorded frames
-window.generateThumbnails = function generateThumbnails() {
+window.generateThumbnails = async function generateThumbnails() {
     const wardrobeGrid = document.getElementById('wardrobeGrid');
     if (!wardrobeGrid || !window.mjpegViewer) return;
     
@@ -103,6 +106,15 @@ window.generateThumbnails = function generateThumbnails() {
     if (frameCount === 0) {
         console.log('[generateThumbnails] No frames to generate thumbnails from');
         return;
+    }
+    
+    // Get FPS from recording info for time calculation
+    let fps = 30; // default FPS
+    try {
+        const { FileUtils } = await import('./utils.js');
+        fps = await FileUtils.getRecordingFPS();
+    } catch (error) {
+        console.warn('[generateThumbnails] Could not get FPS from recording, using default 30:', error);
     }
     
     // Clear existing content and create thumbnail container
@@ -123,46 +135,138 @@ window.generateThumbnails = function generateThumbnails() {
         const frame = frameManager.frames[frameIndex];
         
         if (frame && frame.path) {
-            console.log(`[generateThumbnails] Creating thumbnail for frame ${frameIndex}: ${frame.path}`);
+            // Calculate time in seconds for this frame
+            const timeInSeconds = frameIndex / fps;
+            const minutes = Math.floor(timeInSeconds / 60);
+            const seconds = timeInSeconds % 60;
+            const timeString = `${String(minutes).padStart(2, '0')}.${seconds.toFixed(6).padStart(9, '0')}`;
+            
+            console.log(`[generateThumbnails] Creating thumbnail for frame ${frameIndex} at ${timeString}: ${frame.path}`);
             const thumbnail = document.createElement('button');
             thumbnail.className = 'snap-start shrink-0 w-40 rounded-xl bg-zinc-800/50 p-3 ring-1 ring-zinc-700 hover:ring-blue-400 transition-all';
-            // Add timestamp and random value to image src to prevent caching
-            const imageSrc = `${frame.path}?t=${timestamp}&r=${Math.random()}`;
-            thumbnail.innerHTML = `
-                <img src="${imageSrc}" 
-                     alt="Frame ${frameIndex}" 
-                     class="w-full h-36 object-cover rounded-lg mb-2"
-                     data-frame-index="${frameIndex}">
-                <div class="text-sm text-zinc-200 text-left">Frame ${frameIndex}</div>
-            `;
             
-            // Add click handler to show this frame in replay panel only
+            // Create a canvas for the thumbnail
+            const thumbCanvas = document.createElement('canvas');
+            thumbCanvas.width = 160;
+            thumbCanvas.height = 120;
+            thumbCanvas.className = 'w-full h-36 object-cover rounded-lg mb-2';
+            
+            // Create thumbnail content with time instead of frame number
+            const frameLabel = document.createElement('div');
+            frameLabel.className = 'text-sm text-zinc-200 text-left';
+            frameLabel.textContent = timeString;
+            
+            thumbnail.appendChild(thumbCanvas);
+            thumbnail.appendChild(frameLabel);
+            
+            // Load and draw the image with transformations
+            const img = new Image();
+            const imageSrc = `${frame.path}?t=${timestamp}&r=${Math.random()}`;
+            
+            img.onload = () => {
+                // Apply transformations using CanvasUtils
+                // 썸네일에는 fullCrop 사용 (중앙 1/3을 전체에 꽉 채움)
+                CanvasUtils.drawImageToCanvas(thumbCanvas, img, {
+                    flip: window.mjpegViewer?.flipMode || false,
+                    fullCrop: window.mjpegViewer?.cropMode || false
+                });
+            };
+            
+            img.src = imageSrc;
+            
+            // Add click handler to show this frame in ImageViewer panel
             thumbnail.addEventListener('click', () => {
-                // Update the ImageViewer panel image with selected thumbnail (also with timestamp)
                 const vtonResult = document.getElementById('vtonResult');
-                if (vtonResult) {
-                    vtonResult.src = `${frame.path}?t=${timestamp}`;
-                    // Remove any inline styles that might override the CSS classes
-                    vtonResult.style.removeProperty('width');
-                    vtonResult.style.removeProperty('height');
-                    vtonResult.style.removeProperty('object-fit');
+                if (!vtonResult) return;
+                
+                // Check if vtonResult is an img or canvas element
+                if (vtonResult.tagName === 'IMG') {
+                    // Replace img with canvas for proper transformation
+                    const viewerCanvas = document.createElement('canvas');
+                    viewerCanvas.id = 'vtonResult';
+                    viewerCanvas.className = vtonResult.className;
                     
-                    // Check if crop mode was enabled when recording
-                    // Since the frames are already cropped when saved, we should fill the panel
-                    const isCropMode = window.mjpegViewer?.cropMode;
+                    // 패널의 실제 크기에 맞춰 캔버스 크기 설정
+                    const panel = vtonResult.parentElement;
+                    const rect = panel.getBoundingClientRect();
+                    viewerCanvas.width = rect.width || 640;
+                    viewerCanvas.height = rect.height || 480;
                     
-                    // Set data attribute for crop mode to apply correct CSS
-                    if (isCropMode) {
-                        vtonResult.setAttribute('data-crop-generated', 'true');
-                    } else {
-                        vtonResult.removeAttribute('data-crop-generated');
-                    }
+                    // 캔버스 스타일 설정 - 패널 전체를 채우도록
+                    viewerCanvas.style.position = 'absolute';
+                    viewerCanvas.style.inset = '0';
+                    viewerCanvas.style.width = '100%';
+                    viewerCanvas.style.height = '100%';
+                    
+                    vtonResult.parentNode.replaceChild(viewerCanvas, vtonResult);
+                    
+                    // Load and draw with transformations
+                    const viewerImg = new Image();
+                    viewerImg.onload = () => {
+                        // ImageViewer 패널에도 fullCrop 사용 (중앙 1/3을 전체에 꽉 채움)
+                        CanvasUtils.drawImageToCanvas(viewerCanvas, viewerImg, {
+                            flip: window.mjpegViewer?.flipMode || false,
+                            fullCrop: window.mjpegViewer?.cropMode || false
+                        });
+                    };
+                    viewerImg.src = `${frame.path}?t=${timestamp}`;
+                } else if (vtonResult.tagName === 'CANVAS') {
+                    // Already a canvas, just draw with transformations
+                    const viewerImg = new Image();
+                    viewerImg.onload = () => {
+                        // ImageViewer 패널에도 fullCrop 사용 (중앙 1/3을 전체에 꽉 채움)
+                        CanvasUtils.drawImageToCanvas(vtonResult, viewerImg, {
+                            flip: window.mjpegViewer?.flipMode || false,
+                            fullCrop: window.mjpegViewer?.cropMode || false
+                        });
+                    };
+                    viewerImg.src = `${frame.path}?t=${timestamp}`;
                 }
-                // Do not jump to this frame in the main viewer - keep playback running
             });
             
             wardrobeGrid.appendChild(thumbnail);
         }
+    }
+}
+
+// Generate empty thumbnail placeholders
+function generateEmptyThumbnails() {
+    const wardrobeGrid = document.getElementById('wardrobeGrid');
+    if (!wardrobeGrid) return;
+    
+    console.log('[generateEmptyThumbnails] Creating empty thumbnail placeholders');
+    
+    // Clear existing content
+    wardrobeGrid.innerHTML = '';
+    wardrobeGrid.style.visibility = 'visible';
+    
+    // Create 10 empty thumbnail placeholders
+    const placeholderCount = 10;
+    
+    for (let i = 0; i < placeholderCount; i++) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'snap-start shrink-0 w-40 rounded-xl bg-zinc-800/30 p-3 ring-1 ring-zinc-700/50';
+        
+        // Create empty canvas placeholder
+        const emptyCanvas = document.createElement('div');
+        emptyCanvas.className = 'w-full h-36 bg-zinc-900/50 rounded-lg mb-2 flex items-center justify-center';
+        emptyCanvas.innerHTML = `
+            <svg class="w-8 h-8 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                </path>
+            </svg>
+        `;
+        
+        // Create frame label with time placeholder
+        const frameLabel = document.createElement('div');
+        frameLabel.className = 'text-sm text-zinc-500 text-left';
+        frameLabel.textContent = `00.000000`;
+        
+        placeholder.appendChild(emptyCanvas);
+        placeholder.appendChild(frameLabel);
+        
+        wardrobeGrid.appendChild(placeholder);
     }
 }
 

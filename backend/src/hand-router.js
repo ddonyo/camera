@@ -452,8 +452,13 @@ class HandRouter extends EventEmitter {
                         this.lastTriggers.start = now;
                         this.stats.triggersStart++;
 
-                        console.log('[HandRouter] START TRIGGER - 1 second dwell completed');
-                        this.triggerRecordingStart();
+                        console.log('[HandRouter] START TRIGGER - 1 second dwell completed, starting recording in 1 second...');
+                        
+                        // 1초 후에 녹화 시작
+                        setTimeout(() => {
+                            console.log('[HandRouter] Starting recording now (1 second delay completed)');
+                            this.triggerRecordingStart();
+                        }, 1000);
 
                         // Reset dwell state after trigger
                         this.dwellState.start.isInROI = false;
@@ -515,8 +520,13 @@ class HandRouter extends EventEmitter {
                         this.lastTriggers.stop = now;
                         this.stats.triggersStop++;
 
-                        console.log('[HandRouter] STOP TRIGGER - 1 second dwell completed');
-                        this.triggerRecordingStop();
+                        console.log('[HandRouter] STOP TRIGGER - 1 second dwell completed, stopping recording in 1 second...');
+                        
+                        // 1초 후에 녹화 중지
+                        setTimeout(() => {
+                            console.log('[HandRouter] Stopping recording now (1 second delay completed)');
+                            this.triggerRecordingStop();
+                        }, 1000);
 
                         // Reset dwell state after trigger
                         this.dwellState.stop.isInROI = false;

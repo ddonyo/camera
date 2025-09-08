@@ -4,7 +4,6 @@ const path = require('path');
 const fs = require('fs'); // fs 모듈 명시적 임포트
 const fsp = require('fs').promises; // 비동기 메서드용
 const watcher = require('../backend/src/frame-watcher');
-const { createCanvas, loadImage } = require('canvas');
 // 플랫폼별 캡처 모듈 동적 로드
 const capture =
     process.platform === 'linux'
@@ -397,84 +396,12 @@ class FrameHandler {
     }
 
     async sendFrame(win, item) {
-        try {
-            // Get current UI settings from ROI config
-            const roiConfig = require('../backend/src/roi-config').getInstance();
-            const uiSettings = roiConfig.getUISettings();
-            const shouldFlip = uiSettings.flip_mode;
-            const shouldCrop = uiSettings.crop_mode;
-            
-            // If no transformations needed, send as is
-            if (!shouldFlip && !shouldCrop) {
-                if (item.type === 'frame-data') {
-                    win.webContents.send('frame-data', item.data);
-                } else {
-                    win.webContents.send('frame-path', item.data);
-                }
-                return;
-            }
-            
-            // Load image using canvas
-            let image;
-            if (item.type === 'frame-data') {
-                image = await loadImage(item.data);
-            } else {
-                image = await loadImage(item.data);
-            }
-            
-            // Keep original dimensions for output
-            const outputWidth = image.width;
-            const outputHeight = image.height;
-            
-            // Create canvas with original dimensions
-            const canvas = createCanvas(outputWidth, outputHeight);
-            const ctx = canvas.getContext('2d');
-            
-            // Fill with black background for crop mode
-            if (shouldCrop) {
-                ctx.fillStyle = 'black';
-                ctx.fillRect(0, 0, outputWidth, outputHeight);
-            }
-            
-            // Apply flip if enabled
-            if (shouldFlip) {
-                ctx.save();
-                ctx.scale(-1, 1);
-                ctx.translate(-outputWidth, 0);
-            }
-            
-            // Draw image
-            if (shouldCrop) {
-                // Crop to center 1/3 with black bars on sides
-                const cropWidth = Math.floor(image.width / 3);
-                const sourceX = cropWidth; // Start from 1/3 of source
-                const destX = cropWidth; // Draw at 1/3 of destination
-                
-                // Draw only the center third
-                ctx.drawImage(image, sourceX, 0, cropWidth, image.height, 
-                             shouldFlip ? outputWidth - destX - cropWidth : destX, 0, 
-                             cropWidth, outputHeight);
-            } else {
-                // Draw full image
-                ctx.drawImage(image, 0, 0, outputWidth, outputHeight);
-            }
-            
-            if (shouldFlip) {
-                ctx.restore();
-            }
-            
-            // Convert to buffer and send
-            const processedBuffer = canvas.toBuffer('image/jpeg', { quality: 0.9 });
-            win.webContents.send('frame-data', processedBuffer);
-            
-        } catch (error) {
-            console.error('Error processing frame:', error);
-            // Fallback: send original frame
-            if (item.type === 'frame-data') {
-                win.webContents.send('frame-data', item.data);
-            } else {
-                win.webContents.send('frame-path', item.data);
-            }
+        if (item.type === 'frame-data') {
+            // 바이너리 데이터 직접 전송
+            win.webContents.send('frame-data', item.data);
+        } else {
+            // fallback: path 방식
+            win.webContents.send('frame-path', item.data);
         }
     }
 
@@ -651,72 +578,11 @@ class FrameHandler {
         const destPath = path.join(PATHS.RECORD_DIR, fileName);
 
         try {
-            // Get current UI settings from ROI config
-            const roiConfig = require('../backend/src/roi-config').getInstance();
-            const uiSettings = roiConfig.getUISettings();
-            const shouldFlip = uiSettings.flip_mode;
-            const shouldCrop = uiSettings.crop_mode;
-            
-            // If no transformations needed, save directly
-            if (!shouldFlip && !shouldCrop) {
-                if (item.type === 'frame-data') {
-                    await fsp.writeFile(destPath, item.data);
-                } else {
-                    await fsp.copyFile(item.data, destPath);
-                }
+            // 파일 쓰기를 비동기적으로 처리하여 UI 블로킹 방지
+            if (item.type === 'frame-data') {
+                await fsp.writeFile(destPath, item.data);
             } else {
-                // Load image using canvas
-                let image;
-                if (item.type === 'frame-data') {
-                    image = await loadImage(item.data);
-                } else {
-                    image = await loadImage(item.data);
-                }
-                
-                // Keep original dimensions for output
-                const outputWidth = image.width;
-                const outputHeight = image.height;
-                
-                // Create canvas with original dimensions
-                const canvas = createCanvas(outputWidth, outputHeight);
-                const ctx = canvas.getContext('2d');
-                
-                // Fill with black background for crop mode
-                if (shouldCrop) {
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(0, 0, outputWidth, outputHeight);
-                }
-                
-                // Apply flip if enabled
-                if (shouldFlip) {
-                    ctx.save();
-                    ctx.scale(-1, 1);
-                    ctx.translate(-outputWidth, 0);
-                }
-                
-                // Draw image
-                if (shouldCrop) {
-                    // Crop to center 1/3 with black bars on sides
-                    const cropWidth = Math.floor(image.width / 3);
-                    const sourceX = cropWidth; // Start from 1/3 of source
-                    const destX = cropWidth; // Draw at 1/3 of destination
-                    
-                    // Draw only the center third
-                    ctx.drawImage(image, sourceX, 0, cropWidth, image.height, 
-                                 shouldFlip ? outputWidth - destX - cropWidth : destX, 0, 
-                                 cropWidth, outputHeight);
-                } else {
-                    // Draw full image
-                    ctx.drawImage(image, 0, 0, outputWidth, outputHeight);
-                }
-                
-                if (shouldFlip) {
-                    ctx.restore();
-                }
-                
-                // Save to file
-                const buffer = canvas.toBuffer('image/jpeg', { quality: 0.9 });
-                await fsp.writeFile(destPath, buffer);
+                await fsp.copyFile(item.data, destPath);
             }
             
             if (debugLevel > 0) console.log(`Saved frame ${count} to record directory ${destPath}`);
