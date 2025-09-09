@@ -50,6 +50,26 @@ class PoseDetector:
             self.mp_pose.PoseLandmark.LEFT_ANKLE,
             self.mp_pose.PoseLandmark.RIGHT_ANKLE
         ]
+        
+        # Define left side landmarks for stop detection
+        self.left_side_landmarks = [
+            self.mp_pose.PoseLandmark.LEFT_EYE,
+            self.mp_pose.PoseLandmark.LEFT_EAR,
+            self.mp_pose.PoseLandmark.LEFT_SHOULDER,
+            self.mp_pose.PoseLandmark.LEFT_WRIST,
+            self.mp_pose.PoseLandmark.LEFT_HIP,
+            self.mp_pose.PoseLandmark.LEFT_KNEE
+        ]
+        
+        # Define right side landmarks for stop detection
+        self.right_side_landmarks = [
+            self.mp_pose.PoseLandmark.RIGHT_EYE,
+            self.mp_pose.PoseLandmark.RIGHT_EAR,
+            self.mp_pose.PoseLandmark.RIGHT_SHOULDER,
+            self.mp_pose.PoseLandmark.RIGHT_WRIST,
+            self.mp_pose.PoseLandmark.RIGHT_HIP,
+            self.mp_pose.PoseLandmark.RIGHT_KNEE
+        ]
     
     def check_full_body_visible(self, landmarks):
         """
@@ -72,8 +92,8 @@ class PoseDetector:
                     visible_count += 1
                     total_confidence += landmark.visibility
             
-            # Consider full body visible if most key landmarks are detected
-            required_visible = len(self.key_landmarks) * 0.8  # 80% of key landmarks
+            # Consider full body visible only if ALL key landmarks are detected
+            required_visible = len(self.key_landmarks)  # 100% of key landmarks (all 9)
             is_full_body = visible_count >= required_visible
             
             # Calculate average confidence
@@ -83,6 +103,40 @@ class PoseDetector:
             
         except Exception as e:
             return False, 0
+    
+    def check_stop_condition(self, landmarks):
+        """
+        Check if recording should stop based on side visibility
+        Stop if either entire left side or entire right side is not visible
+        """
+        try:
+            if not landmarks:
+                return True  # Stop if no landmarks
+            
+            # Check left side visibility
+            left_side_invisible_count = 0
+            for landmark_id in self.left_side_landmarks:
+                landmark = landmarks.landmark[landmark_id]
+                if landmark.visibility < 0.3:  # Low visibility threshold
+                    left_side_invisible_count += 1
+            
+            # Check right side visibility
+            right_side_invisible_count = 0
+            for landmark_id in self.right_side_landmarks:
+                landmark = landmarks.landmark[landmark_id]
+                if landmark.visibility < 0.3:  # Low visibility threshold
+                    right_side_invisible_count += 1
+            
+            # Stop if all landmarks on either side are not visible
+            left_side_gone = left_side_invisible_count == len(self.left_side_landmarks)
+            right_side_gone = right_side_invisible_count == len(self.right_side_landmarks)
+            
+            should_stop = left_side_gone or right_side_gone
+            
+            return should_stop
+            
+        except Exception as e:
+            return True  # Stop on error
     
     def get_body_bbox(self, landmarks, image_shape):
         """
@@ -195,6 +249,9 @@ class PoseDetector:
                 # Check if full body is visible
                 is_full_body, confidence = self.check_full_body_visible(results.pose_landmarks)
                 
+                # Check stop condition
+                should_stop = self.check_stop_condition(results.pose_landmarks)
+                
                 # Get bounding box
                 bbox = self.get_body_bbox(results.pose_landmarks, image.shape)
                 
@@ -211,6 +268,7 @@ class PoseDetector:
                 pose_info = {
                     "detected": True,
                     "full_body_visible": is_full_body,
+                    "should_stop_recording": should_stop,
                     "confidence": confidence,
                     "bbox": bbox,
                     "landmarks": landmarks

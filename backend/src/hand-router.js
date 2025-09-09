@@ -29,11 +29,15 @@ class HandRouter extends EventEmitter {
                 isInROI: false,
                 enteredTime: 0,
                 progress: 0, // 0 to 1 for visual feedback
+                locked: false, // Whether recording is locked in (will start after delay)
+                lockTimeout: null, // Timeout ID for delayed start
             },
             stop: {
                 isInROI: false,
                 enteredTime: 0,
                 progress: 0, // 0 to 1 for visual feedback
+                locked: false, // Whether stop is locked in (will stop after delay)
+                lockTimeout: null, // Timeout ID for delayed stop
             },
         };
 
@@ -387,8 +391,8 @@ class HandRouter extends EventEmitter {
         // Handle START ROI with dwell time (only if not already recording)
         const isRecording = this.frameHandler && this.frameHandler.isRecording;
         
-        // Reset START dwell if right hand with open palm is not detected
-        if (!rightHandDetected && this.dwellState.start.isInROI) {
+        // Only reset if not locked
+        if (!rightHandDetected && this.dwellState.start.isInROI && !this.dwellState.start.locked) {
             console.log('[HandRouter] Right hand (open palm) lost - resetting START dwell state');
             this.dwellState.start.isInROI = false;
             this.dwellState.start.progress = 0;
@@ -398,12 +402,13 @@ class HandRouter extends EventEmitter {
                 start: 0,
                 stop: this.dwellState.stop.progress,
                 startActive: false,
-                stopActive: this.dwellState.stop.isInROI,
+                stopActive: this.dwellState.stop.isInROI || this.dwellState.stop.locked,
             });
         }
+        // If locked, just keep updating progress without any interruption
         
-        // Reset STOP dwell if left hand with open palm is not detected
-        if (!leftHandDetected && this.dwellState.stop.isInROI) {
+        // Only reset if not locked
+        if (!leftHandDetected && this.dwellState.stop.isInROI && !this.dwellState.stop.locked) {
             console.log('[HandRouter] Left hand (open palm) lost - resetting STOP dwell state');
             this.dwellState.stop.isInROI = false;
             this.dwellState.stop.progress = 0;
@@ -412,69 +417,55 @@ class HandRouter extends EventEmitter {
             this.emit('dwellProgress', {
                 start: this.dwellState.start.progress,
                 stop: 0,
-                startActive: this.dwellState.start.isInROI,
+                startActive: this.dwellState.start.isInROI || this.dwellState.start.locked,
                 stopActive: false,
             });
         }
+        // If locked, just keep updating progress without any interruption
         
-        if (rightHandInStartROI && !isRecording) {
+        if (rightHandInStartROI && !isRecording && !this.dwellState.start.locked) {
             if (!this.dwellState.start.isInROI) {
-                // Hand just entered START ROI
+                // Hand just detected - immediately lock in recording decision
                 this.dwellState.start.isInROI = true;
                 this.dwellState.start.enteredTime = now;
                 this.dwellState.start.progress = 0;
+                this.dwellState.start.locked = true; // Lock immediately
 
-                // Always log ROI entry/dwell events
-                console.log('[HandRouter] Right hand (open palm) entered START ROI - starting dwell timer');
+                console.log('[HandRouter] Right hand (open palm) detected - recording will start in 1 second');
 
                 // Start progress update for visual feedback
                 this.startDwellProgress('start');
-            } else {
-                // Hand is dwelling in START ROI
-                const dwellTime = now - this.dwellState.start.enteredTime;
-                this.dwellState.start.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
-
-                // Debug log for dwell progress
-                if (this.stats.framesProcessed % 10 === 0) {
-                    console.log(`[HandRouter] START dwell progress: ${(this.dwellState.start.progress * 100).toFixed(1)}% (${dwellTime}ms)`);
-                }
-
-                // Check if dwell time reached and cooldown passed
-                if (dwellTime >= this.DWELL_TIME_MS) {
-                    if (this.triggerState.start) {
-                        // Trigger already active but not reset - this is the bug
-                        console.log('[HandRouter] WARNING: Trigger state already active, resetting...');
-                        this.triggerState.start = false;
-                    }
-                    
-                    if (!this.triggerState.start && (now - this.lastTriggers.start > config.cooldown_ms)) {
-                        this.triggerState.start = true;
-                        this.lastTriggers.start = now;
-                        this.stats.triggersStart++;
-
-                        console.log('[HandRouter] START TRIGGER - 1 second dwell completed, starting recording in 1 second...');
-                        
-                        // 1초 후에 녹화 시작
-                        setTimeout(() => {
-                            console.log('[HandRouter] Starting recording now (1 second delay completed)');
+                
+                // Schedule recording start after 1 second
+                if (now - this.lastTriggers.start > config.cooldown_ms) {
+                    this.dwellState.start.lockTimeout = setTimeout(() => {
+                        if (this.dwellState.start.locked) {
+                            this.lastTriggers.start = Date.now();
+                            this.stats.triggersStart++;
+                            console.log('[HandRouter] START TRIGGER - 1 second delay completed, starting recording now');
                             this.triggerRecordingStart();
-                        }, 1000);
-
-                        // Reset dwell state after trigger
-                        this.dwellState.start.isInROI = false;
-                        this.dwellState.start.progress = 0;
-                        
-                        // Reset trigger state immediately after trigger
-                        // Don't use setTimeout as it can cause race conditions
-                        this.triggerState.start = false;
-                    }
+                            
+                            // Reset state after trigger
+                            this.dwellState.start.isInROI = false;
+                            this.dwellState.start.progress = 0;
+                            this.dwellState.start.locked = false;
+                            this.dwellState.start.lockTimeout = null;
+                        }
+                    }, this.DWELL_TIME_MS);
+                } else {
+                    console.log('[HandRouter] Cooldown active - recording start cancelled');
+                    this.dwellState.start.locked = false;
                 }
             }
-        } else {
-            // Hand left START ROI or recording is active
+        } else if (this.dwellState.start.locked) {
+            // Keep updating progress while locked, regardless of hand presence
+            const dwellTime = now - this.dwellState.start.enteredTime;
+            this.dwellState.start.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+        } else if (!rightHandInStartROI && !this.dwellState.start.locked) {
+            // Hand not detected and not locked - reset
             if (this.dwellState.start.isInROI) {
                 if (this.debugMode) {
-                    const reason = isRecording ? 'recording active' : 'hand left ROI';
+                    const reason = isRecording ? 'recording active' : 'hand not detected';
                     console.log(`[HandRouter] Right hand START ROI reset - ${reason}`);
                 }
                 this.dwellState.start.isInROI = false;
@@ -490,58 +481,49 @@ class HandRouter extends EventEmitter {
         }
 
         // Handle STOP ROI with dwell time (only if recording)
-        if (leftHandInStopROI && isRecording) {
+        if (leftHandInStopROI && isRecording && !this.dwellState.stop.locked) {
             if (!this.dwellState.stop.isInROI) {
-                // Hand just entered STOP ROI
+                // Hand just detected - immediately lock in stop decision
                 this.dwellState.stop.isInROI = true;
                 this.dwellState.stop.enteredTime = now;
                 this.dwellState.stop.progress = 0;
+                this.dwellState.stop.locked = true; // Lock immediately
 
-                // Always log ROI entry/dwell events
-                console.log('[HandRouter] Left hand (open palm) entered STOP ROI - starting dwell timer');
+                console.log('[HandRouter] Left hand (open palm) detected - recording will stop in 1 second');
 
                 // Start progress update for visual feedback
                 this.startDwellProgress('stop');
-            } else {
-                // Hand is dwelling in STOP ROI
-                const dwellTime = now - this.dwellState.stop.enteredTime;
-                this.dwellState.stop.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
-
-                // Check if dwell time reached and cooldown passed
-                if (dwellTime >= this.DWELL_TIME_MS) {
-                    if (this.triggerState.stop) {
-                        // Trigger already active but not reset - this is the bug
-                        console.log('[HandRouter] WARNING: STOP trigger state already active, resetting...');
-                        this.triggerState.stop = false;
-                    }
-                    
-                    if (!this.triggerState.stop && (now - this.lastTriggers.stop > config.cooldown_ms)) {
-                        this.triggerState.stop = true;
-                        this.lastTriggers.stop = now;
-                        this.stats.triggersStop++;
-
-                        console.log('[HandRouter] STOP TRIGGER - 1 second dwell completed, stopping recording in 1 second...');
-                        
-                        // 1초 후에 녹화 중지
-                        setTimeout(() => {
-                            console.log('[HandRouter] Stopping recording now (1 second delay completed)');
+                
+                // Schedule recording stop after 1 second
+                if (now - this.lastTriggers.stop > config.cooldown_ms) {
+                    this.dwellState.stop.lockTimeout = setTimeout(() => {
+                        if (this.dwellState.stop.locked) {
+                            this.lastTriggers.stop = Date.now();
+                            this.stats.triggersStop++;
+                            console.log('[HandRouter] STOP TRIGGER - 1 second delay completed, stopping recording now');
                             this.triggerRecordingStop();
-                        }, 1000);
-
-                        // Reset dwell state after trigger
-                        this.dwellState.stop.isInROI = false;
-                        this.dwellState.stop.progress = 0;
-                        
-                        // Reset trigger state immediately after trigger
-                        this.triggerState.stop = false;
-                    }
+                            
+                            // Reset state after trigger
+                            this.dwellState.stop.isInROI = false;
+                            this.dwellState.stop.progress = 0;
+                            this.dwellState.stop.locked = false;
+                            this.dwellState.stop.lockTimeout = null;
+                        }
+                    }, this.DWELL_TIME_MS);
+                } else {
+                    console.log('[HandRouter] Cooldown active - recording stop cancelled');
+                    this.dwellState.stop.locked = false;
                 }
             }
-        } else {
-            // Hand left STOP ROI or not recording
+        } else if (this.dwellState.stop.locked) {
+            // Keep updating progress while locked, regardless of hand presence
+            const dwellTime = now - this.dwellState.stop.enteredTime;
+            this.dwellState.stop.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+        } else if (!leftHandInStopROI && !this.dwellState.stop.locked) {
+            // Hand not detected and not locked - reset
             if (this.dwellState.stop.isInROI) {
                 if (this.debugMode) {
-                    const reason = !isRecording ? 'not recording' : 'hand left ROI';
+                    const reason = !isRecording ? 'not recording' : 'hand not detected';
                     console.log(`[HandRouter] Left hand STOP ROI reset - ${reason}`);
                 }
                 this.dwellState.stop.isInROI = false;
@@ -563,14 +545,14 @@ class HandRouter extends EventEmitter {
             this.dwellUpdateInterval = setInterval(() => {
                 const now = Date.now();
 
-                // Update and emit START ROI progress
-                if (this.dwellState.start.isInROI) {
+                // Update and emit START ROI progress (including locked state)
+                if (this.dwellState.start.isInROI || this.dwellState.start.locked) {
                     const dwellTime = now - this.dwellState.start.enteredTime;
                     this.dwellState.start.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
                 }
 
-                // Update and emit STOP ROI progress
-                if (this.dwellState.stop.isInROI) {
+                // Update and emit STOP ROI progress (including locked state)
+                if (this.dwellState.stop.isInROI || this.dwellState.stop.locked) {
                     const dwellTime = now - this.dwellState.stop.enteredTime;
                     this.dwellState.stop.progress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
                 }
@@ -579,14 +561,16 @@ class HandRouter extends EventEmitter {
                 this.emit('dwellProgress', {
                     start: this.dwellState.start.progress,
                     stop: this.dwellState.stop.progress,
-                    startActive: this.dwellState.start.isInROI,
-                    stopActive: this.dwellState.stop.isInROI,
+                    startActive: this.dwellState.start.isInROI || this.dwellState.start.locked,
+                    stopActive: this.dwellState.stop.isInROI || this.dwellState.stop.locked,
                 });
 
-                // Clear interval if no hands in ROI
+                // Clear interval if no hands in ROI and not locked
                 if (
                     !this.dwellState.start.isInROI &&
-                    !this.dwellState.stop.isInROI
+                    !this.dwellState.stop.isInROI &&
+                    !this.dwellState.start.locked &&
+                    !this.dwellState.stop.locked
                 ) {
                     clearInterval(this.dwellUpdateInterval);
                     this.dwellUpdateInterval = null;
@@ -604,6 +588,14 @@ class HandRouter extends EventEmitter {
             trigger: 'hand_gesture',
             timestamp: Date.now(),
         });
+        
+        // Clear start progress bar after recording starts
+        this.emit('dwellProgress', {
+            start: 0,
+            stop: 0,
+            startActive: false,
+            stopActive: false,
+        });
     }
 
     triggerRecordingStop() {
@@ -614,6 +606,14 @@ class HandRouter extends EventEmitter {
         this.emit('recordingStopped', {
             trigger: 'hand_gesture',
             timestamp: Date.now(),
+        });
+        
+        // Clear stop progress bar after recording stops
+        this.emit('dwellProgress', {
+            start: 0,
+            stop: 0,
+            startActive: false,
+            stopActive: false,
         });
     }
 

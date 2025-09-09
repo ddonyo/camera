@@ -244,35 +244,35 @@ class PoseRouter extends EventEmitter {
                 this.stopDwellProgressUpdates();
             }
             
-            // Handle stop recording with dwell timer if full body is lost and currently recording
-            if (isRecording) {
-                if (!this.stopDwellActive) {
-                    // Start stop dwell timer
-                    this.stopDwellActive = true;
-                    this.stopDwellStartTime = now;
-                    this.stopDwellProgress = 0;
-                    console.log('[PoseRouter] Full body lost while recording - starting stop dwell timer');
-                    this.startStopDwellProgressUpdates();
-                } else {
-                    // Update stop dwell progress
-                    const dwellTime = now - this.stopDwellStartTime;
-                    this.stopDwellProgress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
-                    
-                    // Check if dwell time reached for stop
-                    if (dwellTime >= this.DWELL_TIME_MS) {
-                        console.log('[PoseRouter] RECORDING STOP TRIGGER - Full body lost for 1 second');
-                        this.stopRecording();
-                        this.stopDwellActive = false;
-                        this.stopDwellProgress = 0;
-                        this.stopStopDwellProgressUpdates();
-                    }
-                }
-            }
+            // Don't handle stop here - it's handled by should_stop_recording flag
         }
         
-        // Reset stop dwell if full body is detected again
-        if (pose.full_body_visible && this.stopDwellActive) {
-            console.log('[PoseRouter] Full body detected again - canceling stop dwell timer');
+        // Handle stop recording based on should_stop_recording flag
+        if (isRecording && pose.should_stop_recording) {
+            if (!this.stopDwellActive) {
+                // Start stop dwell timer
+                this.stopDwellActive = true;
+                this.stopDwellStartTime = now;
+                this.stopDwellProgress = 0;
+                console.log('[PoseRouter] Stop condition met (left/right side gone) - starting stop dwell timer');
+                this.startStopDwellProgressUpdates();
+            } else {
+                // Update stop dwell progress
+                const dwellTime = now - this.stopDwellStartTime;
+                this.stopDwellProgress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+                
+                // Check if dwell time reached for stop
+                if (dwellTime >= this.DWELL_TIME_MS) {
+                    console.log('[PoseRouter] RECORDING STOP TRIGGER - Stop condition met for 1 second');
+                    this.stopRecording();
+                    this.stopDwellActive = false;
+                    this.stopDwellProgress = 0;
+                    this.stopStopDwellProgressUpdates();
+                }
+            }
+        } else if (!pose.should_stop_recording && this.stopDwellActive) {
+            // Reset stop dwell if stop condition is no longer met
+            console.log('[PoseRouter] Stop condition no longer met - canceling stop dwell timer');
             this.stopDwellActive = false;
             this.stopDwellProgress = 0;
             this.stopStopDwellProgressUpdates();
@@ -324,10 +324,10 @@ class PoseRouter extends EventEmitter {
         }
         
         // Stop recording
-        console.log('[PoseRouter] Stopping recording - full body lost');
+        console.log('[PoseRouter] Stopping recording - left or right side completely gone');
         this.emit('recordingStopped', {
             trigger: 'pose',
-            reason: 'full_body_lost',
+            reason: 'side_not_visible',
             timestamp: Date.now()
         });
         
