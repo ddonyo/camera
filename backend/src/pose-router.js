@@ -1,6 +1,7 @@
 // backend/src/pose-router.js
 const { EventEmitter } = require('events');
 const PoseWorker = require('./pose-worker');
+const ROIConfig = require('./roi-config');
 
 class PoseRouter extends EventEmitter {
     constructor(captureDevice, frameHandler = null) {
@@ -9,6 +10,9 @@ class PoseRouter extends EventEmitter {
         this.frameHandler = frameHandler; // FrameHandler reference for recording control
         this.poseWorker = null;
         this.isEnabled = false;
+        
+        // ROI configuration for crop mode
+        this.roiConfig = ROIConfig.getInstance();
         
         // Pose detection state
         this.fullBodyDetected = false;
@@ -122,7 +126,11 @@ class PoseRouter extends EventEmitter {
         this.stats.framesProcessed++;
         this.stats.lastFrameTime = Date.now();
         
-        return this.poseWorker.processFrame(imageBuffer, cropMode);
+        // Get crop_mode from ROI config (set by frontend via _updateBackendSettings)
+        const config = this.roiConfig.get();
+        const effectiveCropMode = config.crop_mode || cropMode;
+        
+        return this.poseWorker.processFrame(imageBuffer, effectiveCropMode);
     }
     
     processImagePath(imagePath, cropMode = false) {
@@ -133,13 +141,19 @@ class PoseRouter extends EventEmitter {
         this.stats.framesProcessed++;
         this.stats.lastFrameTime = Date.now();
         
-        return this.poseWorker.processImagePath(imagePath, cropMode);
+        // Get crop_mode from ROI config (set by frontend via _updateBackendSettings)
+        const config = this.roiConfig.get();
+        const effectiveCropMode = config.crop_mode || cropMode;
+        
+        return this.poseWorker.processImagePath(imagePath, effectiveCropMode);
     }
     
     handlePoseDetection(data) {
         const { pose, timestamp, cropInfo } = data;
         const now = Date.now();
         
+        // Check if recording state (needed for both pose detected and not detected cases)
+        const isRecording = this.frameHandler && this.frameHandler.isRecording;
         
         if (!pose || !pose.detected) {
             // No pose detected, reset state
@@ -169,13 +183,41 @@ class PoseRouter extends EventEmitter {
                 });
             }
             
+            // Still need to handle stop condition when no person is detected during recording
+            if (isRecording) {
+                // If no person detected during recording, this should trigger stop condition
+                if (!this.stopDwellActive) {
+                    // Start stop dwell timer
+                    this.stopDwellActive = true;
+                    this.stopDwellStartTime = now;
+                    this.stopDwellProgress = 0;
+                    console.log('[PoseRouter] No person detected during recording - starting stop dwell timer');
+                    this.startStopDwellProgressUpdates();
+                } else {
+                    // Update stop dwell progress
+                    const dwellTime = now - this.stopDwellStartTime;
+                    this.stopDwellProgress = Math.min(dwellTime / this.DWELL_TIME_MS, 1);
+                    
+                    // Check if dwell time reached for stop
+                    if (dwellTime >= this.DWELL_TIME_MS) {
+                        console.log('[PoseRouter] RECORDING STOP TRIGGER - No person detected for 1 second');
+                        this.stopRecording();
+                        this.stopDwellActive = false;
+                        this.stopDwellProgress = 0;
+                        this.stopStopDwellProgressUpdates();
+                    }
+                }
+                
+                // Debug log for stop condition (even when no person detected)
+                if (this.stats.framesProcessed % 30 === 0) { // Log every 30 frames
+                    console.log(`[PoseRouter] isRecording: ${isRecording}, no_person_detected: true, stopDwellActive: ${this.stopDwellActive}`);
+                }
+            }
+            
             return;
         }
         
         this.stats.posesDetected++;
-        
-        // Check if recording state
-        const isRecording = this.frameHandler && this.frameHandler.isRecording;
         
         // Check if full body is visible
         if (pose.full_body_visible) {
@@ -245,6 +287,14 @@ class PoseRouter extends EventEmitter {
             }
             
             // Don't handle stop here - it's handled by should_stop_recording flag
+        }
+        
+        // Debug log for stop condition
+        if (this.stats.framesProcessed % 30 === 0) { // Log every 30 frames
+            console.log(`[PoseRouter] isRecording: ${isRecording}, should_stop: ${pose.should_stop_recording}, stopDwellActive: ${this.stopDwellActive}`);
+            if (pose.stop_debug) {
+                console.log(`[PoseRouter] Stop Debug - Left: ${pose.stop_debug.left_invisible}/${pose.stop_debug.left_total}, Right: ${pose.stop_debug.right_invisible}/${pose.stop_debug.right_total}`);
+            }
         }
         
         // Handle stop recording based on should_stop_recording flag

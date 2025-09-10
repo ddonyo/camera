@@ -57,6 +57,7 @@ class FrameHandler {
         this.frameCounter = 0; // 녹화 프레임 카운터
         this.currentWindow = null; // 현재 창
         this.handRouterListenersRegistered = false; // HandRouter 이벤트 리스너 등록 여부
+        this.poseRouterListenersRegistered = false; // PoseRouter 이벤트 리스너 등록 여부
         this.poseRouter = null; // PoseRouter 인스턴스
         this.triggerMode = 'hand'; // 현재 트리거 모드 ('hand' 또는 'pose')
     }
@@ -107,6 +108,62 @@ class FrameHandler {
 
         this.handRouterListenersRegistered = true;
         console.log('[FrameHandler] HandRouter event listeners registered successfully');
+    }
+
+    registerPoseRouterListeners() {
+        if (this.poseRouterListenersRegistered) {
+            console.log('[FrameHandler] PoseRouter listeners already registered');
+            return;
+        }
+
+        if (!this.poseRouter) {
+            console.log('[FrameHandler] PoseRouter instance not available yet');
+            return;
+        }
+
+        console.log('[FrameHandler] Registering PoseRouter event listeners');
+
+        // PoseRouter 이벤트를 프론트엔드로 전달
+        this.poseRouter.on('recordingStarted', (data) => {
+            const allWindows = BrowserWindow.getAllWindows();
+            for (const window of allWindows) {
+                if (window.webContents) {
+                    window.webContents.send('recording-started', data);
+                }
+            }
+        });
+
+        this.poseRouter.on('recordingStopped', (data) => {
+            const allWindows = BrowserWindow.getAllWindows();
+            for (const window of allWindows) {
+                if (window.webContents) {
+                    window.webContents.send('recording-stopped', data);
+                }
+            }
+        });
+
+        // Dwell progress 이벤트를 프론트엔드로 전달 (pose detection의 경우)
+        this.poseRouter.on('dwellProgress', (data) => {
+            const allWindows = BrowserWindow.getAllWindows();
+            for (const window of allWindows) {
+                if (window.webContents) {
+                    window.webContents.send('pose-dwell-progress', data);
+                }
+            }
+        });
+
+        // Pose detection 이벤트를 프론트엔드로 전달
+        this.poseRouter.on('poseDetection', (data) => {
+            const allWindows = BrowserWindow.getAllWindows();
+            for (const window of allWindows) {
+                if (window.webContents) {
+                    window.webContents.send('pose-detection', data);
+                }
+            }
+        });
+
+        this.poseRouterListenersRegistered = true;
+        console.log('[FrameHandler] PoseRouter event listeners registered successfully');
     }
 
     // HandRouter 이벤트 리스너 정리
@@ -335,54 +392,105 @@ class FrameHandler {
 
             this.captureDevice = device;
 
-            try {
-                console.log('[Main] Initializing hand detection system...');
-                console.log('[Main] Device available for HandRouter:', !!device);
+            // Initialize detection system based on current trigger mode
+            console.log(`[Main] Current trigger mode: ${this.triggerMode}`);
+            
+            if (this.triggerMode === 'hand') {
+                try {
+                    console.log('[Main] Initializing hand detection system...');
+                    console.log('[Main] Device available for HandRouter:', !!device);
 
-                initializeHandRouter(device, this);
-                console.log('[Main] initializeHandRouter called with frameHandler');
+                    initializeHandRouter(device, this);
+                    console.log('[Main] initializeHandRouter called with frameHandler');
 
-                // Ensure main window reference is set again after HandRouter initialization
-                if (process.platform !== 'linux' && this.currentWindow) {
-                    device.setMainWindow(this.currentWindow);
-                    device.setFrameHandler(this); // FrameHandler도 재설정
-                    console.log(
-                        '[Main] Main window and FrameHandler re-assigned to capture device after HandRouter init'
-                    );
-                }
-
-                // HandRouter 인스턴스를 frame-watcher와 device에 전달
-                const handRouterInstance = getHandRouterInstance();
-                console.log('[Main] HandRouter instance retrieved:', !!handRouterInstance);
-
-                if (handRouterInstance) {
-                    console.log('[Main] HandRouter isEnabled:', handRouterInstance.isEnabled);
-                    watcher.setHandRouter(handRouterInstance);
-                    console.log('[Main] HandRouter connected to frame-watcher');
-
-                    // Windows에서는 HandRouter를 device에도 설정
-                    if (process.platform !== 'linux' && device.setHandRouter) {
-                        device.setHandRouter(handRouterInstance);
-                        console.log('[Main] HandRouter connected to WinDevice');
+                    // Ensure main window reference is set again after HandRouter initialization
+                    if (process.platform !== 'linux' && this.currentWindow) {
+                        device.setMainWindow(this.currentWindow);
+                        device.setFrameHandler(this); // FrameHandler도 재설정
+                        console.log(
+                            '[Main] Main window and FrameHandler re-assigned to capture device after HandRouter init'
+                        );
                     }
 
-                    // HandRouter 이벤트 리스너 등록 (FrameHandler에서 한 번만 등록)
-                    this.registerHandRouterListeners();
+                    // HandRouter 인스턴스를 frame-watcher와 device에 전달
+                    const handRouterInstance = getHandRouterInstance();
+                    console.log('[Main] HandRouter instance retrieved:', !!handRouterInstance);
 
-                    // HandRouter 시작
+                    if (handRouterInstance) {
+                        console.log('[Main] HandRouter isEnabled:', handRouterInstance.isEnabled);
+                        watcher.setHandRouter(handRouterInstance);
+                        console.log('[Main] HandRouter connected to frame-watcher');
+
+                        // Windows에서는 HandRouter를 device에도 설정
+                        if (process.platform !== 'linux' && device.setHandRouter) {
+                            device.setHandRouter(handRouterInstance);
+                            console.log('[Main] HandRouter connected to WinDevice');
+                        }
+
+                        // HandRouter 이벤트 리스너 등록 (FrameHandler에서 한 번만 등록)
+                        this.registerHandRouterListeners();
+
+                        // HandRouter 시작
+                        try {
+                            await handRouterInstance.start();
+                            console.log('[Main] HandRouter started successfully');
+                        } catch (startError) {
+                            console.error('[Main] Failed to start HandRouter:', startError);
+                        }
+                    } else {
+                        console.error('[Main] HandRouter instance is null - initialization failed');
+                    }
+
+                    console.log('[Main] Hand detection system initialized successfully');
+                } catch (handError) {
+                    console.warn('[Main] Failed to initialize hand detection:', handError.message);
+                }
+            } else if (this.triggerMode === 'pose') {
+                try {
+                    console.log('[Main] Initializing pose detection system...');
+                    console.log('[Main] Device available for PoseRouter:', !!device);
+
+                    // Initialize PoseRouter
+                    if (!this.poseRouter) {
+                        const PoseRouter = require('../backend/src/pose-router');
+                        this.poseRouter = new PoseRouter(device, this);
+                        console.log('[Main] PoseRouter instance created');
+                    }
+
+                    // Set device references
+                    if (process.platform !== 'linux' && this.currentWindow) {
+                        device.setMainWindow(this.currentWindow);
+                        device.setFrameHandler(this);
+                        console.log('[Main] Main window and FrameHandler set for PoseRouter');
+                    }
+
+                    // Connect PoseRouter to frame-watcher
+                    watcher.setPoseRouter(this.poseRouter);
+                    console.log('[Main] PoseRouter connected to frame-watcher');
+
+                    // Windows에서는 PoseRouter를 device에도 설정
+                    if (process.platform !== 'linux' && device.setPoseRouter) {
+                        device.setPoseRouter(this.poseRouter);
+                        console.log('[Main] PoseRouter connected to WinDevice');
+                    }
+
+                    // PoseRouter 이벤트 리스너 등록
+                    this.registerPoseRouterListeners();
+
+                    // PoseRouter 시작
                     try {
-                        await handRouterInstance.start();
-                        console.log('[Main] HandRouter started successfully');
+                        await this.poseRouter.start();
+                        console.log('[Main] PoseRouter started successfully');
                     } catch (startError) {
-                        console.error('[Main] Failed to start HandRouter:', startError);
+                        console.error('[Main] Failed to start PoseRouter:', startError);
                     }
-                } else {
-                    console.error('[Main] HandRouter instance is null - initialization failed');
-                }
 
-                console.log('[Main] Hand detection system initialized successfully');
-            } catch (handError) {
-                console.warn('[Main] Failed to initialize hand detection:', handError.message);
+                    console.log('[Main] Pose detection system initialized successfully');
+                } catch (poseError) {
+                    console.warn('[Main] Failed to initialize pose detection:', poseError.message);
+                }
+            } else {
+                console.log('[Main] No detection system initialized - unknown trigger mode:', this.triggerMode);
             }
         }
     }

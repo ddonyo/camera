@@ -92,8 +92,8 @@ class PoseDetector:
                     visible_count += 1
                     total_confidence += landmark.visibility
             
-            # Consider full body visible only if ALL key landmarks are detected
-            required_visible = len(self.key_landmarks)  # 100% of key landmarks (all 9)
+            # Consider full body visible if most key landmarks are detected
+            required_visible = len(self.key_landmarks) * 0.8  # 80% of key landmarks
             is_full_body = visible_count >= required_visible
             
             # Calculate average confidence
@@ -132,6 +132,17 @@ class PoseDetector:
             right_side_gone = right_side_invisible_count == len(self.right_side_landmarks)
             
             should_stop = left_side_gone or right_side_gone
+            
+            # Store debug info for JSON response
+            self.stop_debug_info = {
+                "left_invisible": left_side_invisible_count,
+                "left_total": len(self.left_side_landmarks),
+                "right_invisible": right_side_invisible_count,
+                "right_total": len(self.right_side_landmarks),
+                "left_gone": left_side_gone,
+                "right_gone": right_side_gone,
+                "should_stop": should_stop
+            }
             
             return should_stop
             
@@ -271,7 +282,8 @@ class PoseDetector:
                     "should_stop_recording": should_stop,
                     "confidence": confidence,
                     "bbox": bbox,
-                    "landmarks": landmarks
+                    "landmarks": landmarks,
+                    "stop_debug": getattr(self, 'stop_debug_info', None)  # Include debug info
                 }
             
             return {
