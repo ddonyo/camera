@@ -87,7 +87,7 @@ class ROIConfig extends EventEmitter {
             stop_roi: { x1: 0.05, y1: 0.2, x2: 0.3, y2: 0.6 },
             debounce_ms: 250,
             cooldown_ms: 1000,
-            min_confidence: 0.8,
+            min_confidence: 0.7,
             enabled: false,
             hand_detection: {
                 fps_limit: 15,
@@ -152,7 +152,7 @@ class ROIConfig extends EventEmitter {
     }
 
     getMinConfidence() {
-        return this.config ? this.config.min_confidence : 0.8;
+        return this.config ? this.config.min_confidence : 0.7;
     }
 
     getHandDetectionConfig() {
