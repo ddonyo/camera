@@ -349,63 +349,71 @@ class FrameHandler {
                 `Starting capture with fps: ${this.fps}, delay: ${delay}, numFiles: ${numFiles}`
             );
 
-            // First, create a temporary device to query camera capabilities
-            const tempDevice = new capture.Device({
-                saveDir: PATHS.LIVE_DIR,
-                fileFmt: 'temp_frame.jpg',
-                width: 640,  // Use small resolution for capability query
-                height: 480,
-                numFiles: 1,
-                fps: 1,
-            });
-
             let maxWidth = 1920;  // Default fallback values
             let maxHeight = 1080;
 
-            // Set up listener for camera info
-            const infoPromise = new Promise((resolve) => {
-                tempDevice.on('connected', () => {
-                    console.log('Querying camera capabilities...');
-                    tempDevice.send(capture.CAP_MSG_TYPE_REQ_INFO);
-                });
+            // Linux에서는 v4l2-ctl을 사용하여 카메라 capability 조회
+            if (process.platform === 'linux') {
+                try {
+                    const { exec } = require('child_process');
+                    const { promisify } = require('util');
+                    const execAsync = promisify(exec);
 
-                tempDevice.on('data', (msg) => {
-                    if (msg.type === capture.CAP_MSG_TYPE_CAM_INFO) {
-                        const info = msg.payload;
-                        console.log(
-                            `Camera max resolution detected: ${info.width}x${info.height}`
-                        );
-                        resolve(info);
+                    // 카메라 디바이스 찾기 (보통 /dev/video0)
+                    const { stdout: deviceList } = await execAsync('ls /dev/video*').catch(() => ({ stdout: '' }));
+                    const videoDevice = deviceList.split('\n')[0]?.trim() || '/dev/video0';
+
+                    console.log(`Querying camera capabilities for ${videoDevice}...`);
+
+                    // v4l2-ctl로 지원 포맷 조회
+                    const { stdout } = await execAsync(`v4l2-ctl -d ${videoDevice} --list-formats-ext`).catch((err) => {
+                        console.log('v4l2-ctl not available or failed:', err.message);
+                        return { stdout: '' };
+                    });
+
+                    if (stdout) {
+                        // MJPG 또는 YUYV 포맷의 최대 해상도 찾기
+                        const lines = stdout.split('\n');
+                        let currentFormat = '';
+                        let maxResolution = { width: 0, height: 0 };
+
+                        for (const line of lines) {
+                            // 포맷 감지
+                            if (line.includes('MJPG') || line.includes('Motion-JPEG')) {
+                                currentFormat = 'MJPG';
+                            } else if (line.includes('YUYV')) {
+                                currentFormat = 'YUYV';
+                            }
+
+                            // 해상도 추출 (Size: Discrete 1920x1080 형식)
+                            const resMatch = line.match(/Size:\s*Discrete\s*(\d+)x(\d+)/);
+                            if (resMatch && (currentFormat === 'MJPG' || currentFormat === 'YUYV')) {
+                                const width = parseInt(resMatch[1]);
+                                const height = parseInt(resMatch[2]);
+
+                                // 최대 해상도 업데이트
+                                if (width * height > maxResolution.width * maxResolution.height) {
+                                    maxResolution = { width, height };
+                                }
+                            }
+                        }
+
+                        if (maxResolution.width > 0 && maxResolution.height > 0) {
+                            maxWidth = maxResolution.width;
+                            maxHeight = maxResolution.height;
+                            console.log(`Camera max resolution detected: ${maxWidth}x${maxHeight}`);
+                        } else {
+                            console.log('Could not parse camera resolutions, using defaults');
+                        }
                     }
-                });
-
-                tempDevice.on('error', (err) => {
-                    console.log(`Error querying camera: ${err}`);
-                    resolve(null);
-                });
-
-                // Timeout after 2 seconds
-                setTimeout(() => {
-                    console.log('Camera query timeout, using defaults');
-                    resolve(null);
-                }, 2000);
-            });
-
-            // Start temp device to get camera info
-            await tempDevice.start();
-            const cameraInfo = await infoPromise;
-            await tempDevice.destroy();
-
-            // Use detected max resolution or fallback to defaults
-            if (cameraInfo && cameraInfo.width && cameraInfo.height) {
-                maxWidth = cameraInfo.width;
-                maxHeight = cameraInfo.height;
-                console.log(`Using camera max resolution: ${maxWidth}x${maxHeight}`);
-            } else {
-                console.log(`Using default resolution: ${maxWidth}x${maxHeight}`);
+                } catch (error) {
+                    console.log('Error querying camera capabilities:', error.message);
+                }
             }
 
-            // Now create the actual capture device with the detected resolution
+            console.log(`Using resolution: ${maxWidth}x${maxHeight}`);
+
+            // Create the capture device with the detected or default resolution
             const device = new capture.Device({
                 saveDir: PATHS.LIVE_DIR,
                 fileFmt: 'frame%d.jpg',
