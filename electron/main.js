@@ -349,11 +349,68 @@ class FrameHandler {
                 `Starting capture with fps: ${this.fps}, delay: ${delay}, numFiles: ${numFiles}`
             );
 
+            // First, create a temporary device to query camera capabilities
+            const tempDevice = new capture.Device({
+                saveDir: PATHS.LIVE_DIR,
+                fileFmt: 'temp_frame.jpg',
+                width: 640,  // Use small resolution for capability query
+                height: 480,
+                numFiles: 1,
+                fps: 1,
+            });
+
+            let maxWidth = 1920;  // Default fallback values
+            let maxHeight = 1080;
+
+            // Set up listener for camera info
+            const infoPromise = new Promise((resolve) => {
+                tempDevice.on('connected', () => {
+                    console.log('Querying camera capabilities...');
+                    tempDevice.send(capture.CAP_MSG_TYPE_REQ_INFO);
+                });
+
+                tempDevice.on('data', (msg) => {
+                    if (msg.type === capture.CAP_MSG_TYPE_CAM_INFO) {
+                        const info = msg.payload;
+                        console.log(
+                            `Camera max resolution detected: ${info.width}x${info.height}`
+                        );
+                        resolve(info);
+                    }
+                });
+
+                tempDevice.on('error', (err) => {
+                    console.log(`Error querying camera: ${err}`);
+                    resolve(null);
+                });
+
+                // Timeout after 2 seconds
+                setTimeout(() => {
+                    console.log('Camera query timeout, using defaults');
+                    resolve(null);
+                }, 2000);
+            });
+
+            // Start temp device to get camera info
+            await tempDevice.start();
+            const cameraInfo = await infoPromise;
+            await tempDevice.destroy();
+
+            // Use detected max resolution or fallback to defaults
+            if (cameraInfo && cameraInfo.width && cameraInfo.height) {
+                maxWidth = cameraInfo.width;
+                maxHeight = cameraInfo.height;
+                console.log(`Using camera max resolution: ${maxWidth}x${maxHeight}`);
+            } else {
+                console.log(`Using default resolution: ${maxWidth}x${maxHeight}`);
+            }
+
+            // Now create the actual capture device with the detected resolution
             const device = new capture.Device({
                 saveDir: PATHS.LIVE_DIR,
                 fileFmt: 'frame%d.jpg',
-                width: 1920,
-                height: 1080,
+                width: maxWidth,
+                height: maxHeight,
                 numFiles: numFiles,
                 fps: this.fps,
                 //useStdout: true, // 카메라 데몬 로그 출력
@@ -362,7 +419,8 @@ class FrameHandler {
 
             device.on('connected', () => {
                 console.log('Device connected');
-                //device.send(capture.CAP_MSG_TYPE_REQ_INFO);
+                // Request camera info for the actual device as well
+                device.send(capture.CAP_MSG_TYPE_REQ_INFO);
             });
 
             // Windows에서는 메인 윈도우 참조를 캡처 디바이스에 전달
