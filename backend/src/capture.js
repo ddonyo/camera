@@ -1,8 +1,14 @@
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
+const { promisify } = require('util');
 const EventEmitter = require('events');
+const execAsync = promisify(exec);
+
+// 강제 해상도 설정 (정의된 경우 이 값을 무조건 사용)
+const FORCE_WIDTH = 2560;
+const FORCE_HEIGHT = 1440;
 
 // native/linux/capture_interface.h 를 노드용으로 변환
 
@@ -25,6 +31,7 @@ class Device extends EventEmitter {
      * @param {number} [options.height=480] - 프레임 Height
      * @param {number} [options.fps=30] - 초당 프래임 수
      * @param {boolean} [options.useStdout=false] - 표준 출력을 사용할지 여부
+     * @param {boolean} [options.autoDetectMaxResolution=true] - 카메라 최대 해상도 자동 감지
      */
     constructor(options) {
         super();
@@ -42,6 +49,74 @@ class Device extends EventEmitter {
         this.stdout = options.useStdout ? 'inherit' : 'ignore';
         this.isRecording = false;
         this.recordingStartTime = null;
+        this.autoDetectMaxResolution = options.autoDetectMaxResolution !== false;
+    }
+
+    /**
+     * 카메라가 지원하는 최대 해상도를 감지합니다.
+     * @param {string} [videoDevice] - 비디오 디바이스 경로 (기본값: 자동 탐지)
+     * @returns {Promise<{width: number, height: number}>} 최대 해상도
+     */
+    static async detectMaxResolution(videoDevice = null) {
+        const defaultResolution = { width: 1920, height: 1080 };
+
+        try {
+            // 카메라 디바이스 찾기
+            if (!videoDevice) {
+                const { stdout: deviceList } = await execAsync('ls /dev/video*').catch(() => ({ stdout: '' }));
+                videoDevice = deviceList.split('\n')[0]?.trim() || '/dev/video0';
+            }
+
+            console.log(`[Capture] Querying camera capabilities for ${videoDevice}...`);
+
+            // v4l2-ctl로 지원 포맷 조회
+            const { stdout } = await execAsync(`v4l2-ctl -d ${videoDevice} --list-formats-ext`).catch((err) => {
+                console.log('[Capture] v4l2-ctl not available or failed:', err.message);
+                return { stdout: '' };
+            });
+
+            if (!stdout) {
+                console.log('[Capture] No camera capability data available, using defaults');
+                return defaultResolution;
+            }
+
+            // MJPG 또는 YUYV 포맷의 최대 해상도 찾기
+            const lines = stdout.split('\n');
+            let currentFormat = '';
+            let maxResolution = { width: 0, height: 0 };
+
+            for (const line of lines) {
+                // 포맷 감지
+                if (line.includes('MJPG') || line.includes('Motion-JPEG')) {
+                    currentFormat = 'MJPG';
+                } else if (line.includes('YUYV')) {
+                    currentFormat = 'YUYV';
+                }
+
+                // 해상도 추출 (Size: Discrete 1920x1080 형식)
+                const resMatch = line.match(/Size:\s*Discrete\s*(\d+)x(\d+)/);
+                if (resMatch && (currentFormat === 'MJPG' || currentFormat === 'YUYV')) {
+                    const width = parseInt(resMatch[1]);
+                    const height = parseInt(resMatch[2]);
+
+                    // 최대 해상도 업데이트
+                    if (width * height > maxResolution.width * maxResolution.height) {
+                        maxResolution = { width, height };
+                    }
+                }
+            }
+
+            if (maxResolution.width > 0 && maxResolution.height > 0) {
+                console.log(`[Capture] Camera max resolution detected: ${maxResolution.width}x${maxResolution.height}`);
+                return maxResolution;
+            } else {
+                console.log('[Capture] Could not parse camera resolutions, using defaults');
+                return defaultResolution;
+            }
+        } catch (error) {
+            console.log('[Capture] Error querying camera capabilities:', error.message);
+            return defaultResolution;
+        }
     }
 
     async #unlinkSocketPath() {
@@ -180,6 +255,19 @@ class Device extends EventEmitter {
 
     async start() {
         try {
+            // FORCE_WIDTH/HEIGHT가 정의된 경우 무조건 사용
+            if (typeof FORCE_WIDTH !== 'undefined' && typeof FORCE_HEIGHT !== 'undefined') {
+                console.log(`[Capture] Using forced resolution: ${FORCE_WIDTH}x${FORCE_HEIGHT}`);
+                this.width = FORCE_WIDTH;
+                this.height = FORCE_HEIGHT;
+            }
+            // 강제 해상도가 없고 자동 감지가 활성화된 경우
+            else if (this.autoDetectMaxResolution) {
+                const maxResolution = await Device.detectMaxResolution();
+                this.width = maxResolution.width;
+                this.height = maxResolution.height;
+            }
+
             await this.#initSocketPath();
             await this.#startServer();
             this.#startProcess();

@@ -15,6 +15,7 @@ class WinDevice extends EventEmitter {
      * @param {number} [options.height=480] - 프레임 Height
      * @param {number} [options.fps=30] - 초당 프레임 수
      * @param {boolean} [options.useStdout=false] - 표준 출력을 사용할지 여부
+     * @param {boolean} [options.autoDetectMaxResolution=true] - 카메라 최대 해상도 자동 감지
      */
     constructor(options) {
         super();
@@ -26,6 +27,7 @@ class WinDevice extends EventEmitter {
         this.height = options.height || 480;
         this.fps = options.fps || 30;
         this.stdout = options.useStdout ? 'inherit' : 'ignore';
+        this.autoDetectMaxResolution = options.autoDetectMaxResolution !== false;
 
         // Windows 특화 속성
         this.isRunning = false;
@@ -43,6 +45,99 @@ class WinDevice extends EventEmitter {
 
         // 순환 파일 인덱스
         this.currentFileIndex = 0;
+    }
+
+    /**
+     * 카메라가 지원하는 최대 해상도를 감지합니다.
+     * Windows에서는 브라우저 API를 통해 감지합니다.
+     * @returns {Promise<{width: number, height: number}>} 최대 해상도
+     */
+    static async detectMaxResolution(mainWindow) {
+        const defaultResolution = { width: 1920, height: 1080 };
+
+        if (!mainWindow || mainWindow.isDestroyed()) {
+            console.log('[WinCapture] No main window available for resolution detection');
+            return defaultResolution;
+        }
+
+        try {
+            console.log('[WinCapture] Querying camera capabilities...');
+
+            // 브라우저 컨텍스트에서 카메라 capability 조회
+            const maxResolution = await mainWindow.webContents.executeJavaScript(`
+                (async () => {
+                    try {
+                        const devices = await navigator.mediaDevices.enumerateDevices();
+                        const videoDevices = devices.filter(device => device.kind === "videoinput");
+                        const hardwareCameras = videoDevices.filter(device =>
+                            !device.label.toLowerCase().includes("virtual"));
+
+                        const selectedDevice = hardwareCameras.length > 0 ? hardwareCameras[0] : videoDevices[0];
+
+                        if (!selectedDevice) {
+                            return { width: 1920, height: 1080 };
+                        }
+
+                        // 테스트할 해상도 목록 (높은 것부터)
+                        const testResolutions = [
+                            { width: 3840, height: 2160 }, // 4K
+                            { width: 2560, height: 1440 }, // QHD
+                            { width: 1920, height: 1080 }, // FHD
+                            { width: 1280, height: 720 },  // HD
+                            { width: 640, height: 480 }    // VGA
+                        ];
+
+                        let maxSupportedResolution = { width: 640, height: 480 };
+
+                        for (const resolution of testResolutions) {
+                            try {
+                                const stream = await navigator.mediaDevices.getUserMedia({
+                                    video: {
+                                        deviceId: { exact: selectedDevice.deviceId },
+                                        width: { exact: resolution.width },
+                                        height: { exact: resolution.height }
+                                    },
+                                    audio: false
+                                });
+
+                                // 실제 설정된 해상도 확인
+                                const track = stream.getVideoTracks()[0];
+                                const settings = track.getSettings();
+
+                                // 요청한 해상도가 실제로 설정되었는지 확인
+                                if (settings.width === resolution.width && settings.height === resolution.height) {
+                                    maxSupportedResolution = { width: settings.width, height: settings.height };
+                                    console.log('Camera supports resolution:', maxSupportedResolution);
+                                }
+
+                                // 스트림 정리
+                                stream.getTracks().forEach(track => track.stop());
+
+                                // 최대 해상도 찾았으면 종료
+                                if (maxSupportedResolution.width === resolution.width) {
+                                    break;
+                                }
+                            } catch (err) {
+                                // 해당 해상도를 지원하지 않음
+                                continue;
+                            }
+                        }
+
+                        console.log('Camera max resolution detected:', maxSupportedResolution);
+                        return maxSupportedResolution;
+                    } catch (error) {
+                        console.error('Error detecting camera resolution:', error);
+                        return { width: 1920, height: 1080 };
+                    }
+                })();
+            `);
+
+            console.log(`[WinCapture] Camera max resolution detected: ${maxResolution.width}x${maxResolution.height}`);
+            return maxResolution;
+        } catch (error) {
+            console.log('[WinCapture] Error querying camera capabilities:', error.message);
+            return defaultResolution;
+        }
     }
 
     // 디렉토리 생성
@@ -294,7 +389,14 @@ class WinDevice extends EventEmitter {
             // 저장 디렉토리 생성
             await this.#ensureDirectory();
 
-            // 카메라 정보 설정 (고정값)
+            // 최대 해상도 자동 감지 (옵션이 활성화된 경우)
+            if (this.autoDetectMaxResolution && this.mainWindow) {
+                const maxResolution = await WinDevice.detectMaxResolution(this.mainWindow);
+                this.width = maxResolution.width;
+                this.height = maxResolution.height;
+            }
+
+            // 카메라 정보 설정
             this.camInfo = {
                 format: 'MJPG',
                 width: this.width,
