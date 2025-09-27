@@ -63,6 +63,10 @@ const GARMENT_MAP = {
     'denim-pants': assertFile('denim_pants.jpg'),
 };
 
+function bufferToDataURL(buffer, mimeType) {
+    return `data:${mimeType || 'image/jpeg'};base64,${buffer.toString('base64')}`;
+}
+
 function fileToDataURL(absPath) {
     const buf = fs.readFileSync(absPath);
     const ext = path.extname(absPath).toLowerCase();
@@ -106,14 +110,16 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
         if (!garmentId || !GARMENT_MAP[garmentId])
             return res.status(400).json({ error: 'invalid garment_id' });
 
-        const personDataURL = `data:${(req.file.mimetype || 'image/jpeg').toLowerCase()};base64,${req.file.buffer.toString('base64')}`;
         const garmentAbs = path.resolve(__dirname, '../../', GARMENT_MAP[garmentId]);
         if (!fs.existsSync(garmentAbs)) {
             return res.status(400).json({ error: `garment file not found: ${garmentAbs}` });
         }
+
+        // base64로 이미지 인코딩
+        const personDataURL = bufferToDataURL(req.file.buffer, req.file.mimetype);
         const garmentDataURL = fileToDataURL(garmentAbs);
 
-        // [중요] 일부 환경에서 CDN가 차단될 수 있으니 base64 직접 반환으로 테스트
+        // FASHN API에 JSON으로 전송
         const payload = {
             model_name: 'tryon-v1.6',
             inputs: {
@@ -121,7 +127,7 @@ router.post('/jobs', upload.single('person_image'), async (req, res) => {
                 garment_image: garmentDataURL,
                 mode: vtonMode,
                 moderation_level: 'conservative',
-                return_base64: true, // ← 먼저 base64로 받아서 네트워크 문제 분리
+                return_base64: true, // base64로 결과 받기
             },
         };
 
@@ -229,7 +235,7 @@ router.get('/jobs/:id', async (req, res) => {
         let j = {};
         try {
             j = JSON.parse(text);
-        } catch {}
+        } catch { }
 
         if (!st.ok) {
             console.error('[VTON] status error body:', text);

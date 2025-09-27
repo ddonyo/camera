@@ -2,7 +2,6 @@
 import { $, show } from './dom.js';
 
 export function createVtonUI() {
-    const img = $('#vtonResult');
     const loading = $('#vtonLoading');
     console.log('Loading element:', loading);
     const err = $('#vtonError');
@@ -20,7 +19,44 @@ export function createVtonUI() {
 
     function setPreview(url) {
         console.log('Setting preview:', url);
-        if (img) img.src = url;
+        // 동적으로 vtonResult 요소 가져오기 (IMG에서 CANVAS로 교체될 수 있음)
+        const img = $('#vtonResult');
+        if (img) {
+            console.log('VTON element type:', img.tagName);
+            // vtonResult가 CANVAS인 경우 이미지를 그려야 함
+            if (img.tagName === 'CANVAS') {
+                const ctx = img.getContext('2d');
+                const tempImg = new Image();
+                tempImg.onload = () => {
+                    // 캔버스 크기에 맞춰 이미지 그리기
+                    ctx.clearRect(0, 0, img.width, img.height);
+
+                    // 이미지를 캔버스 크기에 맞춰 그리기 (비율 유지)
+                    const sourceAspectRatio = tempImg.width / tempImg.height;
+                    const canvasAspectRatio = img.width / img.height;
+
+                    let destX = 0, destY = 0, destWidth = img.width, destHeight = img.height;
+
+                    if (sourceAspectRatio > canvasAspectRatio) {
+                        // 이미지가 더 넓은 경우
+                        destHeight = img.width / sourceAspectRatio;
+                        destY = (img.height - destHeight) / 2;
+                    } else {
+                        // 이미지가 더 높은 경우
+                        destWidth = img.height * sourceAspectRatio;
+                        destX = (img.width - destWidth) / 2;
+                    }
+
+                    ctx.drawImage(tempImg, destX, destY, destWidth, destHeight);
+                };
+                tempImg.src = url;
+            } else {
+                // IMG 요소인 경우 기존 방식
+                img.src = url;
+            }
+        } else {
+            console.error('vtonResult element not found!');
+        }
     }
 
     function setProgress(p, label) {
@@ -37,6 +73,7 @@ export function createVtonUI() {
         setPreview(url); // 미리보기 업데이트
 
         // VTON 결과 이미지에 생성 모드 정보 저장
+        const img = $('#vtonResult'); // 동적으로 요소 가져오기
         if (img) {
             img.setAttribute('data-crop-generated', cropMode ? 'true' : 'false');
             console.log('Set VTON result crop mode:', cropMode);
@@ -74,5 +111,18 @@ export function createVtonUI() {
         }
     }
 
-    return { start, setPreview, setProgress, succeed, fail, el: { img, loading, err, bar, txt } };
+    return {
+        start,
+        setPreview,
+        setProgress,
+        succeed,
+        fail,
+        el: {
+            get img() { return $('#vtonResult'); }, // 동적으로 요소 가져오기
+            loading,
+            err,
+            bar,
+            txt
+        }
+    };
 }

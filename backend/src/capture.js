@@ -389,6 +389,7 @@ class Device extends EventEmitter {
             duration: this.isRecording ? Date.now() - this.recordingStartTime : 0
         };
     }
+
 }
 
 module.exports = {

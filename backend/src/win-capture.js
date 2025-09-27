@@ -36,8 +36,10 @@ class WinDevice extends EventEmitter {
         this.mainWindow = null; // Electron 창 참조
         this.frameHandler = null; // FrameHandler 참조 (녹화 제어용)
         this.handRouter = null; // HandRouter 참조 (hand detection 이벤트 전달용)
+        this.poseRouter = null; // PoseRouter 참조 (pose detection 이벤트 전달용)
         this.camInfo = null;
         this.debugMode = process.env.HAND_DEBUG === 'true'; // Debug mode for verbose logging
+        this.isProcessingFrame = false; // 프레임 처리 중 플래그 (버퍼 오버플로우 방지)
 
         // 녹화 관련 속성
         this.isRecording = false;
@@ -169,6 +171,70 @@ class WinDevice extends EventEmitter {
         );
     }
 
+    // PoseRouter 참조 설정
+    setPoseRouter(poseRouter) {
+        this.poseRouter = poseRouter;
+        console.log('[WinCapture] PoseRouter set:', !!poseRouter);
+
+        // PoseRouter 이벤트를 IPC로 전달
+        if (this.poseRouter) {
+            this.poseRouter.on('poseDetection', (data) => {
+                if (
+                    this.mainWindow &&
+                    !this.mainWindow.isDestroyed() &&
+                    this.mainWindow.webContents &&
+                    !this.mainWindow.webContents.isDestroyed()
+                ) {
+                    this.mainWindow.webContents.send('poseDetection', data);
+                    if (this.debugMode) {
+                        console.log('[WinCapture] Forwarded poseDetection event to renderer:', {
+                            detected: data.detected,
+                            fullBodyVisible: data.fullBodyVisible,
+                        });
+                    }
+                }
+            });
+
+            // Forward recording started event to frontend
+            this.poseRouter.on('recordingStarted', (data) => {
+                if (
+                    this.mainWindow &&
+                    !this.mainWindow.isDestroyed() &&
+                    this.mainWindow.webContents &&
+                    !this.mainWindow.webContents.isDestroyed()
+                ) {
+                    console.log('[WinCapture] Forwarding pose recording started to frontend:', data);
+                    this.mainWindow.webContents.send('recording-started', data);
+                }
+            });
+
+            // Forward recording stopped event to frontend
+            this.poseRouter.on('recordingStopped', (data) => {
+                if (
+                    this.mainWindow &&
+                    !this.mainWindow.isDestroyed() &&
+                    this.mainWindow.webContents &&
+                    !this.mainWindow.webContents.isDestroyed()
+                ) {
+                    console.log('[WinCapture] Forwarding pose recording stopped to frontend:', data);
+                    this.mainWindow.webContents.send('recording-stopped', data);
+                }
+            });
+
+            // Forward dwell progress event to frontend (pose detection)
+            this.poseRouter.on('dwellProgress', (data) => {
+                if (
+                    this.mainWindow &&
+                    !this.mainWindow.isDestroyed() &&
+                    this.mainWindow.webContents &&
+                    !this.mainWindow.webContents.isDestroyed()
+                ) {
+                    this.mainWindow.webContents.send('pose-dwell-progress', data);
+                }
+            });
+        }
+    }
+
     // HandRouter 설정
     setHandRouter(handRouter) {
         this.handRouter = handRouter;
@@ -226,7 +292,16 @@ class WinDevice extends EventEmitter {
             return;
         }
 
+        // 이전 프레임이 아직 처리 중이면 스킵 (버퍼 오버플로우 방지)
+        if (this.isProcessingFrame) {
+            if (this.debugLevel > 0) {
+                console.log('[WinCapture] Skipping frame - previous frame still processing');
+            }
+            return;
+        }
+
         try {
+            this.isProcessingFrame = true;
             // 현재 순환 파일 인덱스
             const fileIndex = this.currentFileIndex % this.numFiles;
             const fileName = this.fileFmt.replace('%d', fileIndex);
@@ -254,16 +329,22 @@ class WinDevice extends EventEmitter {
                                     { width: 640, height: 480 }
                                 ];
 
+                                // main.js에서 전달받은 fps 사용 (기본 24fps)
+                                const targetFps = ${this.fps};
+
                                 let stream = null;
                                 for (const resolution of resolutions) {
                                     try {
-                                        console.log('Trying resolution:', resolution);
+                                        console.log('Trying resolution:', resolution, 'at', targetFps, 'fps');
                                         stream = await navigator.mediaDevices.getUserMedia({
                                             video: {
                                                 deviceId: { exact: selectedDevice.deviceId },
                                                 width: { ideal: resolution.width },
                                                 height: { ideal: resolution.height },
-                                                frameRate: { ideal: ${this.fps}, max: ${this.fps} }
+                                                frameRate: { ideal: targetFps, max: targetFps },
+                                                // Windows Media Foundation 버퍼 이슈 완화
+                                                facingMode: 'user',
+                                                resizeMode: 'crop-and-scale'
                                             },
                                             audio: false
                                         });
@@ -278,6 +359,17 @@ class WinDevice extends EventEmitter {
 
                                 if (!stream) {
                                     throw new Error('Failed to create camera stream with any resolution');
+                                }
+
+                                // 스트림 트랙 설정 최적화
+                                const track = stream.getVideoTracks()[0];
+                                if (track) {
+                                    // 트랙 constraints 적용으로 버퍼 안정화
+                                    await track.applyConstraints({
+                                        width: { ideal: ${this.width} },
+                                        height: { ideal: ${this.height} },
+                                        frameRate: { ideal: ${this.fps} }
+                                    }).catch(() => {});
                                 }
 
                                 window.__winCaptureStream = stream;
@@ -331,9 +423,14 @@ class WinDevice extends EventEmitter {
                             return { success: false, error: 'Video not ready - camera may be disconnected' };
                         }
 
-                        const ctx = canvas.getContext('2d', { willReadFrequently: false });
+                        const ctx = canvas.getContext('2d', {
+                            willReadFrequently: false,
+                            alpha: false,  // JPEG에는 알파 채널 불필요
+                            desynchronized: true  // 비동기 렌더링으로 성능 향상
+                        });
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+                        // JPEG 품질 유지 (0.85)
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
                         return {
@@ -366,6 +463,15 @@ class WinDevice extends EventEmitter {
                 this.frameIndex++;
                 this.currentFileIndex++;
 
+                // HandRouter와 PoseRouter에 직접 버퍼 전달 (디스크 읽기 없이)
+                if (this.handRouter && this.handRouter.isEnabled) {
+                    this.handRouter.processFrame(buffer);
+                }
+                // 포즈 라우터에서도 버퍼 직접 처리
+                if (this.poseRouter && this.poseRouter.isEnabled) {
+                    this.poseRouter.processFrame(buffer);
+                }
+
                 // 저장된 파일 경로 반환 (프레임 감지기에서 처리)
                 return filePath;
             } else {
@@ -375,6 +481,8 @@ class WinDevice extends EventEmitter {
         } catch (error) {
             console.error(`[WinCapture] Error capturing frame:`, error);
             return null;
+        } finally {
+            this.isProcessingFrame = false;
         }
     }
 
@@ -386,6 +494,20 @@ class WinDevice extends EventEmitter {
         }
 
         try {
+            // 기존 스트림 정리 (버퍼 문제 방지)
+            if (this.mainWindow) {
+                await this.mainWindow.webContents.executeJavaScript(`
+                    (async () => {
+                        if (window.__winCaptureStream) {
+                            window.__winCaptureStream.getTracks().forEach(track => track.stop());
+                            window.__winCaptureStream = null;
+                            // 리소스 해제를 위한 대기
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                        }
+                    })();
+                `).catch(() => {});
+            }
+
             // 저장 디렉토리 생성
             await this.#ensureDirectory();
 
@@ -421,10 +543,9 @@ class WinDevice extends EventEmitter {
                 });
             }, 100);
 
-            // 프레임 캡처 루프 시작 (안정성을 위해 최소 간격 제한)
-            const minInterval = 33; // 최소 33ms 간격 (최대 30fps)
+            // 프레임 캡처 루프 시작 (main.js에서 전달받은 fps 사용)
             const targetInterval = 1000 / this.fps;
-            const intervalMs = Math.max(minInterval, targetInterval);
+            const intervalMs = targetInterval;
 
             console.log(
                 `[WinCapture] Using capture interval: ${intervalMs}ms (${(1000 / intervalMs).toFixed(1)}fps)`
@@ -461,7 +582,7 @@ class WinDevice extends EventEmitter {
             this.captureInterval = null;
         }
 
-        // 웹캠 스트림 중지 요청
+        // 웹캠 스트림 중지 요청 (버퍼 문제 방지를 위해 개선)
         if (
             this.mainWindow &&
             !this.mainWindow.isDestroyed() &&
@@ -470,16 +591,35 @@ class WinDevice extends EventEmitter {
         ) {
             try {
                 await this.mainWindow.webContents.executeJavaScript(`
-                    if (window.__winCaptureStream) {
-                        window.__winCaptureStream.getTracks().forEach(track => track.stop());
-                        window.__winCaptureStream = null;
-                    }
-                    if (window.__captureVideo) {
-                        window.__captureVideo = null;
-                    }
-                    if (window.__captureCanvas) {
-                        window.__captureCanvas = null;
-                    }
+                    (async () => {
+                        if (window.__winCaptureStream) {
+                            // 각 트랙을 개별적으로 중지
+                            window.__winCaptureStream.getTracks().forEach(track => {
+                                track.stop();
+                                // 트랙 이벤트 리스너 제거
+                                track.onended = null;
+                                track.onmute = null;
+                                track.onunmute = null;
+                            });
+                            window.__winCaptureStream = null;
+                        }
+                        if (window.__captureVideo) {
+                            // 비디오 엘리먼트 정리
+                            window.__captureVideo.srcObject = null;
+                            window.__captureVideo.pause();
+                            window.__captureVideo = null;
+                        }
+                        if (window.__captureCanvas) {
+                            // 캔버스 컨텍스트 정리
+                            const ctx = window.__captureCanvas.getContext('2d');
+                            if (ctx) {
+                                ctx.clearRect(0, 0, window.__captureCanvas.width, window.__captureCanvas.height);
+                            }
+                            window.__captureCanvas = null;
+                        }
+                        // 가비지 컬렉션을 위한 약간의 대기
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    })();
                 `);
             } catch (error) {
                 console.error('[WinCapture] Error stopping webcam:', error);

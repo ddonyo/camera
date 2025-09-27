@@ -6,6 +6,36 @@ export async function captureCurrentFrame({
     mirror = false,
     crop = false,
 } = {}) {
+    // VTON 모드인지 확인
+    const modeSelect = document.getElementById('modeSelect');
+    const isVtonMode = modeSelect && modeSelect.value === 'vton';
+
+    // VTON 모드일 때는 ImageViewer의 이미지 사용
+    if (isVtonMode) {
+        // vtonResult는 ImageViewer 패널의 캔버스
+        const vtonResult = document.getElementById('vtonResult');
+        if (vtonResult && vtonResult.tagName === 'CANVAS' && vtonResult.width && vtonResult.height) {
+            console.log('[CaptureHelper] Using ImageViewer (vtonResult) canvas for VTON mode');
+
+            let finalCanvas = vtonResult;
+
+            // crop이 이미 적용된 상태이므로 추가 크롭 불필요
+            // ImageViewer는 이미 fullCrop이 적용되어 있음
+
+            const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.92);
+            const blob = await (await fetch(dataUrl)).blob();
+
+            return {
+                ok: true,
+                blob,
+                dataUrl,
+                width: finalCanvas.width,
+                height: finalCanvas.height,
+                source: 'imageviewer',
+            };
+        }
+    }
+
     // 1) Windows 웹캠
     if (window.WIN_CAM?.capture) {
         try {

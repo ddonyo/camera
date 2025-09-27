@@ -82,8 +82,6 @@ export function initWardrobeController() {
                 if (result.result_url) ui.succeed(result.result_url, true, cropMode);
                 else if (result.result_base64)
                     ui.succeed(`data:image/png;base64,${result.result_base64}`, true, cropMode);
-                else if (result.image_base64)
-                    ui.succeed(`data:image/png;base64,${result.image_base64}`, true, cropMode);
                 else ui.succeed(personRef.previewUrl, true, cropMode);
             } else {
                 ui.fail(result.error || 'Failed');
@@ -216,8 +214,6 @@ export async function triggerVTONFromGesture() {
             if (result.result_url) vtonUI.succeed(result.result_url, true, cropMode);
             else if (result.result_base64)
                 vtonUI.succeed(`data:image/png;base64,${result.result_base64}`, true, cropMode);
-            else if (result.image_base64)
-                vtonUI.succeed(`data:image/png;base64,${result.image_base64}`, true, cropMode);
             else vtonUI.succeed(personRef.previewUrl, true, cropMode);
         } else {
             vtonUI.fail(result.error || 'Failed');

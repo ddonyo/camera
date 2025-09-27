@@ -67,7 +67,7 @@ async function createJob({ personRef, garmentId, options }, onProgress) {
     const res = await fetch(VTON_ENDPOINT.create, { method: 'POST', body: fd });
     if (!res.ok) throw new Error(await safeText(res));
     const data = await res.json();
-    if (!data.job_id && !data.status && !data.image_base64) throw new Error('Invalid response');
+    if (!data.job_id && !data.status && !data.result_url && !data.result_base64) throw new Error('Invalid response');
     onProgress?.(0.2, 'Job submitted'); // POST 성공 시 20%
     return data;
 }
@@ -97,7 +97,7 @@ async function pollJob(jobId, onProgress, { intervalMs = 1200, timeoutMs = 12000
                 j.data?.output?.image_base64 ||
                 j.output?.[0]?.image_base64 ||
                 j.data?.output?.[0]?.image_base64;
-            const url = j.result_url || j.output_url || j.output?.url;
+            const url = j.result_url || j.output_url || j.output?.url || j.output;
             return { status: 'succeeded', result_base64: b64, result_url: url };
         }
         if (['failed', 'canceled'].includes(j.status)) {
@@ -115,8 +115,11 @@ export async function runVTONWithFallback({ personRef, garmentId, options, onPro
         if (createRes.status && ['succeeded', 'failed', 'canceled'].includes(createRes.status))
             return createRes;
 
-        if (createRes.ok && createRes.image_base64)
-            return { status: 'succeeded', result_base64: createRes.image_base64 };
+        if (createRes.ok && createRes.result_base64)
+            return { status: 'succeeded', result_base64: createRes.result_base64 };
+
+        if (createRes.ok && createRes.result_url)
+            return { status: 'succeeded', result_url: createRes.result_url };
 
         const jobId = createRes.job_id;
         if (!jobId) throw new Error('No job_id from server');

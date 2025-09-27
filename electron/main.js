@@ -267,18 +267,30 @@ class FrameHandler {
                 if (this.poseRouter && !this.poseRouter.isEnabled) {
                     await this.poseRouter.start();
                     console.log('[FrameHandler] PoseRouter started');
-                    // frame-watcher에 PoseRouter 연결
-                    watcher.setPoseRouter(this.poseRouter);
-                    console.log('[FrameHandler] PoseRouter connected to frame-watcher');
+
+                    // Windows: win-capture에 연결, Linux: frame-watcher에 연결
+                    if (process.platform !== 'linux' && this.captureDevice && this.captureDevice.setPoseRouter) {
+                        this.captureDevice.setPoseRouter(this.poseRouter);
+                        console.log('[FrameHandler] PoseRouter connected to WinCapture');
+                    } else {
+                        watcher.setPoseRouter(this.poseRouter);
+                        console.log('[FrameHandler] PoseRouter connected to frame-watcher');
+                    }
                 }
             } else {
                 // Pose 모드 비활성화
                 if (this.poseRouter && this.poseRouter.isEnabled) {
                     this.poseRouter.stop();
                     console.log('[FrameHandler] PoseRouter stopped');
-                    // frame-watcher에서 PoseRouter 연결 해제
-                    watcher.setPoseRouter(null);
-                    console.log('[FrameHandler] PoseRouter disconnected from frame-watcher');
+
+                    // Windows: win-capture에서 연결 해제, Linux: frame-watcher에서 연결 해제
+                    if (process.platform !== 'linux' && this.captureDevice && this.captureDevice.setPoseRouter) {
+                        this.captureDevice.setPoseRouter(null);
+                        console.log('[FrameHandler] PoseRouter disconnected from WinCapture');
+                    } else {
+                        watcher.setPoseRouter(null);
+                        console.log('[FrameHandler] PoseRouter disconnected from frame-watcher');
+                    }
                 }
 
                 // Hand 모드 활성화
@@ -465,14 +477,13 @@ class FrameHandler {
                         console.log('[Main] Main window and FrameHandler set for PoseRouter');
                     }
 
-                    // Connect PoseRouter to frame-watcher
-                    watcher.setPoseRouter(this.poseRouter);
-                    console.log('[Main] PoseRouter connected to frame-watcher');
-
-                    // Windows에서는 PoseRouter를 device에도 설정
+                    // Connect PoseRouter: Windows는 device에만, Linux는 frame-watcher에만
                     if (process.platform !== 'linux' && device.setPoseRouter) {
                         device.setPoseRouter(this.poseRouter);
                         console.log('[Main] PoseRouter connected to WinDevice');
+                    } else {
+                        watcher.setPoseRouter(this.poseRouter);
+                        console.log('[Main] PoseRouter connected to frame-watcher');
                     }
 
                     // PoseRouter 이벤트 리스너 등록

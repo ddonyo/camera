@@ -170,9 +170,9 @@ export class CanvasUtils {
                 // 크롭된 영역의 비율 계산 (cropWidth : sourceHeight)
                 const sourceAspectRatio = cropWidth / sourceHeight;
                 const canvasAspectRatio = canvas.width / canvas.height;
-                
+
                 let destX = 0, destY = 0, destWidth = canvas.width, destHeight = canvas.height;
-                
+
                 // Fit 방식: 비율을 유지하면서 캔버스 안에 최대한 크게 표시
                 if (sourceAspectRatio > canvasAspectRatio) {
                     // 소스가 더 넓은 경우: 너비를 캔버스에 맞추고 높이를 조정
@@ -183,11 +183,11 @@ export class CanvasUtils {
                     destWidth = canvas.height * sourceAspectRatio;
                     destX = (canvas.width - destWidth) / 2;
                 }
-                
+
                 // 캔버스를 먼저 검정색으로 채움
                 ctx.fillStyle = 'black';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
+
                 if (flip) {
                     ctx.drawImage(
                         image,
@@ -231,10 +231,6 @@ export class CanvasUtils {
                     destX = (canvas.width - destWidth) / 2;
                 }
 
-                // 캔버스를 먼저 검정색으로 채움
-                ctx.fillStyle = 'black';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
                 // 전체 이미지 그리기
                 if (flip) {
                     ctx.drawImage(image, -(destX + destWidth), destY, destWidth, destHeight);
@@ -269,9 +265,9 @@ export class CanvasUtils {
             // 일반 그리기 - 비율 유지하면서 최대 크기로 표시
             const sourceAspectRatio = image.naturalWidth / image.naturalHeight;
             const canvasAspectRatio = canvas.width / canvas.height;
-            
+
             let destX = 0, destY = 0, destWidth = canvas.width, destHeight = canvas.height;
-            
+
             // Fit 방식: 비율을 유지하면서 캔버스 안에 최대한 크게 표시
             if (sourceAspectRatio > canvasAspectRatio) {
                 // 소스가 더 넓은 경우: 너비를 캔버스에 맞추고 높이를 조정
@@ -282,11 +278,11 @@ export class CanvasUtils {
                 destWidth = canvas.height * sourceAspectRatio;
                 destX = (canvas.width - destWidth) / 2;
             }
-            
+
             // 캔버스를 먼저 검정색으로 채움
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+
             if (flip) {
                 ctx.drawImage(image, -(destX + destWidth), destY, destWidth, destHeight);
             } else {

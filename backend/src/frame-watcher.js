@@ -128,45 +128,62 @@ function handleFrameEvent(callback, eventType, filePath, state, dataType) {
         console.log(`[FrameWatcher] Frame ${eventType}: ${filePath} (${frameNumber})`);
 
     try {
+        // Windows는 win-capture.js에서 버퍼를 직접 전달
+        // Linux는 frame-watcher를 통해 HandRouter/PoseRouter에 전달
+        const isWindows = process.platform === 'win32';
+
         if (dataType === 'bin') {
             // 바이너리 데이터로 파일 읽기
             try {
                 const data = fs.readFileSync(filePath);
                 callback('frame-data', data, frameNumber);
-                // 핸드 라우터에서 프레임 처리
-                if (handRouter && handRouter.isEnabled) {
-                    logHandRouterFrame('binary');
-                    handRouter.processFrame(data);
+
+                // Linux에서는 frame-watcher를 통해 HandRouter/PoseRouter에 전달
+                if (!isWindows) {
+                    // 핸드 라우터에서 프레임 처리
+                    if (handRouter && handRouter.isEnabled) {
+                        logHandRouterFrame('binary');
+                        handRouter.processFrame(data);
+                    }
+                    // 포즈 라우터에서 프레임 처리
+                    if (poseRouter && poseRouter.isEnabled) {
+                        poseRouter.processFrame(data);
+                    }
                 }
-                // 포즈 라우터에서 프레임 처리
-                if (poseRouter && poseRouter.isEnabled) {
-                    poseRouter.processFrame(data);
-                }
+                // Windows는 win-capture.js에서 직접 처리하므로 여기서는 스킵
             } catch (error) {
                 console.error(`[FrameWatcher] Error reading file as binary:`, error);
                 // 에러 발생시 path 방식으로 fallback
                 callback('frame-path', filePath, frameNumber);
+
+                // Linux에서만 path 방식으로 처리
+                if (!isWindows) {
+                    // path 방식으로 핸드 라우터 처리
+                    if (handRouter && handRouter.isEnabled) {
+                        logHandRouterFrame('path fallback');
+                        handRouter.processImagePath(filePath);
+                    }
+                    // path 방식으로 포즈 라우터 처리
+                    if (poseRouter && poseRouter.isEnabled) {
+                        poseRouter.processImagePath(filePath);
+                    }
+                }
+            }
+        } else {
+            // 기존 path 방식
+            callback('frame-path', filePath, frameNumber);
+
+            // Linux에서만 path 방식으로 처리
+            if (!isWindows) {
                 // path 방식으로 핸드 라우터 처리
                 if (handRouter && handRouter.isEnabled) {
-                    logHandRouterFrame('path fallback');
+                    logHandRouterFrame('path');
                     handRouter.processImagePath(filePath);
                 }
                 // path 방식으로 포즈 라우터 처리
                 if (poseRouter && poseRouter.isEnabled) {
                     poseRouter.processImagePath(filePath);
                 }
-            }
-        } else {
-            // 기존 path 방식
-            callback('frame-path', filePath, frameNumber);
-            // path 방식으로 핸드 라우터 처리
-            if (handRouter && handRouter.isEnabled) {
-                logHandRouterFrame('path');
-                handRouter.processImagePath(filePath);
-            }
-            // path 방식으로 포즈 라우터 처리
-            if (poseRouter && poseRouter.isEnabled) {
-                poseRouter.processImagePath(filePath);
             }
         }
     } catch (error) {
