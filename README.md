@@ -14,16 +14,6 @@
 
 ---
 
-### 👗 v2 : Virtual Try-On + Runway Mode
-실시간 카메라 스트리밍에 **VTON(가상 피팅)** 기능을 결합하여, 사용자가 옷장에서 옷을 선택하면 자동으로 가상 착장이 적용됩니다.
-착장된 인물은 **런웨이 영상**으로 생성되어, 더욱 몰입감 있는 패션 체험을 제공합니다.
-
-![Delayed Show V2 Demo](delayed_show_v2.gif)
-
-**Collab URL :** http://collab.lge.com/main/pages/viewpage.action?pageId=3252629699
-
----
-
 ### **Clone Repository**
 ```bash
 git clone ssh://git@source.lge.com:2222/media_bsp/apps/camera.git

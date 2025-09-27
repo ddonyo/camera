@@ -214,41 +214,56 @@ export class CanvasUtils {
                     );
                 }
             } else {
-                // crop: Camera view용 - 좌/우는 검정, 중앙 1/3만 표시
-                // 먼저 검정색으로 전체 캔버스 채우기
+                // crop: Camera view용 - 전체 이미지 표시하고 중앙 1/3에 녹색 테두리
+
+                // 1. 전체 이미지를 비율 유지하며 그리기
+                const sourceAspectRatio = image.naturalWidth / image.naturalHeight;
+                const canvasAspectRatio = canvas.width / canvas.height;
+
+                let destX = 0, destY = 0, destWidth = canvas.width, destHeight = canvas.height;
+
+                // Fit 방식: 비율을 유지하면서 캔버스 안에 최대한 크게 표시
+                if (sourceAspectRatio > canvasAspectRatio) {
+                    destHeight = canvas.width / sourceAspectRatio;
+                    destY = (canvas.height - destHeight) / 2;
+                } else {
+                    destWidth = canvas.height * sourceAspectRatio;
+                    destX = (canvas.width - destWidth) / 2;
+                }
+
+                // 캔버스를 먼저 검정색으로 채움
                 ctx.fillStyle = 'black';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // 중앙 영역에만 이미지 그리기 (원본 비율 유지)
-                const canvasCenterX = canvas.width / 3; // 캔버스의 중앙 1/3 시작점
-                const canvasCenterWidth = canvas.width / 3; // 캔버스의 중앙 1/3 너비
-
+                // 전체 이미지 그리기
                 if (flip) {
-                    // 플립된 상태에서는 중앙 영역의 위치를 조정
-                    ctx.drawImage(
-                        image,
-                        cropX,
-                        0,
-                        cropWidth,
-                        sourceHeight, // 소스 영역 (원본 중앙 1/3)
-                        -(canvasCenterX + canvasCenterWidth),
-                        0,
-                        canvasCenterWidth,
-                        canvas.height // 플립된 중앙 영역
-                    );
+                    ctx.drawImage(image, -(destX + destWidth), destY, destWidth, destHeight);
                 } else {
-                    ctx.drawImage(
-                        image,
-                        cropX,
-                        0,
-                        cropWidth,
-                        sourceHeight, // 소스 영역 (원본 중앙 1/3)
-                        canvasCenterX,
-                        0,
-                        canvasCenterWidth,
-                        canvas.height // 캔버스 중앙 영역
-                    );
+                    ctx.drawImage(image, destX, destY, destWidth, destHeight);
                 }
+
+                // flip 변환 해제 (테두리는 정상 좌표계에서 그리기)
+                ctx.restore();
+                ctx.save();
+
+                // 2. 테두리 밖 영역을 약간 어둡게 처리
+                const cropAreaX = canvas.width / 3;
+                const cropAreaWidth = canvas.width / 3;
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; // 40% 반투명 검정 (좀 더 진하게)
+
+                // 왼쪽 영역
+                ctx.fillRect(0, 0, cropAreaX, canvas.height);
+
+                // 오른쪽 영역
+                ctx.fillRect(cropAreaX + cropAreaWidth, 0, canvas.width - cropAreaX - cropAreaWidth, canvas.height);
+
+                // 4. 중앙 1/3 영역에 녹색 테두리 그리기 (맨 위에 그려야 보임)
+                ctx.strokeStyle = '#00ff00'; // 밝은 녹색
+                ctx.lineWidth = 4; // 테두리 두께 (더 두껍게)
+
+                // 테두리 그리기
+                ctx.strokeRect(cropAreaX, 0, cropAreaWidth, canvas.height);
             }
         } else {
             // 일반 그리기 - 비율 유지하면서 최대 크기로 표시

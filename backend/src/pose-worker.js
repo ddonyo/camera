@@ -113,9 +113,27 @@ class PoseWorker extends EventEmitter {
         });
 
         this.process.on('error', (error) => {
-            console.error('[PoseWorker] Process error:', error);
-            this.isRunning = false;
-            this.emit('error', error);
+            // Ignore EPIPE errors during shutdown
+            if (error.code !== 'EPIPE' || this.isRunning) {
+                console.error('[PoseWorker] Process error:', error);
+                this.isRunning = false;
+                this.emit('error', error);
+            }
+        });
+
+        // Handle stdin errors to prevent uncaught EPIPE
+        this.process.stdin.on('error', (error) => {
+            if (error.code === 'EPIPE') {
+                console.log('[PoseWorker] EPIPE error detected, process may have terminated');
+                this.isRunning = false;
+                // Don't emit error for EPIPE, just clean up
+                if (this.process) {
+                    this.process.kill('SIGTERM');
+                    this.process = null;
+                }
+            } else {
+                console.error('[PoseWorker] Stdin error:', error);
+            }
         });
 
         // Send initial configuration
@@ -135,12 +153,18 @@ class PoseWorker extends EventEmitter {
         }
 
         try {
+            // Check if stdin is still writable
+            if (!this.process.stdin || this.process.stdin.destroyed) {
+                console.log('[PoseWorker] Cannot send command - stdin is destroyed');
+                return false;
+            }
+
             // Use binary protocol for all commands
             const header = JSON.stringify(command);
             const headerBuffer = Buffer.from(header);
             const headerLength = Buffer.allocUnsafe(4);
             headerLength.writeUInt32LE(headerBuffer.length, 0);
-            
+
             this.process.stdin.write(headerLength);
             this.process.stdin.write(headerBuffer);
             
@@ -209,10 +233,16 @@ class PoseWorker extends EventEmitter {
             const headerLength = Buffer.allocUnsafe(4);
             headerLength.writeUInt32LE(headerBuffer.length, 0);
             
-            // Write all data to Python process
-            this.process.stdin.write(headerLength);
-            this.process.stdin.write(headerBuffer);
-            this.process.stdin.write(imageBuffer);
+            // Write all data to Python process with error handling
+            if (this.process && this.process.stdin && !this.process.stdin.destroyed) {
+                this.process.stdin.write(headerLength);
+                this.process.stdin.write(headerBuffer);
+                this.process.stdin.write(imageBuffer);
+            } else {
+                console.log('[PoseWorker] Process stdin is not available');
+                this.pendingFrames--;
+                return false;
+            }
             
             return true;
         } catch (error) {
@@ -296,6 +326,16 @@ class PoseWorker extends EventEmitter {
         this.isRunning = false;
 
         if (this.process) {
+            // Close stdin to prevent EPIPE errors
+            if (this.process.stdin && !this.process.stdin.destroyed) {
+                this.process.stdin.end();
+            }
+
+            // Remove all listeners to prevent memory leaks
+            this.process.stdout.removeAllListeners();
+            this.process.stderr.removeAllListeners();
+            this.process.removeAllListeners();
+
             this.process.kill('SIGTERM');
 
             // Force kill if not stopped within timeout
