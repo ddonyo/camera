@@ -145,9 +145,86 @@ class PoseDetector:
             }
             
             return should_stop
-            
+
         except Exception as e:
             return True  # Stop on error
+
+    def detect_back_view(self, landmarks):
+        """
+        Detect if the person is facing away (back view) based on landmark visibility patterns.
+        Uses MediaPipe pose landmarks to determine front vs back view with high accuracy.
+        """
+        try:
+            if not landmarks:
+                return {"is_back_view": False, "confidence": 0.0, "reason": "no_landmarks"}
+
+            # Front-facing landmarks (face/front body features)
+            front_landmarks = [
+                self.mp_pose.PoseLandmark.NOSE,
+                self.mp_pose.PoseLandmark.LEFT_EYE,
+                self.mp_pose.PoseLandmark.RIGHT_EYE,
+                self.mp_pose.PoseLandmark.LEFT_EYE_INNER,
+                self.mp_pose.PoseLandmark.RIGHT_EYE_INNER,
+                self.mp_pose.PoseLandmark.LEFT_EYE_OUTER,
+                self.mp_pose.PoseLandmark.RIGHT_EYE_OUTER,
+                self.mp_pose.PoseLandmark.LEFT_EAR,
+                self.mp_pose.PoseLandmark.RIGHT_EAR,
+                self.mp_pose.PoseLandmark.MOUTH_LEFT,
+                self.mp_pose.PoseLandmark.MOUTH_RIGHT
+            ]
+
+            # Back-facing landmarks (shoulders, hips, back structure)
+            back_landmarks = [
+                self.mp_pose.PoseLandmark.LEFT_SHOULDER,
+                self.mp_pose.PoseLandmark.RIGHT_SHOULDER,
+                self.mp_pose.PoseLandmark.LEFT_HIP,
+                self.mp_pose.PoseLandmark.RIGHT_HIP
+            ]
+
+            # Calculate average visibility for front landmarks
+            front_visibility_sum = 0
+            front_count = 0
+            for landmark_idx in front_landmarks:
+                landmark = landmarks.landmark[landmark_idx.value]
+                front_visibility_sum += landmark.visibility
+                front_count += 1
+
+            front_avg_visibility = front_visibility_sum / front_count if front_count > 0 else 0
+
+            # Calculate average visibility for back landmarks
+            back_visibility_sum = 0
+            back_count = 0
+            for landmark_idx in back_landmarks:
+                landmark = landmarks.landmark[landmark_idx.value]
+                back_visibility_sum += landmark.visibility
+                back_count += 1
+
+            back_avg_visibility = back_visibility_sum / back_count if back_count > 0 else 0
+
+            # Calculate back view confidence
+            # High back view confidence = low front visibility + high back visibility
+            front_invisible_score = 1.0 - front_avg_visibility  # Higher when front is not visible
+            back_visible_score = back_avg_visibility             # Higher when back structure is visible
+
+            # Weighted combination (front invisibility is more important indicator)
+            back_confidence = (front_invisible_score * 0.7) + (back_visible_score * 0.3)
+
+            # Determine if it's a back view (threshold at 0.6)
+            is_back_view = back_confidence > 0.6
+
+            # Generate reason for decision
+            reason = f"front_vis:{front_avg_visibility:.2f}_back_vis:{back_avg_visibility:.2f}"
+
+            return {
+                "is_back_view": is_back_view,
+                "confidence": back_confidence,
+                "front_visibility": front_avg_visibility,
+                "back_visibility": back_avg_visibility,
+                "reason": reason
+            }
+
+        except Exception as e:
+            return {"is_back_view": False, "confidence": 0.0, "reason": f"error:{str(e)}"}
     
     def get_body_bbox(self, landmarks, image_shape):
         """
@@ -262,7 +339,10 @@ class PoseDetector:
                 
                 # Check stop condition
                 should_stop = self.check_stop_condition(results.pose_landmarks)
-                
+
+                # Check back view
+                back_view_result = self.detect_back_view(results.pose_landmarks)
+
                 # Get bounding box
                 bbox = self.get_body_bbox(results.pose_landmarks, image.shape)
                 
@@ -283,6 +363,7 @@ class PoseDetector:
                     "confidence": confidence,
                     "bbox": bbox,
                     "landmarks": landmarks,
+                    "back_view": back_view_result,
                     "stop_debug": getattr(self, 'stop_debug_info', None)  # Include debug info
                 }
             
@@ -305,22 +386,22 @@ def main():
     Expected input: Binary protocol with header
     """
     detector = PoseDetector()
-    
+
     try:
         while True:
             # Read header length (4 bytes)
             header_length_bytes = sys.stdin.buffer.read(4)
             if not header_length_bytes or len(header_length_bytes) < 4:
                 break
-                
+
             # Parse header length
             header_length = int.from_bytes(header_length_bytes, 'little')
-            
+
             # Read header
             header_bytes = sys.stdin.buffer.read(header_length)
             if not header_bytes or len(header_bytes) < header_length:
                 break
-                
+
             # Parse header JSON
             try:
                 header = json.loads(header_bytes.decode('utf-8'))

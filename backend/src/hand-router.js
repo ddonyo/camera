@@ -611,6 +611,12 @@ class HandRouter extends EventEmitter {
             trigger: 'hand_gesture',
             timestamp: Date.now(),
         });
+
+        // 녹화 종료 후 트리거 상태 초기화 (다음 녹화를 위해)
+        setTimeout(() => {
+            this.resetState();
+            console.log('[HandRouter] State reset after recording stop');
+        }, 1000); // 1초 후 상태 초기화
     }
 
     // Test methods for unit testing

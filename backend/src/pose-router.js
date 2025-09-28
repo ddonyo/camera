@@ -380,11 +380,17 @@ class PoseRouter extends EventEmitter {
             reason: 'side_not_visible',
             timestamp: Date.now()
         });
-        
+
         // If frameHandler has a method to stop recording, call it
         if (typeof this.frameHandler.stopRecording === 'function') {
             this.frameHandler.stopRecording();
         }
+
+        // 녹화 종료 후 상태 초기화 (다음 녹화를 위해)
+        setTimeout(() => {
+            this.resetState();
+            console.log('[PoseRouter] State reset after recording stop');
+        }, 1000); // 1초 후 상태 초기화
     }
     
     getStatus() {

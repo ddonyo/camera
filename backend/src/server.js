@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const vtonRouter = require('./routes/vton');
+const poseAnalysisRouter = require('./routes/pose-analysis');
 
 // 상수 정의
 const CONFIG = {
@@ -99,6 +100,8 @@ function setupRoutes() {
     // VTON 프록시 라우터
     app.use('/api/v1/vton', vtonRouter);
 
+    // Pose Analysis 라우터
+    app.use('/api/pose-analysis', poseAnalysisRouter);
 
     // 404 핸들러 (마지막에 등록)
     app.use((req, res) => {
